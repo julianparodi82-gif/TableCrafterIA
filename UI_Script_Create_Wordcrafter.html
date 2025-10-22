@@ -1033,20 +1033,12 @@ function loadWordWebSavedItems() {
         return wordWebSavedLoadingPromise;
       }
 
-function syncWordWebSavedSection(options) {
-        const opts = options || {};
-        const parentActive = opts.parentActive !== false;
+function syncWordWebSavedSection() {
         const toggle = document.getElementById('wordWebSavedToggle');
         const body = document.getElementById('wordWebSavedBody');
         const tablesList = document.getElementById('wordWebSavedTables');
         const textsList = document.getElementById('wordWebSavedTexts');
-        if (toggle) {
-          toggle.disabled = !parentActive;
-          if (!parentActive) {
-            toggle.checked = false;
-          }
-        }
-        const shouldEnable = Boolean(parentActive && toggle && toggle.checked);
+        const shouldEnable = Boolean(toggle && toggle.checked);
         if (body) {
           body.classList.toggle('is-hidden', !shouldEnable);
           body.setAttribute('aria-hidden', String(!shouldEnable));
@@ -1075,7 +1067,7 @@ function syncWordWebSavedSection(options) {
             .then(function() {
               updateWordWebSavedStatus('');
               renderWordWebSavedLists();
-              syncWordWebSavedSection({ parentActive: parentActive });
+              syncWordWebSavedSection();
             })
             .catch(function(err) {
               const message = err && err.message ? err.message : err;
@@ -1206,9 +1198,7 @@ function bindWordWebSourcesControls() {
         const savedToggle = document.getElementById('wordWebSavedToggle');
         if (savedToggle && savedToggle.dataset.wordWebBound !== 'true') {
           savedToggle.addEventListener('change', function() {
-            const mainToggle = document.getElementById('wordWebSourcesToggle');
-            const parentActive = Boolean(mainToggle && mainToggle.checked);
-            syncWordWebSavedSection({ parentActive: parentActive });
+            syncWordWebSavedSection();
           });
           savedToggle.dataset.wordWebBound = 'true';
         }
@@ -1326,7 +1316,7 @@ function syncWordWebSourcesCard() {
           collapseBtn.classList.toggle('is-collapsed', !shouldShowBody);
           collapseBtn.setAttribute('aria-expanded', String(shouldShowBody));
         }
-        syncWordWebSavedSection({ parentActive: isActive });
+        syncWordWebSavedSection();
       }
 
 function syncWordCreateOptions() {
