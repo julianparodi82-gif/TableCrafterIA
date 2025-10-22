@@ -14,6 +14,11 @@ const WORD_CONTEXT_SECTION_CONFIG = [
         controlIds: ['wordBodyContext']
       },
       {
+        wrapperId: 'wordLengthSection',
+        fieldsId: 'wordLengthFields',
+        controlIds: ['wordBodyLength']
+      },
+      {
         wrapperId: 'wordLanguageSection',
         fieldsId: 'wordLanguageFields',
         controlIds: ['wordBodyLanguage']
@@ -183,6 +188,11 @@ function resetWordTextOptions() {
             }
           }
         });
+        const lengthSelect = document.getElementById('wordBodyLength');
+        if (lengthSelect) {
+          const fallback = lengthSelect.dataset && lengthSelect.dataset.defaultValue !== undefined ? lengthSelect.dataset.defaultValue : lengthSelect.defaultValue;
+          lengthSelect.value = fallback !== undefined ? fallback : '';
+        }
         const toneSelect = document.getElementById('wordBodyTone');
         if (toneSelect) {
           const fallback = toneSelect.dataset && toneSelect.dataset.defaultValue !== undefined ? toneSelect.dataset.defaultValue : toneSelect.defaultValue;

@@ -3490,14 +3490,31 @@
       .word-web-card {
         margin-top: 16px;
         border-radius: 18px;
-        background: #FFFFFF;
-        border: 1px solid rgba(28, 141, 212, 0.24);
+        background: linear-gradient(135deg, rgba(42, 176, 255, 0.12), rgba(2, 132, 199, 0.08));
+        border: 1px solid rgba(28, 141, 212, 0.28);
         padding: 18px 20px;
         display: none;
-        box-shadow: 0 24px 48px rgba(30, 136, 191, 0.18);
+        box-shadow: 0 22px 44px rgba(30, 136, 191, 0.16);
+      }
+      .word-web-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(28, 141, 212, 0.24);
+        box-shadow: 0 14px 32px rgba(42, 176, 255, 0.14);
+      }
+      .word-web-section:first-of-type {
+        margin-top: 0;
+      }
+      .word-web-section .word-web-toggle-row {
+        margin-left: 0;
       }
       .word-web-body {
-        margin-top: 16px;
+        margin-top: 8px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -3647,11 +3664,11 @@
         cursor: not-allowed;
       }
       .word-web-saved {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding-top: 4px;
+        gap: 14px;
+      }
+      .word-web-saved .word-web-saved-body {
         border-top: 1px solid rgba(28, 141, 212, 0.16);
+        padding-top: 10px;
       }
       .word-web-saved-body {
         display: flex;
@@ -4289,6 +4306,38 @@
               </div>
             </div>
             <div class="word-personalization-grid">
+              <div id="wordLengthSection" class="word-context-section">
+                <div class="word-context-section-head">
+                  <span
+                    class="word-context-section-title tc-tooltip-target"
+                    data-tooltip="Define la extensión esperada del texto final."
+                  >
+                    Longitud del texto
+                  </span>
+                  <p class="word-context-description">
+                    Indica la extensión deseada. Ej.: Breve para resúmenes ejecutivos o Extensa para reportes completos.
+                  </p>
+                </div>
+                <div id="wordLengthFields" class="word-context-fields">
+                  <div class="word-format-group">
+                    <label
+                      for="wordBodyLength"
+                      class="tc-tooltip-target"
+                      data-tooltip="Guía a la IA sobre la cantidad de contenido que debe producir."
+                    >
+                      Longitud del texto
+                    </label>
+                    <select id="wordBodyLength" data-default-value="">
+                      <option value="" selected>Elección automática de la IA</option>
+                      <option value="breve">Breve (hasta 150 palabras)</option>
+                      <option value="media">Media (150 a 400 palabras)</option>
+                      <option value="detallada">Detallada (400 a 800 palabras)</option>
+                      <option value="extensa">Extensa (más de 800 palabras)</option>
+                      <option value="personalizada">Personalizada (descríbela en el contexto)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
               <div id="wordLanguageSection" class="word-context-section">
                 <div class="word-context-section-head">
                   <span
@@ -4423,25 +4472,33 @@
               </div>
             </div>
             <div id="wordWebSourcesContent" class="word-section-content">
-              <div class="word-web-toggle-row">
-                <label
-                  for="wordWebSourcesToggle"
-                  class="checkbox-subtle word-context-toggle tc-tooltip-target"
-                  data-tooltip="Activa el uso de páginas externas y administra hasta 10 enlaces."
-                >
-                  <input type="checkbox" id="wordWebSourcesToggle" />
-                  Usar información de páginas web
-                </label>
+              <div class="word-web-section">
+                <div class="word-web-toggle-row">
+                  <label
+                    for="wordWebSourcesToggle"
+                    class="checkbox-subtle word-context-toggle tc-tooltip-target"
+                    data-tooltip="Activa el uso de páginas externas y administra hasta 10 enlaces."
+                  >
+                    <input type="checkbox" id="wordWebSourcesToggle" />
+                    Usar información de páginas web
+                  </label>
+                </div>
+                <div id="wordWebSourcesBody" class="word-web-body is-hidden" aria-hidden="true">
+                  <div id="wordWebSourcesList" class="word-web-items"></div>
+                  <button type="button" id="wordWebSourcesAdd" class="word-web-add">Agregar link</button>
+                </div>
               </div>
-              <div id="wordWebSourcesBody" class="word-web-body is-hidden" aria-hidden="true">
-                <div id="wordWebSourcesList" class="word-web-items"></div>
-                <button type="button" id="wordWebSourcesAdd" class="word-web-add">Agregar link</button>
-              </div>
-              <div id="wordWebSavedSection" class="word-web-saved">
-                <label for="wordWebSavedToggle" class="checkbox-subtle word-context-toggle">
-                  <input type="checkbox" id="wordWebSavedToggle" />
-                  Asociar tablas y textos guardados
-                </label>
+              <div id="wordWebSavedSection" class="word-web-section word-web-saved">
+                <div class="word-web-toggle-row">
+                  <label
+                    for="wordWebSavedToggle"
+                    class="checkbox-subtle word-context-toggle tc-tooltip-target"
+                    data-tooltip="Conecta referencias guardadas para que la IA las utilice como soporte."
+                  >
+                    <input type="checkbox" id="wordWebSavedToggle" />
+                    Asociar tablas y textos guardados
+                  </label>
+                </div>
                 <div id="wordWebSavedBody" class="word-web-saved-body is-hidden" aria-hidden="true">
                   <p id="wordWebSavedStatus" class="word-web-saved-status is-hidden"></p>
                   <div class="word-web-saved-section">
