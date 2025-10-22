@@ -155,11 +155,7 @@ function resetWordTextOptions() {
           { target: 'wordTitleFormatOptions', content: 'wordTitleFormatContent' },
           { target: 'wordBodyFormatOptions', content: 'wordBodyFormatContent' },
           { target: 'wordContextCard', content: 'wordContextCardContent' },
-          { target: 'wordPersonalizationCard', content: 'wordPersonalizationContent' },
-          { target: 'wordStructureCard', content: 'wordStructureContent' },
-          { target: 'wordWebSourcesCard', content: 'wordWebSourcesContent' },
-          { target: 'wordWebSourcesSection', content: 'wordWebSourcesBodyWrapper' },
-          { target: 'wordWebSavedSection', content: 'wordWebSavedBodyWrapper' }
+          { target: 'wordWebSourcesCard', content: 'wordWebSourcesContent' }
         ].forEach(function(entry) {
           const target = document.getElementById(entry.target);
           if (target) {
@@ -1171,21 +1167,13 @@ function loadWordWebSavedItems() {
 
 function syncWordWebSavedSection() {
         const toggle = document.getElementById('wordWebSavedToggle');
-        const bodyWrapper = document.getElementById('wordWebSavedBodyWrapper');
-        const section = document.getElementById('wordWebSavedSection');
-        const sectionCollapsed = Boolean(section && section.classList.contains('is-collapsed'));
         const body = document.getElementById('wordWebSavedBody');
         const tablesList = document.getElementById('wordWebSavedTables');
         const textsList = document.getElementById('wordWebSavedTexts');
         const shouldEnable = Boolean(toggle && toggle.checked);
-        if (bodyWrapper) {
-          const shouldShowWrapper = shouldEnable && !sectionCollapsed;
-          bodyWrapper.setAttribute('aria-hidden', String(!shouldShowWrapper));
-        }
-        const shouldShowBody = shouldEnable && !sectionCollapsed;
         if (body) {
-          body.classList.toggle('is-hidden', !shouldShowBody);
-          body.setAttribute('aria-hidden', String(!shouldShowBody));
+          body.classList.toggle('is-hidden', !shouldEnable);
+          body.setAttribute('aria-hidden', String(!shouldEnable));
         }
         [tablesList, textsList].forEach(function(list) {
           if (!list) {
@@ -1276,10 +1264,6 @@ function bindWordCollapsibleSections() {
             if (targetId === 'wordWebSourcesCard') {
               wordWebSourcesCollapsed = nextCollapsed;
               syncWordWebSourcesCard();
-            } else if (targetId === 'wordWebSourcesSection') {
-              syncWordWebSourcesCard();
-            } else if (targetId === 'wordWebSavedSection') {
-              syncWordWebSavedSection();
             }
           });
           toggle.dataset.wordCollapseBound = 'true';
@@ -1443,9 +1427,6 @@ function syncWordWebSourcesCard() {
           return;
         }
         const toggle = document.getElementById('wordWebSourcesToggle');
-        const bodyWrapper = document.getElementById('wordWebSourcesBodyWrapper');
-        const section = document.getElementById('wordWebSourcesSection');
-        const sectionCollapsed = Boolean(section && section.classList.contains('is-collapsed'));
         const body = document.getElementById('wordWebSourcesBody');
         const list = document.getElementById('wordWebSourcesList');
         const addBtn = document.getElementById('wordWebSourcesAdd');
@@ -1462,10 +1443,7 @@ function syncWordWebSourcesCard() {
         if (content) {
           content.setAttribute('aria-hidden', String(wordWebSourcesCollapsed));
         }
-        const shouldShowBody = Boolean(isActive && !wordWebSourcesCollapsed && !sectionCollapsed);
-        if (bodyWrapper) {
-          bodyWrapper.setAttribute('aria-hidden', String(!shouldShowBody));
-        }
+        const shouldShowBody = Boolean(isActive && !wordWebSourcesCollapsed);
         if (body) {
           body.classList.toggle('is-hidden', !shouldShowBody);
           body.setAttribute('aria-hidden', String(!shouldShowBody));
