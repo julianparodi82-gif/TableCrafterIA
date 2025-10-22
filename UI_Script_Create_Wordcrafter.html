@@ -62,6 +62,31 @@ const WORD_STRUCTURE_SECTION_CONFIG = [
 let wordWebSourcesState = [];
 let wordWebSourcesCollapsed = false;
 let wordStructureSectionLinksState = { intro: [], conclusion: [] };
+let wordWebSavedSelections = { tables: [], texts: [] };
+let wordWebSavedCache = { tables: [], texts: [] };
+let wordWebSavedInitialized = false;
+let wordWebSavedLoadingPromise = null;
+let wordWebSavedLastError = '';
+
+function normalizeWordWebSourceEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+          return { url: '', description: '', hasDescription: false };
+        }
+        return {
+          url: entry.url ? String(entry.url) : '',
+          description: entry.description ? String(entry.description) : '',
+          hasDescription: entry.hasDescription === true || entry.hasDescription === 'true'
+        };
+      }
+
+function ensureWordWebSourceEntry(index) {
+        if (index < 0 || index >= wordWebSourcesState.length) {
+          return { url: '', description: '', hasDescription: false };
+        }
+        const normalized = normalizeWordWebSourceEntry(wordWebSourcesState[index]);
+        wordWebSourcesState[index] = normalized;
+        return normalized;
+      }
 
 function isWordThemeActiveForCreate() {
         return document.body && document.body.classList.contains('theme-wordcrafter');
@@ -170,7 +195,15 @@ function resetWordTextOptions() {
         }
         wordWebSourcesState = [];
         wordWebSourcesCollapsed = false;
+        const savedToggle = document.getElementById('wordWebSavedToggle');
+        if (savedToggle) {
+          savedToggle.checked = savedToggle.defaultChecked;
+        }
+        wordWebSavedSelections = { tables: [], texts: [] };
+        wordWebSavedLastError = '';
         renderWordWebSourcesList();
+        renderWordWebSavedLists();
+        updateWordWebSavedStatus('');
         refreshWordPreviews();
         syncWordWebSourcesCard();
         syncWordStructureCard();
@@ -461,6 +494,9 @@ function renderWordSectionLinksList(section) {
           row.dataset.wordSection = stateKey;
           row.dataset.wordIndex = String(index);
 
+          const main = document.createElement('div');
+          main.className = 'word-web-row-main';
+
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'word-web-remove';
@@ -469,7 +505,7 @@ function renderWordSectionLinksList(section) {
           removeBtn.setAttribute('aria-label', 'Eliminar referencia ' + (index + 1));
           removeBtn.title = 'Eliminar';
           removeBtn.textContent = '×';
-          row.appendChild(removeBtn);
+          main.appendChild(removeBtn);
 
           const urlInput = document.createElement('input');
           urlInput.type = 'url';
@@ -481,18 +517,31 @@ function renderWordSectionLinksList(section) {
           urlInput.dataset.wordWebField = 'url';
           urlInput.autocomplete = 'off';
           urlInput.spellcheck = false;
-          row.appendChild(urlInput);
+          main.appendChild(urlInput);
 
-          const descInput = document.createElement('input');
-          descInput.type = 'text';
-          descInput.className = 'word-web-input';
+          row.appendChild(main);
+
+          const extra = document.createElement('div');
+          extra.className = 'word-web-row-extra';
+
+          const descWrapper = document.createElement('div');
+          descWrapper.className = 'word-web-description-wrapper';
+          descWrapper.setAttribute('aria-hidden', 'false');
+
+          const descInput = document.createElement('textarea');
+          descInput.className = 'word-web-description-input word-web-input';
           descInput.placeholder = 'Descripción breve de la referencia';
           descInput.value = normalized.description ? normalized.description : '';
           descInput.dataset.wordSection = stateKey;
           descInput.dataset.wordWebIndex = String(index);
           descInput.dataset.wordWebField = 'description';
           descInput.autocomplete = 'off';
-          row.appendChild(descInput);
+          descInput.rows = 2;
+          descInput.spellcheck = true;
+          descWrapper.appendChild(descInput);
+
+          extra.appendChild(descWrapper);
+          row.appendChild(extra);
 
           list.appendChild(row);
         });
@@ -637,14 +686,14 @@ function bindWordSectionWebControls() {
                 }
               }
             });
-            list.addEventListener('input', function(event) {
-              const target = event.target;
-              if (!target || !target.classList || !target.classList.contains('word-web-input')) {
-                return;
-              }
-              const sectionKey = target.dataset.wordSection;
-              const index = Number(target.dataset.wordWebIndex);
-              const field = target.dataset.wordWebField;
+          list.addEventListener('input', function(event) {
+            const target = event.target;
+            if (!target || !target.dataset || target.dataset.wordWebIndex === undefined) {
+              return;
+            }
+            const sectionKey = target.dataset.wordSection;
+            const index = Number(target.dataset.wordWebIndex);
+            const field = target.dataset.wordWebField;
               if (!sectionKey || Number.isNaN(index) || !field) {
                 return;
               }
@@ -691,10 +740,20 @@ function renderWordWebSourcesList() {
           wordWebSourcesState = wordWebSourcesState.slice(0, WORD_WEB_SOURCE_LIMIT);
         }
         list.innerHTML = '';
-        wordWebSourcesState.forEach(function(value, index) {
+        wordWebSourcesState = wordWebSourcesState.map(function(entry) {
+          return normalizeWordWebSourceEntry(entry);
+        });
+        wordWebSourcesState.forEach(function(entry, index) {
+          const normalized = normalizeWordWebSourceEntry(entry);
+          wordWebSourcesState[index] = normalized;
+
           const row = document.createElement('div');
           row.className = 'word-web-row';
           row.dataset.wordWebIndex = String(index);
+
+          const main = document.createElement('div');
+          main.className = 'word-web-row-main';
+
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'word-web-remove';
@@ -702,19 +761,341 @@ function renderWordWebSourcesList() {
           removeBtn.dataset.wordWebRemove = String(index);
           removeBtn.setAttribute('aria-label', 'Eliminar página web ' + (index + 1));
           removeBtn.title = 'Eliminar';
+          main.appendChild(removeBtn);
+
           const input = document.createElement('input');
           input.type = 'url';
           input.className = 'word-web-input';
           input.placeholder = 'https://ejemplo.com/recurso';
-          input.value = value || '';
+          input.value = normalized.url || '';
           input.dataset.wordWebIndex = String(index);
+          input.dataset.wordWebField = 'url';
           input.setAttribute('aria-label', 'Página web ' + (index + 1));
           input.autocomplete = 'off';
           input.spellcheck = false;
-          row.appendChild(removeBtn);
-          row.appendChild(input);
+          main.appendChild(input);
+
+          row.appendChild(main);
+
+          const extra = document.createElement('div');
+          extra.className = 'word-web-row-extra';
+
+          const toggleLabel = document.createElement('label');
+          toggleLabel.className = 'word-web-description-toggle';
+          toggleLabel.setAttribute('for', 'wordWebDescriptionToggle' + index);
+          const toggleInput = document.createElement('input');
+          toggleInput.type = 'checkbox';
+          toggleInput.id = 'wordWebDescriptionToggle' + index;
+          toggleInput.className = 'word-web-description-toggle-input';
+          toggleInput.dataset.wordWebIndex = String(index);
+          toggleInput.dataset.wordWebField = 'hasDescription';
+          toggleInput.checked = normalized.hasDescription;
+          toggleLabel.appendChild(toggleInput);
+          toggleLabel.appendChild(document.createTextNode('Agregar descripción'));
+          extra.appendChild(toggleLabel);
+
+          const descWrapper = document.createElement('div');
+          descWrapper.className = 'word-web-description-wrapper';
+          descWrapper.classList.toggle('is-hidden', !normalized.hasDescription);
+          descWrapper.setAttribute('aria-hidden', String(!normalized.hasDescription));
+
+          const descInput = document.createElement('textarea');
+          descInput.className = 'word-web-description-input';
+          descInput.dataset.wordWebIndex = String(index);
+          descInput.dataset.wordWebField = 'description';
+          descInput.placeholder = 'Describe el propósito del enlace o la información relevante';
+          descInput.value = normalized.description || '';
+          descInput.rows = 2;
+          descInput.autocomplete = 'off';
+          descInput.spellcheck = true;
+          descInput.disabled = !normalized.hasDescription;
+          descWrapper.appendChild(descInput);
+
+          extra.appendChild(descWrapper);
+
+          row.appendChild(extra);
           list.appendChild(row);
         });
+      }
+
+function pruneWordWebSavedSelections() {
+        const tableIds = new Set(
+          (Array.isArray(wordWebSavedCache.tables) ? wordWebSavedCache.tables : [])
+            .map(function(entry) {
+              return entry && entry.id ? String(entry.id) : '';
+            })
+            .filter(function(id) {
+              return !!id;
+            })
+        );
+        const textIds = new Set(
+          (Array.isArray(wordWebSavedCache.texts) ? wordWebSavedCache.texts : [])
+            .map(function(entry) {
+              return entry && entry.id ? String(entry.id) : '';
+            })
+            .filter(function(id) {
+              return !!id;
+            })
+        );
+        const tablesSelection = Array.isArray(wordWebSavedSelections.tables)
+          ? wordWebSavedSelections.tables
+          : [];
+        const textsSelection = Array.isArray(wordWebSavedSelections.texts)
+          ? wordWebSavedSelections.texts
+          : [];
+        wordWebSavedSelections.tables = tablesSelection
+          .map(function(id) {
+            return String(id);
+          })
+          .filter(function(id) {
+            return tableIds.has(id);
+          });
+        wordWebSavedSelections.texts = textsSelection
+          .map(function(id) {
+            return String(id);
+          })
+          .filter(function(id) {
+            return textIds.has(id);
+          });
+      }
+
+function renderWordWebSavedLists() {
+        const tablesList = document.getElementById('wordWebSavedTables');
+        const textsList = document.getElementById('wordWebSavedTexts');
+        if (tablesList) {
+          tablesList.innerHTML = '';
+        }
+        if (textsList) {
+          textsList.innerHTML = '';
+        }
+        if (!wordWebSavedInitialized) {
+          return;
+        }
+        const tables = Array.isArray(wordWebSavedCache.tables) ? wordWebSavedCache.tables : [];
+        const texts = Array.isArray(wordWebSavedCache.texts) ? wordWebSavedCache.texts : [];
+        if (tablesList) {
+          if (tables.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'word-web-saved-empty';
+            empty.textContent = 'No hay tablas guardadas disponibles.';
+            tablesList.appendChild(empty);
+          } else {
+            tables.forEach(function(entry) {
+              if (!entry || !entry.id) {
+                return;
+              }
+              const id = String(entry.id);
+              const isSelected = Array.isArray(wordWebSavedSelections.tables)
+                ? wordWebSavedSelections.tables.includes(id)
+                : false;
+              const label = document.createElement('label');
+              label.className = 'word-web-saved-item' + (isSelected ? ' is-selected' : '');
+              label.title = entry.details ? entry.details : entry.name;
+              const name = document.createElement('span');
+              name.textContent = entry.name;
+              label.appendChild(name);
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.value = id;
+              checkbox.checked = isSelected;
+              checkbox.dataset.wordWebSavedType = 'tables';
+              label.appendChild(checkbox);
+              tablesList.appendChild(label);
+            });
+          }
+        }
+        if (textsList) {
+          if (texts.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'word-web-saved-empty';
+            empty.textContent = 'No hay textos guardados disponibles.';
+            textsList.appendChild(empty);
+          } else {
+            texts.forEach(function(entry) {
+              if (!entry || !entry.id) {
+                return;
+              }
+              const id = String(entry.id);
+              const isSelected = Array.isArray(wordWebSavedSelections.texts)
+                ? wordWebSavedSelections.texts.includes(id)
+                : false;
+              const label = document.createElement('label');
+              label.className = 'word-web-saved-item' + (isSelected ? ' is-selected' : '');
+              label.title = entry.name;
+              const name = document.createElement('span');
+              name.textContent = entry.name;
+              label.appendChild(name);
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.value = id;
+              checkbox.checked = isSelected;
+              checkbox.dataset.wordWebSavedType = 'texts';
+              label.appendChild(checkbox);
+              textsList.appendChild(label);
+            });
+          }
+        }
+      }
+
+function updateWordWebSavedStatus(message) {
+        const statusEl = document.getElementById('wordWebSavedStatus');
+        if (!statusEl) {
+          return;
+        }
+        const normalized = message ? String(message) : '';
+        if (normalized) {
+          statusEl.textContent = normalized;
+          statusEl.classList.remove('is-hidden');
+        } else {
+          statusEl.textContent = '';
+          statusEl.classList.add('is-hidden');
+        }
+      }
+
+function loadWordWebSavedItems() {
+        if (wordWebSavedLoadingPromise) {
+          return wordWebSavedLoadingPromise;
+        }
+        wordWebSavedLastError = '';
+        const loadErrors = [];
+        const tablesPromise = (typeof ensureSavedTablesLoaded === 'function'
+          ? ensureSavedTablesLoaded()
+          : Promise.resolve(Array.isArray(savedTablesCache) ? savedTablesCache.slice() : []))
+          .catch(function(err) {
+            const message = err && err.message ? err.message : err;
+            loadErrors.push('tablas (' + message + ')');
+            console.log('No se pudieron cargar las tablas guardadas para WordCrafter.', err);
+            return [];
+          });
+        const actionsFallback = typeof getSavedActionsSnapshot === 'function' ? getSavedActionsSnapshot() : [];
+        const actionsPromise = (typeof ensureSavedActionsCache === 'function'
+          ? ensureSavedActionsCache()
+          : Promise.resolve(Array.isArray(actionsFallback) ? actionsFallback.slice() : []))
+          .catch(function(err) {
+            const message = err && err.message ? err.message : err;
+            loadErrors.push('textos (' + message + ')');
+            console.log('No se pudieron cargar los textos guardados para WordCrafter.', err);
+            return Array.isArray(actionsFallback) ? actionsFallback.slice() : [];
+          });
+        wordWebSavedLoadingPromise = Promise.all([tablesPromise, actionsPromise])
+          .then(function(results) {
+            const tables = Array.isArray(results[0]) ? results[0] : [];
+            const actions = Array.isArray(results[1]) ? results[1] : [];
+            const normalizedTables = tables
+              .map(function(entry) {
+                if (!entry || !entry.id) {
+                  return null;
+                }
+                const id = String(entry.id);
+                const name = entry.name ? String(entry.name) : id;
+                let detail = '';
+                if (entry.fullRangeA1) {
+                  detail = String(entry.fullRangeA1);
+                } else if (entry.sheetName && entry.rangeA1) {
+                  detail = String(entry.sheetName) + '!' + String(entry.rangeA1);
+                }
+                return { id: id, name: name, details: detail };
+              })
+              .filter(function(item) {
+                return !!item;
+              });
+            const normalizedTexts = actions
+              .map(function(entry) {
+                if (!entry || !entry.id) {
+                  return null;
+                }
+                if (entry.type && entry.type !== 'reportFavorite') {
+                  return null;
+                }
+                const id = String(entry.id);
+                const name = entry.name ? String(entry.name) : id;
+                return { id: id, name: name };
+              })
+              .filter(function(item) {
+                return !!item;
+              });
+            wordWebSavedCache = {
+              tables: normalizedTables,
+              texts: normalizedTexts
+            };
+            wordWebSavedInitialized = true;
+            pruneWordWebSavedSelections();
+            renderWordWebSavedLists();
+            if (loadErrors.length > 0) {
+              wordWebSavedLastError = 'No se pudieron cargar: ' + loadErrors.join('; ');
+            } else {
+              wordWebSavedLastError = '';
+            }
+          })
+          .finally(function() {
+            wordWebSavedLoadingPromise = null;
+          });
+        return wordWebSavedLoadingPromise;
+      }
+
+function syncWordWebSavedSection(options) {
+        const opts = options || {};
+        const parentActive = opts.parentActive !== false;
+        const toggle = document.getElementById('wordWebSavedToggle');
+        const body = document.getElementById('wordWebSavedBody');
+        const tablesList = document.getElementById('wordWebSavedTables');
+        const textsList = document.getElementById('wordWebSavedTexts');
+        if (toggle) {
+          toggle.disabled = !parentActive;
+          if (!parentActive) {
+            toggle.checked = false;
+          }
+        }
+        const shouldEnable = Boolean(parentActive && toggle && toggle.checked);
+        if (body) {
+          body.classList.toggle('is-hidden', !shouldEnable);
+          body.setAttribute('aria-hidden', String(!shouldEnable));
+        }
+        [tablesList, textsList].forEach(function(list) {
+          if (!list) {
+            return;
+          }
+          list.classList.toggle('is-disabled', !shouldEnable);
+          const inputs = list.querySelectorAll('input[type="checkbox"]');
+          inputs.forEach(function(input) {
+            input.disabled = !shouldEnable;
+          });
+        });
+        if (!shouldEnable) {
+          updateWordWebSavedStatus('');
+          return;
+        }
+        if (wordWebSavedLoadingPromise) {
+          updateWordWebSavedStatus('Cargando elementos guardados…');
+          return;
+        }
+        if (!wordWebSavedInitialized) {
+          updateWordWebSavedStatus('Cargando elementos guardados…');
+          loadWordWebSavedItems()
+            .then(function() {
+              updateWordWebSavedStatus('');
+              renderWordWebSavedLists();
+              syncWordWebSavedSection({ parentActive: parentActive });
+            })
+            .catch(function(err) {
+              const message = err && err.message ? err.message : err;
+              console.log('No se pudieron cargar las referencias guardadas.', err);
+              updateWordWebSavedStatus('No se pudieron cargar las referencias guardadas: ' + message);
+            });
+          return;
+        }
+        renderWordWebSavedLists();
+        const tables = Array.isArray(wordWebSavedCache.tables) ? wordWebSavedCache.tables : [];
+        const texts = Array.isArray(wordWebSavedCache.texts) ? wordWebSavedCache.texts : [];
+        if (wordWebSavedLastError) {
+          updateWordWebSavedStatus(wordWebSavedLastError);
+          return;
+        }
+        if (tables.length === 0 && texts.length === 0) {
+          updateWordWebSavedStatus('No se encontraron tablas ni textos guardados disponibles.');
+        } else {
+          updateWordWebSavedStatus('');
+        }
       }
 
 function bindWordWebSourcesControls() {
@@ -722,7 +1103,7 @@ function bindWordWebSourcesControls() {
         if (toggle && toggle.dataset.wordWebBound !== 'true') {
           toggle.addEventListener('change', function() {
             if (toggle.checked && wordWebSourcesState.length === 0) {
-              wordWebSourcesState.push('');
+              wordWebSourcesState.push({ url: '', description: '', hasDescription: false });
               renderWordWebSourcesList();
             }
             wordWebSourcesCollapsed = false;
@@ -747,7 +1128,7 @@ function bindWordWebSourcesControls() {
             if (wordWebSourcesState.length >= WORD_WEB_SOURCE_LIMIT) {
               return;
             }
-            wordWebSourcesState.push('');
+            wordWebSourcesState.push({ url: '', description: '', hasDescription: false });
             renderWordWebSourcesList();
             syncWordWebSourcesCard();
             const list = document.getElementById('wordWebSourcesList');
@@ -765,14 +1146,47 @@ function bindWordWebSourcesControls() {
         if (list && list.dataset.wordWebBound !== 'true') {
           list.addEventListener('input', function(event) {
             const target = event.target;
-            if (!target || !target.classList || !target.classList.contains('word-web-input')) {
+            if (!target || !target.dataset || target.dataset.wordWebIndex === undefined) {
               return;
             }
             const index = parseInt(target.dataset.wordWebIndex || '-1', 10);
             if (isNaN(index) || index < 0 || index >= wordWebSourcesState.length) {
               return;
             }
-            wordWebSourcesState[index] = target.value.trim();
+            const field = target.dataset.wordWebField || '';
+            const entry = ensureWordWebSourceEntry(index);
+            if (field === 'url') {
+              entry.url = target.value.trim();
+            } else if (field === 'description') {
+              entry.description = target.value;
+            }
+          });
+          list.addEventListener('change', function(event) {
+            const target = event.target;
+            if (!target || !target.dataset || target.dataset.wordWebField !== 'hasDescription') {
+              return;
+            }
+            const index = parseInt(target.dataset.wordWebIndex || '-1', 10);
+            if (isNaN(index) || index < 0 || index >= wordWebSourcesState.length) {
+              return;
+            }
+            const entry = ensureWordWebSourceEntry(index);
+            entry.hasDescription = target.checked;
+            const row = typeof target.closest === 'function' ? target.closest('.word-web-row') : null;
+            if (row) {
+              const wrapper = row.querySelector('.word-web-description-wrapper');
+              if (wrapper) {
+                wrapper.classList.toggle('is-hidden', !target.checked);
+                wrapper.setAttribute('aria-hidden', String(!target.checked));
+              }
+              const descInput = row.querySelector('.word-web-description-input');
+              if (descInput) {
+                descInput.disabled = !target.checked;
+                if (target.checked) {
+                  descInput.focus();
+                }
+              }
+            }
           });
           list.addEventListener('click', function(event) {
             const button = event.target && event.target.closest('[data-word-web-remove]');
@@ -789,6 +1203,49 @@ function bindWordWebSourcesControls() {
           });
           list.dataset.wordWebBound = 'true';
         }
+        const savedToggle = document.getElementById('wordWebSavedToggle');
+        if (savedToggle && savedToggle.dataset.wordWebBound !== 'true') {
+          savedToggle.addEventListener('change', function() {
+            const mainToggle = document.getElementById('wordWebSourcesToggle');
+            const parentActive = Boolean(mainToggle && mainToggle.checked);
+            syncWordWebSavedSection({ parentActive: parentActive });
+          });
+          savedToggle.dataset.wordWebBound = 'true';
+        }
+        const savedLists = [document.getElementById('wordWebSavedTables'), document.getElementById('wordWebSavedTexts')];
+        savedLists.forEach(function(savedList) {
+          if (savedList && savedList.dataset.wordWebBound !== 'true') {
+            savedList.addEventListener('change', function(event) {
+              const input = event.target;
+              if (!input || input.type !== 'checkbox') {
+                return;
+              }
+              const type = input.dataset.wordWebSavedType;
+              const id = input.value ? String(input.value) : '';
+              if (!type || !id) {
+                return;
+              }
+              if (!Array.isArray(wordWebSavedSelections[type])) {
+                wordWebSavedSelections[type] = [];
+              }
+              const selection = wordWebSavedSelections[type];
+              if (input.checked) {
+                if (!selection.includes(id)) {
+                  selection.push(id);
+                }
+              } else {
+                wordWebSavedSelections[type] = selection.filter(function(entry) {
+                  return entry !== id;
+                });
+              }
+              const item = typeof input.closest === 'function' ? input.closest('.word-web-saved-item') : null;
+              if (item) {
+                item.classList.toggle('is-selected', input.checked);
+              }
+            });
+            savedList.dataset.wordWebBound = 'true';
+          }
+        });
       }
 
 function syncWordWebSourcesCard() {
@@ -809,7 +1266,7 @@ function syncWordWebSourcesCard() {
         const collapseBtn = document.getElementById('wordWebSourcesCollapse');
         const isActive = Boolean(toggle && toggle.checked);
         if (isActive && wordWebSourcesState.length === 0) {
-          wordWebSourcesState.push('');
+          wordWebSourcesState.push({ url: '', description: '', hasDescription: false });
           renderWordWebSourcesList();
         }
         if (!isActive) {
@@ -830,6 +1287,27 @@ function syncWordWebSourcesCard() {
               input.removeAttribute('aria-disabled');
             }
           });
+          const descriptionToggles = list.querySelectorAll('.word-web-description-toggle-input');
+          descriptionToggles.forEach(function(toggle) {
+            toggle.disabled = !isActive;
+            if (!isActive) {
+              toggle.setAttribute('aria-disabled', 'true');
+            } else {
+              toggle.removeAttribute('aria-disabled');
+            }
+          });
+          const descriptionInputs = list.querySelectorAll('.word-web-description-input');
+          descriptionInputs.forEach(function(descInput) {
+            const row = typeof descInput.closest === 'function' ? descInput.closest('.word-web-row') : null;
+            const toggle = row ? row.querySelector('.word-web-description-toggle-input') : null;
+            const enabled = Boolean(isActive && toggle && toggle.checked);
+            descInput.disabled = !enabled;
+            if (!enabled) {
+              descInput.setAttribute('aria-disabled', 'true');
+            } else {
+              descInput.removeAttribute('aria-disabled');
+            }
+          });
           const removeButtons = list.querySelectorAll('.word-web-remove');
           removeButtons.forEach(function(button) {
             button.disabled = !isActive;
@@ -848,6 +1326,7 @@ function syncWordWebSourcesCard() {
           collapseBtn.classList.toggle('is-collapsed', !shouldShowBody);
           collapseBtn.setAttribute('aria-expanded', String(shouldShowBody));
         }
+        syncWordWebSavedSection({ parentActive: isActive });
       }
 
 function syncWordCreateOptions() {
