@@ -3147,6 +3147,56 @@
         font-size: 13px;
         color: var(--tc-muted);
       }
+      .word-section-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      .word-section-toggle:focus-visible {
+        outline: 2px solid rgba(2, 132, 199, 0.65);
+        outline-offset: 2px;
+      }
+      .word-section-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        font-size: 14px;
+      }
+      .word-section-toggle-icon::before {
+        content: '▾';
+        transition: transform 0.2s ease;
+      }
+      .word-section-toggle[aria-expanded='false'] .word-section-toggle-icon::before {
+        content: '▸';
+      }
+      .word-section-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .word-format-options .word-section-content {
+        margin-top: 12px;
+      }
+      #wordContextCard .word-section-content,
+      #wordWebSourcesCard .word-section-content {
+        margin-top: 16px;
+      }
+      .word-format-options.is-collapsed .word-format-heading p,
+      .word-format-options.is-collapsed .word-format-preview,
+      .word-format-options.is-collapsed .word-section-content,
+      #wordContextCard.is-collapsed .word-context-heading p,
+      #wordContextCard.is-collapsed .word-section-content,
+      #wordWebSourcesCard.is-collapsed .word-context-heading p,
+      #wordWebSourcesCard.is-collapsed .word-section-content {
+        display: none;
+      }
       .word-format-preview {
         min-width: 96px;
         max-width: 132px;
@@ -3434,38 +3484,6 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-      }
-      .word-web-collapse {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        border: 1px solid rgba(28, 141, 212, 0.24);
-        background: rgba(255, 255, 255, 0.92);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-      }
-      .word-web-collapse:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-      .word-web-collapse:not(:disabled):hover {
-        background: rgba(42, 176, 255, 0.12);
-        border-color: rgba(28, 141, 212, 0.32);
-      }
-      .word-web-collapse-icon {
-        width: 0;
-        height: 0;
-        border-top: 6px solid transparent;
-        border-bottom: 6px solid transparent;
-        border-left: 8px solid rgba(2, 132, 199, 0.85);
-        transition: transform 0.2s ease;
-        transform: rotate(90deg);
-      }
-      .word-web-collapse.is-collapsed .word-web-collapse-icon {
-        transform: rotate(0deg);
       }
       .word-context-helper {
         margin-top: 10px;
@@ -4001,7 +4019,19 @@
             <div id="wordTitleFormatOptions" class="word-format-options">
               <div class="word-format-header">
                 <div class="word-format-heading">
-                  <h4>Formato del título</h4>
+                  <h4>
+                    <button
+                      type="button"
+                      class="word-section-toggle"
+                      data-word-collapse-target="wordTitleFormatOptions"
+                      data-word-collapse-content="wordTitleFormatContent"
+                      aria-expanded="true"
+                      aria-controls="wordTitleFormatContent"
+                    >
+                      <span class="word-section-toggle-label">Formato del título</span>
+                      <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                    </button>
+                  </h4>
                   <p>Ajusta estilo, tamaño y peso para presentar el título con presencia.</p>
                 </div>
                 <div
@@ -4013,65 +4043,67 @@
                   Ejemplo
                 </div>
               </div>
-              <div class="word-format-grid">
-                <div class="word-format-group">
-                  <label for="wordTitleFontFamily">Fuente</label>
-                  <select id="wordTitleFontFamily" data-default-value="'Inter', Arial, sans-serif">
-                    <option value="'Inter', Arial, sans-serif" selected>Inter</option>
-                    <option value="'Playfair Display', 'Times New Roman', serif">Playfair Display</option>
-                    <option value="'Montserrat', Arial, sans-serif">Montserrat</option>
-                    <option value="'Raleway', Arial, sans-serif">Raleway</option>
-                    <option value="'Merriweather', 'Times New Roman', serif">Merriweather</option>
-                  </select>
-                </div>
-                <div class="word-format-group word-format-group--color">
-                  <div class="word-format-label-row">
-                    <label for="wordTitleColor">Color de letra</label>
-                    <input
-                      type="color"
-                      id="wordTitleColor"
-                      value="#1F2937"
-                      data-default-value="#1F2937"
-                    />
+              <div id="wordTitleFormatContent" class="word-section-content">
+                <div class="word-format-grid">
+                  <div class="word-format-group">
+                    <label for="wordTitleFontFamily">Fuente</label>
+                    <select id="wordTitleFontFamily" data-default-value="'Inter', Arial, sans-serif">
+                      <option value="'Inter', Arial, sans-serif" selected>Inter</option>
+                      <option value="'Playfair Display', 'Times New Roman', serif">Playfair Display</option>
+                      <option value="'Montserrat', Arial, sans-serif">Montserrat</option>
+                      <option value="'Raleway', Arial, sans-serif">Raleway</option>
+                      <option value="'Merriweather', 'Times New Roman', serif">Merriweather</option>
+                    </select>
+                  </div>
+                  <div class="word-format-group word-format-group--color">
+                    <div class="word-format-label-row">
+                      <label for="wordTitleColor">Color de letra</label>
+                      <input
+                        type="color"
+                        id="wordTitleColor"
+                        value="#1F2937"
+                        data-default-value="#1F2937"
+                      />
+                    </div>
+                  </div>
+                  <div class="word-format-group word-format-group--inline">
+                    <label for="wordTitleFontSize">Tamaño de letra</label>
+                    <div class="word-format-size-input">
+                      <input
+                        type="number"
+                        id="wordTitleFontSize"
+                        min="14"
+                        max="72"
+                        step="1"
+                        value="32"
+                        data-default-value="32"
+                      />
+                    </div>
+                  </div>
+                  <div class="word-format-group">
+                    <label for="wordTitleAlignment">Alineación</label>
+                    <select id="wordTitleAlignment" data-default-value="center">
+                      <option value="left">Izquierda</option>
+                      <option value="center" selected>Centro</option>
+                      <option value="right">Derecha</option>
+                      <option value="justify">Justificada</option>
+                    </select>
                   </div>
                 </div>
-                <div class="word-format-group word-format-group--inline">
-                  <label for="wordTitleFontSize">Tamaño de letra</label>
-                  <div class="word-format-size-input">
-                    <input
-                      type="number"
-                      id="wordTitleFontSize"
-                      min="14"
-                      max="72"
-                      step="1"
-                      value="32"
-                      data-default-value="32"
-                    />
-                  </div>
+                <div class="word-format-flags">
+                  <label for="wordTitleBold" class="word-format-flag"
+                    ><input type="checkbox" id="wordTitleBold" /> Negrita</label
+                  >
+                  <label for="wordTitleUnderline" class="word-format-flag"
+                    ><input type="checkbox" id="wordTitleUnderline" /> Subrayado</label
+                  >
+                  <label for="wordTitleItalics" class="word-format-flag"
+                    ><input type="checkbox" id="wordTitleItalics" /> Italic</label
+                  >
+                  <label for="wordTitleUppercase" class="word-format-flag"
+                    ><input type="checkbox" id="wordTitleUppercase" /> Mayúsculas</label
+                  >
                 </div>
-                <div class="word-format-group">
-                  <label for="wordTitleAlignment">Alineación</label>
-                  <select id="wordTitleAlignment" data-default-value="center">
-                    <option value="left">Izquierda</option>
-                    <option value="center" selected>Centro</option>
-                    <option value="right">Derecha</option>
-                    <option value="justify">Justificada</option>
-                  </select>
-                </div>
-              </div>
-              <div class="word-format-flags">
-                <label for="wordTitleBold" class="word-format-flag"
-                  ><input type="checkbox" id="wordTitleBold" /> Negrita</label
-                >
-                <label for="wordTitleUnderline" class="word-format-flag"
-                  ><input type="checkbox" id="wordTitleUnderline" /> Subrayado</label
-                >
-                <label for="wordTitleItalics" class="word-format-flag"
-                  ><input type="checkbox" id="wordTitleItalics" /> Italic</label
-                >
-                <label for="wordTitleUppercase" class="word-format-flag"
-                  ><input type="checkbox" id="wordTitleUppercase" /> Mayúsculas</label
-                >
               </div>
             </div>
           </div>
@@ -4189,49 +4221,61 @@
                   class="tc-tooltip-target"
                   data-tooltip="Comparte detalles clave para adaptar el texto a tu audiencia y objetivos."
                 >
-                  Indicaciones clave
+                  <button
+                    type="button"
+                    class="word-section-toggle"
+                    data-word-collapse-target="wordContextCard"
+                    data-word-collapse-content="wordContextCardContent"
+                    aria-expanded="true"
+                    aria-controls="wordContextCardContent"
+                  >
+                    <span class="word-section-toggle-label">Indicaciones clave</span>
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                  </button>
                 </h3>
                 <p>Brinda pistas para adaptar el contenido a tu audiencia y objetivos.</p>
               </div>
             </div>
-            <div class="word-context-body">
-              <div id="wordContextDetailsWrapper" class="word-context-section">
-                <div class="word-context-section-head">
-                  <span
-                    class="word-context-section-title tc-tooltip-target"
-                    data-tooltip="Describe la situación, audiencia y objetivos principales."
-                  >
-                    Indicaciones clave
-                  </span>
-                  <p class="word-context-description">
-                    Describe la situación, audiencia y objetivos principales. Esta información es obligatoria para personalizar la respuesta.
-                  </p>
-                </div>
-                <div id="wordContextDetailsFields" class="word-context-fields">
-                  <div class="word-format-group">
-                    <label
-                      for="wordBodyContext"
-                      class="tc-tooltip-target"
-                      data-tooltip="Detalla datos imprescindibles para orientar el texto."
+            <div id="wordContextCardContent" class="word-section-content">
+              <div class="word-context-body">
+                <div id="wordContextDetailsWrapper" class="word-context-section">
+                  <div class="word-context-section-head">
+                    <span
+                      class="word-context-section-title tc-tooltip-target"
+                      data-tooltip="Describe la situación, audiencia y objetivos principales."
                     >
                       Indicaciones clave
-                    </label>
-                    <textarea
-                      id="wordBodyContext"
-                      rows="3"
-                      placeholder="Describe el contexto, audiencia o personalizaciones necesarias..."
-                      required
-                    ></textarea>
+                    </span>
                     <p class="word-context-description">
-                      Ej.: Informe trimestral para el comité directivo con enfoque en resultados de ventas B2B.
+                      Describe la situación, audiencia y objetivos principales. Esta información es obligatoria para personalizar la respuesta.
                     </p>
+                  </div>
+                  <div id="wordContextDetailsFields" class="word-context-fields">
+                    <div class="word-format-group">
+                      <label
+                        for="wordBodyContext"
+                        class="tc-tooltip-target"
+                        data-tooltip="Detalla datos imprescindibles para orientar el texto."
+                      >
+                        Indicaciones clave
+                      </label>
+                      <textarea
+                        id="wordBodyContext"
+                        rows="3"
+                        placeholder="Describe el contexto, audiencia o personalizaciones necesarias..."
+                        required
+                      ></textarea>
+                      <p class="word-context-description">
+                        Ej.: Informe trimestral para el comité directivo con enfoque en resultados de ventas B2B.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
+              <p class="word-context-helper">
+                Estas indicaciones ayudan a la IA a reflejar terminología, tono y profundidad alineados a tu audiencia.
+              </p>
             </div>
-            <p class="word-context-helper">
-              Estas indicaciones ayudan a la IA a reflejar terminología, tono y profundidad alineados a tu audiencia.
-            </p>
           </div>
           <div id="wordPersonalizationCard" class="word-personalization-card" style="display:none;">
             <div class="word-context-header">
@@ -4363,10 +4407,23 @@
                   class="tc-tooltip-target"
                   data-tooltip="Incluye enlaces confiables para que la IA complemente el contenido."
                 >
-                  Fuentes de apoyo
+                  <button
+                    type="button"
+                    id="wordWebSourcesCollapse"
+                    class="word-section-toggle"
+                    data-word-collapse-target="wordWebSourcesCard"
+                    data-word-collapse-content="wordWebSourcesContent"
+                    aria-expanded="true"
+                    aria-controls="wordWebSourcesContent"
+                  >
+                    <span class="word-section-toggle-label">Fuentes de apoyo</span>
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                  </button>
                 </h3>
                 <p>Incluye enlaces relevantes para enriquecer el texto generado.</p>
               </div>
+            </div>
+            <div id="wordWebSourcesContent" class="word-section-content">
               <div class="word-web-toggle-row">
                 <label
                   for="wordWebSourcesToggle"
@@ -4376,36 +4433,26 @@
                   <input type="checkbox" id="wordWebSourcesToggle" />
                   Usar información de páginas web
                 </label>
-                <button
-                  type="button"
-                  id="wordWebSourcesCollapse"
-                  class="word-web-collapse"
-                  aria-label="Mostrar u ocultar las fuentes de apoyo"
-                  aria-expanded="false"
-                  aria-controls="wordWebSourcesBody"
-                >
-                  <span class="word-web-collapse-icon" aria-hidden="true"></span>
-                </button>
               </div>
-            </div>
-            <div id="wordWebSourcesBody" class="word-web-body is-hidden" aria-hidden="true">
-              <div id="wordWebSourcesList" class="word-web-items"></div>
-              <button type="button" id="wordWebSourcesAdd" class="word-web-add">Agregar link</button>
-            </div>
-            <div id="wordWebSavedSection" class="word-web-saved">
-              <label for="wordWebSavedToggle" class="checkbox-subtle word-context-toggle">
-                <input type="checkbox" id="wordWebSavedToggle" />
-                Asociar tablas y textos guardados
-              </label>
-              <div id="wordWebSavedBody" class="word-web-saved-body is-hidden" aria-hidden="true">
-                <p id="wordWebSavedStatus" class="word-web-saved-status is-hidden"></p>
-                <div class="word-web-saved-section">
-                  <h4 class="word-web-saved-title">Tablas guardadas</h4>
-                  <div id="wordWebSavedTables" class="word-web-saved-list"></div>
-                </div>
-                <div class="word-web-saved-section">
-                  <h4 class="word-web-saved-title">Textos guardados</h4>
-                  <div id="wordWebSavedTexts" class="word-web-saved-list"></div>
+              <div id="wordWebSourcesBody" class="word-web-body is-hidden" aria-hidden="true">
+                <div id="wordWebSourcesList" class="word-web-items"></div>
+                <button type="button" id="wordWebSourcesAdd" class="word-web-add">Agregar link</button>
+              </div>
+              <div id="wordWebSavedSection" class="word-web-saved">
+                <label for="wordWebSavedToggle" class="checkbox-subtle word-context-toggle">
+                  <input type="checkbox" id="wordWebSavedToggle" />
+                  Asociar tablas y textos guardados
+                </label>
+                <div id="wordWebSavedBody" class="word-web-saved-body is-hidden" aria-hidden="true">
+                  <p id="wordWebSavedStatus" class="word-web-saved-status is-hidden"></p>
+                  <div class="word-web-saved-section">
+                    <h4 class="word-web-saved-title">Tablas guardadas</h4>
+                    <div id="wordWebSavedTables" class="word-web-saved-list"></div>
+                  </div>
+                  <div class="word-web-saved-section">
+                    <h4 class="word-web-saved-title">Textos guardados</h4>
+                    <div id="wordWebSavedTexts" class="word-web-saved-list"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4424,7 +4471,19 @@
             <div id="wordBodyFormatOptions" class="word-format-options">
               <div class="word-format-header">
                 <div class="word-format-heading">
-                  <h4>Formato del cuerpo</h4>
+                  <h4>
+                    <button
+                      type="button"
+                      class="word-section-toggle"
+                      data-word-collapse-target="wordBodyFormatOptions"
+                      data-word-collapse-content="wordBodyFormatContent"
+                      aria-expanded="true"
+                      aria-controls="wordBodyFormatContent"
+                    >
+                      <span class="word-section-toggle-label">Formato del cuerpo</span>
+                      <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                    </button>
+                  </h4>
                   <p>Define el aspecto general del contenido generado para mantener coherencia.</p>
                 </div>
                 <div
@@ -4436,75 +4495,77 @@
                   Ejemplo
                 </div>
               </div>
-              <div class="word-format-grid">
-                <div class="word-format-group">
-                  <label for="wordBodyFontFamily">Fuente</label>
-                  <select id="wordBodyFontFamily" data-default-value="'Inter', Arial, sans-serif">
-                    <option value="'Inter', Arial, sans-serif" selected>Inter</option>
-                    <option value="'Roboto', Arial, sans-serif">Roboto</option>
-                    <option value="'Open Sans', Arial, sans-serif">Open Sans</option>
-                    <option value="'Lora', 'Times New Roman', serif">Lora</option>
-                    <option value="'Source Serif Pro', 'Times New Roman', serif">Source Serif Pro</option>
-                  </select>
-                </div>
-                <div class="word-format-group word-format-group--color">
-                  <div class="word-format-label-row">
-                    <label for="wordBodyColor">Color de letra</label>
-                    <input
-                      type="color"
-                      id="wordBodyColor"
-                      value="#1F2937"
-                      data-default-value="#1F2937"
-                    />
+              <div id="wordBodyFormatContent" class="word-section-content">
+                <div class="word-format-grid">
+                  <div class="word-format-group">
+                    <label for="wordBodyFontFamily">Fuente</label>
+                    <select id="wordBodyFontFamily" data-default-value="'Inter', Arial, sans-serif">
+                      <option value="'Inter', Arial, sans-serif" selected>Inter</option>
+                      <option value="'Roboto', Arial, sans-serif">Roboto</option>
+                      <option value="'Open Sans', Arial, sans-serif">Open Sans</option>
+                      <option value="'Lora', 'Times New Roman', serif">Lora</option>
+                      <option value="'Source Serif Pro', 'Times New Roman', serif">Source Serif Pro</option>
+                    </select>
+                  </div>
+                  <div class="word-format-group word-format-group--color">
+                    <div class="word-format-label-row">
+                      <label for="wordBodyColor">Color de letra</label>
+                      <input
+                        type="color"
+                        id="wordBodyColor"
+                        value="#1F2937"
+                        data-default-value="#1F2937"
+                      />
+                    </div>
+                  </div>
+                  <div class="word-format-group word-format-group--inline">
+                    <label for="wordBodyFontSize">Tamaño de letra</label>
+                    <div class="word-format-size-input">
+                      <input
+                        type="number"
+                        id="wordBodyFontSize"
+                        min="10"
+                        max="48"
+                        step="1"
+                        value="15"
+                        data-default-value="15"
+                      />
+                    </div>
+                  </div>
+                  <div class="word-format-group">
+                    <label for="wordBodyAlignment">Alineación</label>
+                    <select id="wordBodyAlignment" data-default-value="justify">
+                      <option value="left">Izquierda</option>
+                      <option value="center">Centro</option>
+                      <option value="right">Derecha</option>
+                      <option value="justify" selected>Justificada</option>
+                    </select>
+                  </div>
+                  <div class="word-format-group">
+                    <label for="wordBodyLineSpacing">Interlineado</label>
+                    <select id="wordBodyLineSpacing" data-default-value="1.5">
+                      <option value="1">1.0</option>
+                      <option value="1.15">1.15</option>
+                      <option value="1.5" selected>1.5</option>
+                      <option value="1.75">1.75</option>
+                      <option value="2">2.0</option>
+                    </select>
                   </div>
                 </div>
-                <div class="word-format-group word-format-group--inline">
-                  <label for="wordBodyFontSize">Tamaño de letra</label>
-                  <div class="word-format-size-input">
-                    <input
-                      type="number"
-                      id="wordBodyFontSize"
-                      min="10"
-                      max="48"
-                      step="1"
-                      value="15"
-                      data-default-value="15"
-                    />
-                  </div>
+                <div class="word-format-flags">
+                  <label for="wordBodyBold" class="word-format-flag"
+                    ><input type="checkbox" id="wordBodyBold" /> Negrita</label
+                  >
+                  <label for="wordBodyUnderline" class="word-format-flag"
+                    ><input type="checkbox" id="wordBodyUnderline" /> Subrayado</label
+                  >
+                  <label for="wordBodyItalics" class="word-format-flag"
+                    ><input type="checkbox" id="wordBodyItalics" /> Italic</label
+                  >
+                  <label for="wordBodyHighlight" class="word-format-flag"
+                    ><input type="checkbox" id="wordBodyHighlight" /> Resaltar palabras clave</label
+                  >
                 </div>
-                <div class="word-format-group">
-                  <label for="wordBodyAlignment">Alineación</label>
-                  <select id="wordBodyAlignment" data-default-value="justify">
-                    <option value="left">Izquierda</option>
-                    <option value="center">Centro</option>
-                    <option value="right">Derecha</option>
-                    <option value="justify" selected>Justificada</option>
-                  </select>
-                </div>
-                <div class="word-format-group">
-                  <label for="wordBodyLineSpacing">Interlineado</label>
-                  <select id="wordBodyLineSpacing" data-default-value="1.5">
-                    <option value="1">1.0</option>
-                    <option value="1.15">1.15</option>
-                    <option value="1.5" selected>1.5</option>
-                    <option value="1.75">1.75</option>
-                    <option value="2">2.0</option>
-                  </select>
-                </div>
-              </div>
-              <div class="word-format-flags">
-                <label for="wordBodyBold" class="word-format-flag"
-                  ><input type="checkbox" id="wordBodyBold" /> Negrita</label
-                >
-                <label for="wordBodyUnderline" class="word-format-flag"
-                  ><input type="checkbox" id="wordBodyUnderline" /> Subrayado</label
-                >
-                <label for="wordBodyItalics" class="word-format-flag"
-                  ><input type="checkbox" id="wordBodyItalics" /> Italic</label
-                >
-                <label for="wordBodyHighlight" class="word-format-flag"
-                  ><input type="checkbox" id="wordBodyHighlight" /> Resaltar palabras clave</label
-                >
               </div>
             </div>
           </div>
