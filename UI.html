@@ -3351,7 +3351,7 @@
       .word-structure-web {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 6px;
       }
       .word-structure-web .word-web-body {
         margin-top: 0;
@@ -3413,6 +3413,9 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
+      }
+      .word-context-fields-compact {
+        gap: 8px;
       }
       .word-context-fields.is-hidden {
         display: none;
@@ -3503,7 +3506,7 @@
       }
       .word-web-row-main {
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: 36px minmax(0, 1fr);
         align-items: center;
         gap: 8px;
       }
@@ -4098,7 +4101,7 @@
                   <input type="checkbox" id="wordIntroToggle" />
                   Agregar introducción
                 </label>
-                <div id="wordIntroFields" class="word-context-fields is-hidden" aria-hidden="true">
+                <div id="wordIntroFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
                   <div class="word-format-group">
                     <label
                       for="wordIntroFocus"
@@ -4127,7 +4130,7 @@
                     </label>
                     <div id="wordIntroWebBody" class="word-web-body is-hidden" aria-hidden="true">
                       <div id="wordIntroWebList" class="word-web-items"></div>
-                      <button type="button" id="wordIntroWebAdd" class="word-web-add">Agregar referencia</button>
+                      <button type="button" id="wordIntroWebAdd" class="word-web-add">Agregar link</button>
                       <p class="word-context-helper">Puedes añadir hasta 3 enlaces con su descripción.</p>
                     </div>
                   </div>
@@ -4142,7 +4145,7 @@
                   <input type="checkbox" id="wordConclusionToggle" />
                   Agregar conclusión
                 </label>
-                <div id="wordConclusionFields" class="word-context-fields is-hidden" aria-hidden="true">
+                <div id="wordConclusionFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
                   <div class="word-format-group">
                     <label
                       for="wordConclusionFocus"
@@ -4171,7 +4174,7 @@
                     </label>
                     <div id="wordConclusionWebBody" class="word-web-body is-hidden" aria-hidden="true">
                       <div id="wordConclusionWebList" class="word-web-items"></div>
-                      <button type="button" id="wordConclusionWebAdd" class="word-web-add">Agregar referencia</button>
+                      <button type="button" id="wordConclusionWebAdd" class="word-web-add">Agregar link</button>
                       <p class="word-context-helper">Puedes añadir hasta 3 enlaces con su descripción.</p>
                     </div>
                   </div>
@@ -4389,7 +4392,6 @@
               <div id="wordWebSourcesList" class="word-web-items"></div>
               <button type="button" id="wordWebSourcesAdd" class="word-web-add">Agregar link</button>
             </div>
-            <p id="wordWebSourcesLimitNote" class="word-context-helper word-web-limit-note">Puedes añadir hasta 10 páginas relevantes para tu reporte.</p>
             <div id="wordWebSavedSection" class="word-web-saved">
               <label for="wordWebSavedToggle" class="checkbox-subtle word-context-toggle">
                 <input type="checkbox" id="wordWebSavedToggle" />

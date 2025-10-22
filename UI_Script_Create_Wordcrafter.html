@@ -449,6 +449,17 @@ function bindWordStructureSectionToggles() {
         });
       }
 
+function normalizeWordSectionLinkEntry(entry) {
+        if (!entry || typeof entry !== 'object') {
+          return { url: '', description: '', hasDescription: false };
+        }
+        return {
+          url: entry.url ? String(entry.url) : '',
+          description: entry.description ? String(entry.description) : '',
+          hasDescription: entry.hasDescription === true || entry.hasDescription === 'true'
+        };
+      }
+
 function ensureWordSectionLinksState(sectionKey) {
         if (!sectionKey) {
           return [];
@@ -459,6 +470,9 @@ function ensureWordSectionLinksState(sectionKey) {
         if (!Array.isArray(wordStructureSectionLinksState[sectionKey])) {
           wordStructureSectionLinksState[sectionKey] = [];
         }
+        wordStructureSectionLinksState[sectionKey] = wordStructureSectionLinksState[sectionKey].map(function(entry) {
+          return normalizeWordSectionLinkEntry(entry);
+        });
         return wordStructureSectionLinksState[sectionKey];
       }
 
@@ -469,7 +483,13 @@ function setWordSectionLinksState(sectionKey, newState) {
         if (!wordStructureSectionLinksState || typeof wordStructureSectionLinksState !== 'object') {
           wordStructureSectionLinksState = {};
         }
-        wordStructureSectionLinksState[sectionKey] = Array.isArray(newState) ? newState : [];
+        if (!Array.isArray(newState)) {
+          wordStructureSectionLinksState[sectionKey] = [];
+          return;
+        }
+        wordStructureSectionLinksState[sectionKey] = newState.map(function(entry) {
+          return normalizeWordSectionLinkEntry(entry);
+        });
       }
 
 function renderWordSectionLinksList(section) {
@@ -488,7 +508,7 @@ function renderWordSectionLinksList(section) {
         }
         list.innerHTML = '';
         ensureWordSectionLinksState(stateKey).forEach(function(entry, index) {
-          const normalized = entry && typeof entry === 'object' ? entry : {};
+          const normalized = normalizeWordSectionLinkEntry(entry);
           const row = document.createElement('div');
           row.className = 'word-web-row';
           row.dataset.wordSection = stateKey;
@@ -524,12 +544,29 @@ function renderWordSectionLinksList(section) {
           const extra = document.createElement('div');
           extra.className = 'word-web-row-extra';
 
+          const toggleLabel = document.createElement('label');
+          toggleLabel.className = 'word-web-description-toggle';
+          toggleLabel.setAttribute('for', stateKey + 'DescriptionToggle' + index);
+
+          const toggleInput = document.createElement('input');
+          toggleInput.type = 'checkbox';
+          toggleInput.id = stateKey + 'DescriptionToggle' + index;
+          toggleInput.className = 'word-web-description-toggle-input';
+          toggleInput.dataset.wordSection = stateKey;
+          toggleInput.dataset.wordWebIndex = String(index);
+          toggleInput.dataset.wordWebField = 'hasDescription';
+          toggleInput.checked = normalized.hasDescription;
+          toggleLabel.appendChild(toggleInput);
+          toggleLabel.appendChild(document.createTextNode('Agregar descripción'));
+          extra.appendChild(toggleLabel);
+
           const descWrapper = document.createElement('div');
           descWrapper.className = 'word-web-description-wrapper';
-          descWrapper.setAttribute('aria-hidden', 'false');
+          descWrapper.classList.toggle('is-hidden', !normalized.hasDescription);
+          descWrapper.setAttribute('aria-hidden', String(!normalized.hasDescription));
 
           const descInput = document.createElement('textarea');
-          descInput.className = 'word-web-description-input word-web-input';
+          descInput.className = 'word-web-description-input';
           descInput.placeholder = 'Descripción breve de la referencia';
           descInput.value = normalized.description ? normalized.description : '';
           descInput.dataset.wordSection = stateKey;
@@ -538,6 +575,7 @@ function renderWordSectionLinksList(section) {
           descInput.autocomplete = 'off';
           descInput.rows = 2;
           descInput.spellcheck = true;
+          descInput.disabled = !normalized.hasDescription;
           descWrapper.appendChild(descInput);
 
           extra.appendChild(descWrapper);
@@ -582,6 +620,16 @@ function syncWordSectionWebControls(section) {
               input.disabled = true;
               input.setAttribute('aria-disabled', 'true');
             });
+            const descriptionToggles = list.querySelectorAll('.word-web-description-toggle-input');
+            descriptionToggles.forEach(function(toggle) {
+              toggle.disabled = true;
+              toggle.setAttribute('aria-disabled', 'true');
+            });
+            const descriptionInputs = list.querySelectorAll('.word-web-description-input');
+            descriptionInputs.forEach(function(descInput) {
+              descInput.disabled = true;
+              descInput.setAttribute('aria-disabled', 'true');
+            });
             const removeButtons = list.querySelectorAll('.word-web-remove');
             removeButtons.forEach(function(button) {
               button.disabled = true;
@@ -598,7 +646,7 @@ function syncWordSectionWebControls(section) {
         if (isWebActive) {
           const state = ensureWordSectionLinksState(config.stateKey);
           if (state.length === 0) {
-            state.push({ url: '', description: '' });
+            state.push({ url: '', description: '', hasDescription: false });
             setWordSectionLinksState(config.stateKey, state);
           }
         }
@@ -616,6 +664,27 @@ function syncWordSectionWebControls(section) {
               input.setAttribute('aria-disabled', 'true');
             } else {
               input.removeAttribute('aria-disabled');
+            }
+          });
+          const descriptionToggles = list.querySelectorAll('.word-web-description-toggle-input');
+          descriptionToggles.forEach(function(toggle) {
+            toggle.disabled = !isWebActive;
+            if (!isWebActive) {
+              toggle.setAttribute('aria-disabled', 'true');
+            } else {
+              toggle.removeAttribute('aria-disabled');
+            }
+          });
+          const descriptionInputs = list.querySelectorAll('.word-web-description-input');
+          descriptionInputs.forEach(function(descInput) {
+            const row = typeof descInput.closest === 'function' ? descInput.closest('.word-web-row') : null;
+            const toggle = row ? row.querySelector('.word-web-description-toggle-input') : null;
+            const enabled = Boolean(isWebActive && toggle && toggle.checked);
+            descInput.disabled = !enabled;
+            if (!enabled) {
+              descInput.setAttribute('aria-disabled', 'true');
+            } else {
+              descInput.removeAttribute('aria-disabled');
             }
           });
           const removeButtons = list.querySelectorAll('.word-web-remove');
@@ -654,7 +723,7 @@ function bindWordSectionWebControls() {
               if (current.length >= WORD_SECTION_WEB_LIMIT) {
                 return;
               }
-              current.push({ url: '', description: '' });
+              current.push({ url: '', description: '', hasDescription: false });
               setWordSectionLinksState(config.stateKey, current);
               renderWordSectionLinksList(section);
               syncWordSectionWebControls(section);
@@ -686,25 +755,57 @@ function bindWordSectionWebControls() {
                 }
               }
             });
-          list.addEventListener('input', function(event) {
-            const target = event.target;
-            if (!target || !target.dataset || target.dataset.wordWebIndex === undefined) {
-              return;
-            }
-            const sectionKey = target.dataset.wordSection;
-            const index = Number(target.dataset.wordWebIndex);
-            const field = target.dataset.wordWebField;
+            list.addEventListener('input', function(event) {
+              const target = event.target;
+              if (!target || !target.dataset || target.dataset.wordWebIndex === undefined) {
+                return;
+              }
+              const sectionKey = target.dataset.wordSection;
+              const index = Number(target.dataset.wordWebIndex);
+              const field = target.dataset.wordWebField;
               if (!sectionKey || Number.isNaN(index) || !field) {
                 return;
               }
               const state = ensureWordSectionLinksState(sectionKey);
               if (!state[index]) {
-                state[index] = { url: '', description: '' };
+                state[index] = { url: '', description: '', hasDescription: false };
               }
               if (field === 'url') {
                 state[index].url = target.value;
               } else if (field === 'description') {
                 state[index].description = target.value;
+              }
+            });
+            list.addEventListener('change', function(event) {
+              const target = event.target;
+              if (!target || !target.dataset || target.dataset.wordWebField !== 'hasDescription') {
+                return;
+              }
+              const sectionKey = target.dataset.wordSection;
+              const index = Number(target.dataset.wordWebIndex);
+              if (!sectionKey || Number.isNaN(index)) {
+                return;
+              }
+              const state = ensureWordSectionLinksState(sectionKey);
+              if (!state[index]) {
+                state[index] = { url: '', description: '', hasDescription: false };
+              }
+              state[index].hasDescription = target.checked;
+              setWordSectionLinksState(sectionKey, state);
+              const row = typeof target.closest === 'function' ? target.closest('.word-web-row') : null;
+              const wrapper = row ? row.querySelector('.word-web-description-wrapper') : null;
+              const textarea = wrapper ? wrapper.querySelector('.word-web-description-input') : null;
+              if (wrapper) {
+                wrapper.classList.toggle('is-hidden', !target.checked);
+                wrapper.setAttribute('aria-hidden', String(!target.checked));
+              }
+              if (textarea) {
+                textarea.disabled = !target.checked;
+                if (!target.checked) {
+                  textarea.setAttribute('aria-disabled', 'true');
+                } else {
+                  textarea.removeAttribute('aria-disabled');
+                }
               }
             });
             list.dataset.wordSectionWebBound = 'true';
