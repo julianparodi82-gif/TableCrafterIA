@@ -14,6 +14,11 @@ const WORD_CONTEXT_SECTION_CONFIG = [
         controlIds: ['wordBodyContext']
       },
       {
+        wrapperId: 'wordLengthSection',
+        fieldsId: 'wordLengthFields',
+        controlIds: ['wordBodyLength']
+      },
+      {
         wrapperId: 'wordLanguageSection',
         fieldsId: 'wordLanguageFields',
         controlIds: ['wordBodyLanguage']
@@ -146,6 +151,27 @@ function resetWordTextOptions() {
         }
         resetWordFormatInputs('wordTitleFormatOptions');
         resetWordFormatInputs('wordBodyFormatOptions');
+        [
+          { target: 'wordTitleFormatOptions', content: 'wordTitleFormatContent' },
+          { target: 'wordBodyFormatOptions', content: 'wordBodyFormatContent' },
+          { target: 'wordContextCard', content: 'wordContextCardContent' },
+          { target: 'wordWebSourcesCard', content: 'wordWebSourcesContent' }
+        ].forEach(function(entry) {
+          const target = document.getElementById(entry.target);
+          if (target) {
+            target.classList.remove('is-collapsed');
+          }
+          const control = document.querySelector('[data-word-collapse-target="' + entry.target + '"]');
+          if (control) {
+            control.setAttribute('aria-expanded', 'true');
+          }
+          if (entry.content) {
+            const content = document.getElementById(entry.content);
+            if (content) {
+              content.setAttribute('aria-hidden', 'false');
+            }
+          }
+        });
         const extraFields = [
           'wordBodyContext',
           'wordBodyLanguage',
@@ -162,6 +188,11 @@ function resetWordTextOptions() {
             }
           }
         });
+        const lengthSelect = document.getElementById('wordBodyLength');
+        if (lengthSelect) {
+          const fallback = lengthSelect.dataset && lengthSelect.dataset.defaultValue !== undefined ? lengthSelect.dataset.defaultValue : lengthSelect.defaultValue;
+          lengthSelect.value = fallback !== undefined ? fallback : '';
+        }
         const toneSelect = document.getElementById('wordBodyTone');
         if (toneSelect) {
           const fallback = toneSelect.dataset && toneSelect.dataset.defaultValue !== undefined ? toneSelect.dataset.defaultValue : toneSelect.defaultValue;
@@ -1191,6 +1222,54 @@ function syncWordWebSavedSection() {
         }
       }
 
+function bindWordCollapsibleSections() {
+        const toggles = document.querySelectorAll('.word-section-toggle[data-word-collapse-target]');
+        toggles.forEach(function(toggle) {
+          if (toggle.dataset.wordCollapseBound === 'true') {
+            return;
+          }
+          const targetId = toggle.getAttribute('data-word-collapse-target');
+          const contentId = toggle.getAttribute('data-word-collapse-content');
+          const target = targetId ? document.getElementById(targetId) : null;
+          if (target) {
+            const isCollapsed = target.classList.contains('is-collapsed');
+            toggle.setAttribute('aria-expanded', String(!isCollapsed));
+            if (contentId) {
+              const content = document.getElementById(contentId);
+              if (content) {
+                content.setAttribute('aria-hidden', String(isCollapsed));
+              }
+            }
+            if (targetId === 'wordWebSourcesCard') {
+              wordWebSourcesCollapsed = isCollapsed;
+            }
+          }
+          toggle.addEventListener('click', function() {
+            if (!targetId) {
+              return;
+            }
+            const collapseTarget = document.getElementById(targetId);
+            if (!collapseTarget) {
+              return;
+            }
+            const nextCollapsed = !collapseTarget.classList.contains('is-collapsed');
+            collapseTarget.classList.toggle('is-collapsed', nextCollapsed);
+            toggle.setAttribute('aria-expanded', String(!nextCollapsed));
+            if (contentId) {
+              const collapseContent = document.getElementById(contentId);
+              if (collapseContent) {
+                collapseContent.setAttribute('aria-hidden', String(nextCollapsed));
+              }
+            }
+            if (targetId === 'wordWebSourcesCard') {
+              wordWebSourcesCollapsed = nextCollapsed;
+              syncWordWebSourcesCard();
+            }
+          });
+          toggle.dataset.wordCollapseBound = 'true';
+        });
+      }
+
 function bindWordWebSourcesControls() {
         const toggle = document.getElementById('wordWebSourcesToggle');
         if (toggle && toggle.dataset.wordWebBound !== 'true') {
@@ -1199,21 +1278,9 @@ function bindWordWebSourcesControls() {
               wordWebSourcesState.push({ url: '', description: '', hasDescription: false });
               renderWordWebSourcesList();
             }
-            wordWebSourcesCollapsed = false;
             syncWordWebSourcesCard();
           });
           toggle.dataset.wordWebBound = 'true';
-        }
-        const collapseBtn = document.getElementById('wordWebSourcesCollapse');
-        if (collapseBtn && collapseBtn.dataset.wordWebBound !== 'true') {
-          collapseBtn.addEventListener('click', function() {
-            if (collapseBtn.disabled) {
-              return;
-            }
-            wordWebSourcesCollapsed = !wordWebSourcesCollapsed;
-            syncWordWebSourcesCard();
-          });
-          collapseBtn.dataset.wordWebBound = 'true';
         }
         const addBtn = document.getElementById('wordWebSourcesAdd');
         if (addBtn && addBtn.dataset.wordWebBound !== 'true') {
@@ -1345,23 +1412,36 @@ function syncWordWebSourcesCard() {
           return;
         }
         const isWordTheme = isWordThemeActiveForCreate();
+        const content = document.getElementById('wordWebSourcesContent');
+        const collapseBtn = document.getElementById('wordWebSourcesCollapse');
         card.style.display = isWordTheme ? 'block' : 'none';
         if (!isWordTheme) {
           wordWebSourcesCollapsed = false;
+          card.classList.remove('is-collapsed');
+          if (collapseBtn) {
+            collapseBtn.setAttribute('aria-expanded', 'true');
+          }
+          if (content) {
+            content.setAttribute('aria-hidden', 'false');
+          }
           return;
         }
         const toggle = document.getElementById('wordWebSourcesToggle');
         const body = document.getElementById('wordWebSourcesBody');
         const list = document.getElementById('wordWebSourcesList');
         const addBtn = document.getElementById('wordWebSourcesAdd');
-        const collapseBtn = document.getElementById('wordWebSourcesCollapse');
         const isActive = Boolean(toggle && toggle.checked);
         if (isActive && wordWebSourcesState.length === 0) {
           wordWebSourcesState.push({ url: '', description: '', hasDescription: false });
           renderWordWebSourcesList();
         }
-        if (!isActive) {
-          wordWebSourcesCollapsed = false;
+        card.classList.toggle('is-collapsed', wordWebSourcesCollapsed);
+        wordWebSourcesCollapsed = card.classList.contains('is-collapsed');
+        if (collapseBtn) {
+          collapseBtn.setAttribute('aria-expanded', String(!wordWebSourcesCollapsed));
+        }
+        if (content) {
+          content.setAttribute('aria-hidden', String(wordWebSourcesCollapsed));
         }
         const shouldShowBody = Boolean(isActive && !wordWebSourcesCollapsed);
         if (body) {
@@ -1411,11 +1491,6 @@ function syncWordWebSourcesCard() {
         }
         if (addBtn) {
           addBtn.disabled = !isActive || wordWebSourcesState.length >= WORD_WEB_SOURCE_LIMIT;
-        }
-        if (collapseBtn) {
-          collapseBtn.disabled = !isActive;
-          collapseBtn.classList.toggle('is-collapsed', !shouldShowBody);
-          collapseBtn.setAttribute('aria-expanded', String(shouldShowBody));
         }
         syncWordWebSavedSection();
       }
@@ -1506,6 +1581,7 @@ function initializeWordRangeMode() {
         bindWordFormatInputs();
         bindWordStructureControls();
         bindWordWebSourcesControls();
+        bindWordCollapsibleSections();
         renderWordWebSourcesList();
         renderWordStructureLinksList();
         syncCreateRangeModeUI();
