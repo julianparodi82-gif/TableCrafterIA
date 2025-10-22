@@ -3188,12 +3188,9 @@
       #wordWebSourcesCard .word-section-content {
         margin-top: 16px;
       }
-      .word-format-options.is-collapsed .word-format-heading p,
       .word-format-options.is-collapsed .word-format-preview,
       .word-format-options.is-collapsed .word-section-content,
-      #wordContextCard.is-collapsed .word-context-heading p,
       #wordContextCard.is-collapsed .word-section-content,
-      #wordWebSourcesCard.is-collapsed .word-context-heading p,
       #wordWebSourcesCard.is-collapsed .word-section-content {
         display: none;
       }
@@ -3535,11 +3532,13 @@
       }
       .word-web-row-main .word-web-input {
         width: 100%;
+        max-width: 100%;
         min-width: 0;
         border: 1px solid rgba(28, 141, 212, 0.28);
         border-radius: 10px;
-        padding: 8px 10px;
-        font-size: 13px;
+        padding: 6px 10px;
+        font-size: 12px;
+        box-sizing: border-box;
       }
       .word-web-description-toggle {
         font-size: 12px;
