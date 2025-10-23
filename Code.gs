@@ -1413,6 +1413,22 @@ function listSavedActions(options) {
           continue;
         }
         actions.push(favorite);
+        continue;
+      }
+      if (type === 'wordFavorite') {
+        var wordFavorite = buildWordFavoriteResponse({ data: row });
+        if (!wordFavorite || wordFavorite.error) {
+          continue;
+        }
+        actions.push({
+          id: wordFavorite.id || entryId,
+          type: 'wordFavorite',
+          name: wordFavorite.name || '',
+          description: wordFavorite.description || '',
+          createdAt: wordFavorite.createdAt || '',
+          updatedAt: wordFavorite.updatedAt || ''
+        });
+        continue;
       }
     }
     actions.sort(function(a, b) {

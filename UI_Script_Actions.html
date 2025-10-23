@@ -478,6 +478,16 @@ function filterLegacyFavoriteEntries(list) {
     ) {
       return true;
     }
+    if (
+      normalizedType === 'wordfavorite' ||
+      normalizedType === 'word' ||
+      normalizedType === 'texto' ||
+      normalizedType === 'textfavorite' ||
+      normalizedType === 'favoritotexto' ||
+      normalizedType === 'textofavorito'
+    ) {
+      return true;
+    }
     const hasFeatures = Array.isArray(entry.features) && entry.features.length > 0;
     const hasDetails = Array.isArray(entry.featureDetails) && entry.featureDetails.length > 0;
     const hasChannels = Array.isArray(entry.channels) && entry.channels.length > 0;
