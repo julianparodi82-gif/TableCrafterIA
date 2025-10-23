@@ -25,6 +25,82 @@ let currentActionSupportsSave = false;
 let savingSelectedAction = false;
 let deletingSelectedAction = false;
 
+function getActiveThemeForActions() {
+  if (document.body && document.body.classList.contains('theme-wordcrafter')) {
+    return 'word';
+  }
+  return 'table';
+}
+
+function hasReportFavoriteTableSignals(action) {
+  if (!action || action.type !== 'reportFavorite') {
+    return false;
+  }
+  const tableList = Array.isArray(action.tables) ? action.tables : [];
+  const hasTableReference = tableList.some(function(entry) {
+    if (entry === null || entry === undefined) {
+      return false;
+    }
+    return String(entry).trim().length > 0;
+  });
+  if (hasTableReference) {
+    return true;
+  }
+  const detailList = Array.isArray(action.featureDetails) ? action.featureDetails : [];
+  return detailList.some(function(detail) {
+    if (!detail) {
+      return false;
+    }
+    const toggles = Array.isArray(detail.instanceTablesEnabled) ? detail.instanceTablesEnabled : [];
+    if (toggles.some(Boolean)) {
+      return true;
+    }
+    const selections = Array.isArray(detail.instanceTables) ? detail.instanceTables : [];
+    return selections.some(function(selection) {
+      if (Array.isArray(selection)) {
+        return selection.some(function(value) {
+          if (value === null || value === undefined) {
+            return false;
+          }
+          return String(value).trim().length > 0;
+        });
+      }
+      if (selection === null || selection === undefined) {
+        return false;
+      }
+      return String(selection).trim().length > 0;
+    });
+  });
+}
+
+function shouldDisplayActionForTheme(action, theme) {
+  if (!action) {
+    return false;
+  }
+  if (theme === 'word') {
+    if (action.type === 'table' || action.type === 'tableFavorite') {
+      return false;
+    }
+    if (action.type === 'reportFavorite' && hasReportFavoriteTableSignals(action)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function filterSavedActionsForTheme(actions, theme) {
+  if (!Array.isArray(actions)) {
+    return [];
+  }
+  const normalizedTheme = theme === 'word' ? 'word' : 'table';
+  if (normalizedTheme === 'table') {
+    return actions.slice();
+  }
+  return actions.filter(function(action) {
+    return shouldDisplayActionForTheme(action, normalizedTheme);
+  });
+}
+
 function getCurrentSavedActionId() {
   return currentSavedActionId;
 }
@@ -514,18 +590,20 @@ function renderSavedActionsSelect(actions, selectedId, options) {
   }
   const opts = options || {};
   const list = Array.isArray(actions) ? actions : [];
+  const theme = getActiveThemeForActions();
+  const filteredList = filterSavedActionsForTheme(list, theme);
   select.innerHTML = '';
   const placeholder = document.createElement('option');
   placeholder.value = '';
   placeholder.textContent = 'Seleccionar...';
   select.appendChild(placeholder);
-  if (list.length === 0) {
+  if (filteredList.length === 0) {
     select.disabled = true;
     updateSavedActionsEmptyState(false);
     return { hasEntries: false, selectedId: '' };
   }
   const tooltipMap = Object.create(null);
-  list
+  filteredList
     .slice()
     .sort(function(a, b) {
       const nameA = (a && a.name ? a.name : '').toLowerCase();
@@ -627,7 +705,7 @@ function renderSavedActionsSelect(actions, selectedId, options) {
     fallbackTooltipUpdater();
   }
   return {
-    hasEntries: list.length > 0,
+    hasEntries: filteredList.length > 0,
     selectedId: select.value || '',
     autoSelected: autoSelectedFirst
   };
@@ -1471,6 +1549,25 @@ function initSavedActionsPanel() {
       autoSelectFirst: false,
       forceLoad: true,
       delay: 0
+    });
+  });
+  document.addEventListener('tc:themeModeChanged', function() {
+    if (!savedActionsPanelInitialized) {
+      return;
+    }
+    const select = document.getElementById('aiSavedActions');
+    const previousValue = select ? select.value || '' : '';
+    const renderInfo = renderSavedActionsSelect(savedActionsCache, previousValue, {
+      autoSelectFirst: true,
+      previousValue: previousValue
+    });
+    Promise.resolve(
+      syncSavedActionSelection(previousValue, {
+        hasEntries: renderInfo.hasEntries,
+        forceLoad: true
+      })
+    ).catch(function(err) {
+      console.log('No se pudo sincronizar la lista de favoritos con el cambio de tema.', err);
     });
   });
   document.addEventListener('tc:savedActionMutated', handleSavedActionMutationEvent);

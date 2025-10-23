@@ -3455,6 +3455,15 @@ function playSidebarAnimation() {
           if (themeChanged || settings.forceSync) {
             syncAddonThemeMode(nextTheme);
           }
+          try {
+            document.dispatchEvent(
+              new CustomEvent('tc:themeModeChanged', {
+                detail: { theme: nextTheme, previousTheme: previousTheme, changed: themeChanged }
+              })
+            );
+          } catch (err) {
+            console.log('No se pudo notificar el cambio de tema.', err);
+          }
         }
 
         if (themeMessageClose) {
