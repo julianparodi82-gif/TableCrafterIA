@@ -5976,6 +5976,7 @@ function collectAskCustomization() {
         setEditSavedListCollapsed(true);
         resetEditTabView({ preserveSelection: true, clearEditingId: false });
         editingId = val;
+        updateEditFavoriteButtonState();
         const cachedMeta = getSavedTableFromCache(val);
         if (cachedMeta) {
           populateEditForm(cachedMeta);

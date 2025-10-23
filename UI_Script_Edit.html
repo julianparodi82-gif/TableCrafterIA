@@ -8,6 +8,7 @@ let editingId = '';
 let editFormatDirty = false;
 let editSavedListCollapsed = false;
 let editSavedTextsCollapsed = false;
+let editFavoriteSaving = false;
 
 /* -------------------------------------------------------------------------- */
 /*  TableCrafter Edit Tab Saved Tables UI                                     */
@@ -609,6 +610,215 @@ function setEditDefaultStyles() {
       }
 
 /* -------------------------------------------------------------------------- */
+/*  TableCrafter Edit Tab Favorites                                           */
+/* -------------------------------------------------------------------------- */
+
+function parseEditFavoriteRangeParts(value) {
+        if (typeof parseTableFavoriteRangeParts === 'function') {
+          return parseTableFavoriteRangeParts(value);
+        }
+        const trimmed = typeof value === 'string' ? value.trim() : '';
+        if (!trimmed) {
+          return { sheet: '', range: '' };
+        }
+        const bangIndex = trimmed.indexOf('!');
+        if (bangIndex === -1) {
+          return { sheet: '', range: trimmed };
+        }
+        const sheetPart = trimmed.substring(0, bangIndex).replace(/^'+|'+$/g, '');
+        const rangePart = trimmed.substring(bangIndex + 1);
+        return { sheet: sheetPart, range: rangePart };
+      }
+
+function collectEditFavoriteConfig(validation) {
+        const base =
+          validation && validation.values
+            ? validation
+            : validateTableDetails({
+                nameInputId: 'editTableName',
+                descInputId: 'editTableDesc',
+                headers: editHeaders
+              });
+        const values = base && base.values ? base.values : { name: '', description: '', headers: [] };
+        const headers = cloneHeaderModels(values.headers || []);
+        const rangeValue = getEditRangeInputValue();
+        const info = editRangeInfo && typeof editRangeInfo === 'object' ? editRangeInfo : {};
+        const fallbackParts = parseEditFavoriteRangeParts(rangeValue);
+        const sheetName = info.sheetName ? String(info.sheetName) : fallbackParts.sheet || '';
+        const a1Notation = info.a1Notation ? String(info.a1Notation) : fallbackParts.range || '';
+        const rowsRaw = info.rows !== undefined ? info.rows : (info.headers && info.headers.length) || 0;
+        const colsRaw = info.cols !== undefined ? info.cols : headers.length;
+        const rows = typeof rowsRaw === 'number' ? rowsRaw : parseInt(rowsRaw, 10) || 0;
+        const cols = typeof colsRaw === 'number' ? colsRaw : parseInt(colsRaw, 10) || headers.length;
+        const fullA1 = info.fullA1 || (sheetName && a1Notation ? sheetName + '!' + a1Notation : rangeValue || '');
+        const headerColorInput = document.getElementById('editColorHeader');
+        const alt1Input = document.getElementById('editColorAlt1');
+        const alt2Input = document.getElementById('editColorAlt2');
+        const borderToggle = document.getElementById('editToggleBorder');
+        const boldToggle = document.getElementById('editToggleBold');
+        const updateFormulaReferences = shouldUpdateEditFormulaReferences();
+        return {
+          version: 1,
+          name: values.name || '',
+          description: values.description || '',
+          range: {
+            value: rangeValue || '',
+            sheetName: sheetName,
+            a1Notation: a1Notation,
+            rows: rows,
+            cols: cols,
+            fullA1: fullA1
+          },
+          headers: headers,
+          style: {
+            headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
+            altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
+            altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
+            border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
+            bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+          },
+          updateFormulaReferences: updateFormulaReferences
+        };
+      }
+
+function updateEditFavoriteButtonState() {
+        const btn = document.getElementById('editFavoriteBtn');
+        if (!btn) {
+          return;
+        }
+        const shouldDisable =
+          editFavoriteSaving ||
+          !editingId ||
+          (document.body && document.body.classList.contains('theme-wordcrafter'));
+        if (shouldDisable) {
+          btn.disabled = true;
+          btn.setAttribute('aria-disabled', 'true');
+        } else {
+          btn.disabled = false;
+          btn.removeAttribute('aria-disabled');
+        }
+        btn.dataset.loading = editFavoriteSaving ? 'true' : 'false';
+        const label = btn.querySelector('.ai-favorite-label');
+        const text = editFavoriteSaving ? 'Guardando…' : 'Agregar a favoritos';
+        if (label) {
+          label.textContent = text;
+        } else {
+          btn.textContent = text;
+        }
+      }
+
+async function handleEditSaveFavorite() {
+        if (editFavoriteSaving) {
+          return;
+        }
+        if (document.body && document.body.classList.contains('theme-wordcrafter')) {
+          await showMessageModal('Cambia a TableCrafter para guardar tablas como favoritas.', {
+            title: 'Función no disponible',
+            variant: 'warning'
+          });
+          return;
+        }
+        if (!editingId) {
+          await showMessageModal('Seleccione una tabla guardada antes de agregarla a favoritos.', {
+            title: 'Seleccione una tabla',
+            variant: 'error'
+          });
+          return;
+        }
+        const rangeValue = getEditRangeInputValue();
+        if (!rangeValue) {
+          await showMessageModal('Indique un rango válido antes de guardar la tabla como favorita.', {
+            title: 'Rango requerido',
+            variant: 'error'
+          });
+          return;
+        }
+        const validation = validateTableDetails({
+          nameInputId: 'editTableName',
+          descInputId: 'editTableDesc',
+          headers: editHeaders
+        });
+        if (validation.missing.length > 0) {
+          const msg = buildMissingFieldsMessage(validation.missing);
+          await showMessageModal(msg || 'Complete todos los campos obligatorios antes de continuar.', {
+            title: 'Información incompleta',
+            variant: 'error'
+          });
+          return;
+        }
+        editHeaders = cloneHeaderModels(validation.values.headers);
+        renderEditHeaders();
+        const nameInput = document.getElementById('editTableName');
+        if (nameInput) {
+          nameInput.value = validation.values.name;
+        }
+        const descInput = document.getElementById('editTableDesc');
+        if (descInput) {
+          descInput.value = validation.values.description;
+        }
+        const config = collectEditFavoriteConfig(validation);
+        const payload = {
+          id: '',
+          name: config.name || validation.values.name,
+          description: validation.values.description || config.description || '',
+          config: config
+        };
+        editFavoriteSaving = true;
+        updateEditFavoriteButtonState();
+        try {
+          const response = await callServerFunction('saveTableFavorite', payload);
+          if (!response || response.error) {
+            throw new Error((response && response.error) || 'No se pudo guardar la tabla favorita.');
+          }
+          const savedId = response.id || '';
+          if (
+            window.TableFavoriteManager &&
+            typeof window.TableFavoriteManager.refreshSavedLists === 'function'
+          ) {
+            window.TableFavoriteManager.refreshSavedLists({ selectId: savedId }).catch(function() {});
+          } else if (typeof refreshTableFavorites === 'function') {
+            refreshTableFavorites({ selectId: savedId, silent: true }).catch(function() {});
+          }
+          if (typeof notifySavedActionMutation === 'function') {
+            notifySavedActionMutation({
+              id: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof requestSavedActionsRefresh === 'function') {
+            requestSavedActionsRefresh({
+              selectId: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof refreshSavedActions === 'function') {
+            refreshSavedActions({
+              selectId: savedId,
+              force: true,
+              autoSelectFirst: false,
+              forceLoad: true
+            }).catch(function() {});
+          }
+          await showMessageModal((response && response.message) || 'Tabla agregada a favoritos.', {
+            title: 'Favorito guardado',
+            variant: 'success'
+          });
+        } catch (err) {
+          await showMessageModal('No se pudo guardar la tabla favorita: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo guardar',
+            variant: 'error'
+          });
+        } finally {
+          editFavoriteSaving = false;
+          updateEditFavoriteButtonState();
+        }
+      }
+
+/* -------------------------------------------------------------------------- */
 /*  TableCrafter Edit Tab View Management                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -686,6 +896,8 @@ function resetEditTabView(options) {
         if (updateFormulasToggle) {
           updateFormulasToggle.checked = true;
         }
+        editFavoriteSaving = false;
+        updateEditFavoriteButtonState();
         syncEditSavedTablesHighlight();
         syncEditSavedTextsHighlight();
       }
@@ -862,6 +1074,7 @@ function populateEditForm(meta) {
         upsertSavedTablesCache(normalizedMeta);
         lastSavedTableId = normalizedMeta.id;
         clearEditFormatDirty();
+        editingId = normalizedMeta.id;
 
         const rangeSection = document.getElementById('editRangeSection');
         const metaSection = document.getElementById('editMetaSection');
@@ -888,6 +1101,8 @@ function populateEditForm(meta) {
         if (deleteBtn) {
           deleteBtn.disabled = false;
         }
+        editFavoriteSaving = false;
+        updateEditFavoriteButtonState();
 
         const nameInput = document.getElementById('editTableName');
         if (nameInput) {
@@ -1171,6 +1386,8 @@ async function handleEditApplyFormat() {
           }
         }
 
+        updateEditFavoriteButtonState();
+
         await refreshSavedTables(['editSavedTables', 'aiSavedTables'], {
           selectId: editingId
         });
@@ -1193,6 +1410,15 @@ async function handleEditApplyFormat() {
       document.getElementById('editSaveTableBtn').addEventListener('click', function() {
         handleEditSaveAction();
       });
+
+      const editFavoriteBtn = document.getElementById('editFavoriteBtn');
+      if (editFavoriteBtn) {
+        editFavoriteBtn.addEventListener('click', function() {
+          handleEditSaveFavorite();
+        });
+      }
+
+      updateEditFavoriteButtonState();
 
       
 
@@ -1366,6 +1592,8 @@ async function handleEditSaveAction(options) {
             });
           }
         }
+
+        updateEditFavoriteButtonState();
 
         await refreshSavedTables(['editSavedTables', 'aiSavedTables'], {
           selectId: editingId
