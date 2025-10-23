@@ -5,6 +5,7 @@
 const WORD_TITLE_AUTO_PLACEHOLDER = 'Título generado automáticamente';
 const WORD_WEB_SOURCE_LIMIT = 10;
 const WORD_SECTION_WEB_LIMIT = 3;
+const WORD_GENERATE_BUTTON_LABEL = 'Generar y Guardar Texto';
 
 const WORD_CONTEXT_SECTION_CONFIG = [
       {
@@ -260,38 +261,6 @@ function resetWordTextOptions() {
         setWordFavoriteEditingId('');
       }
 
-async function attemptWordClipboardCopy(text) {
-        const normalized = text ? String(text) : '';
-        if (!normalized) {
-          return false;
-        }
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-          try {
-            await navigator.clipboard.writeText(normalized);
-            return true;
-          } catch (err) {}
-        }
-        const textarea = document.createElement('textarea');
-        textarea.value = normalized;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        textarea.style.pointerEvents = 'none';
-        textarea.style.top = '-1000px';
-        document.body.appendChild(textarea);
-        textarea.focus({ preventScroll: true });
-        textarea.select();
-        textarea.setSelectionRange(0, textarea.value.length);
-        let success = false;
-        try {
-          success = document.execCommand('copy');
-        } catch (err) {
-          success = false;
-        }
-        document.body.removeChild(textarea);
-        return success;
-      }
-
 function setWordGenerateLoading(isLoading) {
         const btn = document.getElementById('wordGenerateBtn');
         if (!btn) {
@@ -299,14 +268,14 @@ function setWordGenerateLoading(isLoading) {
         }
         if (isLoading) {
           if (!btn.dataset.wordGenerateIdleLabel) {
-            btn.dataset.wordGenerateIdleLabel = btn.textContent || 'Generar Texto';
+            btn.dataset.wordGenerateIdleLabel = btn.textContent || WORD_GENERATE_BUTTON_LABEL;
           }
           btn.disabled = true;
           btn.classList.add('is-loading');
           btn.textContent = 'Generando…';
           btn.setAttribute('aria-busy', 'true');
         } else {
-          const idle = btn.dataset.wordGenerateIdleLabel || 'Generar Texto';
+          const idle = btn.dataset.wordGenerateIdleLabel || WORD_GENERATE_BUTTON_LABEL;
           btn.disabled = false;
           btn.classList.remove('is-loading');
           btn.textContent = idle;
@@ -322,6 +291,14 @@ async function handleWordGenerate() {
         if (!btn) {
           return;
         }
+        const favoriteName = getWordFavoriteName();
+        if (!favoriteName) {
+          await showMessageModal('Agrega un título al texto antes de generar y guardar.', {
+            title: 'Título requerido',
+            variant: 'warning'
+          });
+          return;
+        }
         const nameInput = document.getElementById('tableName');
         const descInput = document.getElementById('tableDesc');
         const rawTitle = nameInput ? nameInput.value.trim() : '';
@@ -333,51 +310,80 @@ async function handleWordGenerate() {
         const effectiveTitle = isAutoTitle || rawTitle === WORD_TITLE_AUTO_PLACEHOLDER ? '' : rawTitle;
         const description = descInput ? descInput.value.trim() : '';
         const config = collectWordFavoriteConfig();
+        if (config.range && config.range.useRange && (!config.range.value || !String(config.range.value).trim())) {
+          await showMessageModal('Selecciona un rango válido antes de generar el texto.', {
+            title: 'Rango requerido',
+            variant: 'warning'
+          });
+          return;
+        }
+        const favoriteDescription = getWordFavoriteDescriptionFromConfig(config);
         wordGenerateInProgress = true;
         setWordGenerateLoading(true);
         try {
           const response = await callServerFunction('generateWordcrafterText', {
+            favoriteId: wordFavoriteEditingId || '',
+            name: favoriteName,
             title: effectiveTitle,
             description: description,
+            favoriteDescription: favoriteDescription,
             config: config
           });
           if (!response || response.error) {
-            await showMessageModal((response && response.error) || 'No se pudo generar el texto.', {
-              title: 'Error al generar',
-              variant: 'error'
-            });
-            return;
+            throw new Error((response && response.error) || 'No se pudo generar el texto.');
           }
-          const generated = response.text ? String(response.text).trim() : '';
-          if (!generated) {
-            await showMessageModal('No se recibió ningún texto de la IA.', {
-              title: 'Sin contenido',
-              variant: 'warning'
-            });
-            return;
+          const savedId = response.favoriteId
+            ? String(response.favoriteId)
+            : response.id
+            ? String(response.id)
+            : wordFavoriteEditingId || '';
+          if (savedId) {
+            setWordFavoriteEditingId(savedId);
           }
-          let copied = false;
           try {
-            copied = await attemptWordClipboardCopy(generated);
-          } catch (err) {
-            copied = false;
+            await refreshWordFavorites({ selectId: savedId, silent: true });
+          } catch (refreshErr) {}
+          if (typeof notifySavedActionMutation === 'function') {
+            notifySavedActionMutation({
+              id: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof requestSavedActionsRefresh === 'function') {
+            requestSavedActionsRefresh({
+              selectId: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof refreshSavedActions === 'function') {
+            refreshSavedActions({
+              selectId: savedId,
+              force: true,
+              autoSelectFirst: false,
+              forceLoad: true
+            }).catch(function() {});
           }
-          let message = generated;
-          let variant = 'info';
-          if (copied) {
-            message =
-              'El texto generado se copió al portapapeles. Revísalo a continuación y ajústalo si es necesario:\n\n' +
-              generated;
-            variant = 'success';
+          const rangeInfo = response && response.range ? response.range : {};
+          const rangeLabel = rangeInfo.full || rangeInfo.display || '';
+          let message = response && response.message ? String(response.message) : '';
+          if (!message) {
+            message = 'El texto se generó y pegó correctamente.';
+            if (rangeLabel) {
+              message += '\n\nUbicación: ' + rangeLabel;
+            }
           }
           await showMessageModal(message, {
             title: 'Texto generado',
-            variant: variant,
-            primaryText: 'Cerrar'
+            variant: 'success',
+            primaryText: 'Aceptar'
           });
         } catch (err) {
           const errorMessage = err && err.message ? err.message : err;
-          await showMessageModal('No se pudo generar el texto: ' + errorMessage, {
+          await showMessageModal('No se pudo generar y guardar el texto: ' + errorMessage, {
             title: 'Error al generar',
             variant: 'error'
           });
