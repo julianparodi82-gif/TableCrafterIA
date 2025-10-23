@@ -255,6 +255,9 @@
       let reportDeliveryOutsideListenerAttached = false;
       let reportFileDateEnabled = false;
       let favoriteModalEscapeListenerAttached = false;
+      let savedTextsCache = [];
+      let savedTextsInitialized = false;
+      let savedTextsLoadingPromise = null;
 
 
       
@@ -306,6 +309,32 @@ function createAiMultiItem(entry, selected, options) {
         item.appendChild(check);
 
         return item;
+      }
+
+function normalizeAiSavedTextList(entries) {
+        if (!Array.isArray(entries)) {
+          return [];
+        }
+        const seen = Object.create(null);
+        return entries
+          .map(function(entry) {
+            if (!entry || !entry.id) {
+              return null;
+            }
+            const id = String(entry.id);
+            if (!id || seen[id]) {
+              return null;
+            }
+            seen[id] = true;
+            return {
+              id: id,
+              name: entry.name ? String(entry.name) : id,
+              description: entry.description ? String(entry.description) : ''
+            };
+          })
+          .filter(function(item) {
+            return !!item;
+          });
       }
 
 function renderAiSavedTablesList(entries, config) {
@@ -396,6 +425,75 @@ function renderAiSavedTablesList(entries, config) {
         updateAiListSelectionUI(selectEl);
       }
 
+function renderAiSavedTextsList(entries, config) {
+        const listEl = document.getElementById('aiSavedTextsList');
+        const selectEl = document.getElementById('aiSavedTexts');
+        if (!listEl || !selectEl) {
+          return;
+        }
+        const data = Array.isArray(entries) ? entries : [];
+        const options = config || {};
+        const disabled = !!options.disabled;
+        const selectedValues = Array.isArray(options.selectedValues) ? options.selectedValues : [];
+        const selectedSet = Object.create(null);
+        selectedValues.forEach(function(value) {
+          selectedSet[String(value)] = true;
+        });
+
+        listEl.innerHTML = '';
+        listEl.setAttribute('role', 'listbox');
+        listEl.setAttribute('aria-multiselectable', 'true');
+        listEl.classList.toggle('disabled', disabled);
+        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+
+        selectEl.innerHTML = '';
+        selectEl.disabled = disabled;
+
+        if (disabled) {
+          const empty = document.createElement('div');
+          empty.className = 'ai-multi-empty';
+          empty.textContent = 'No hay textos guardados';
+          listEl.appendChild(empty);
+          return;
+        }
+
+        if (data.length === 0) {
+          selectEl.disabled = true;
+          const empty = document.createElement('div');
+          empty.className = 'ai-multi-empty';
+          empty.textContent = 'No hay textos guardados';
+          listEl.appendChild(empty);
+          return;
+        }
+
+        selectEl.disabled = false;
+        data.forEach(function(entry) {
+          if (!entry || !entry.id) {
+            return;
+          }
+          const option = document.createElement('option');
+          option.value = String(entry.id);
+          option.textContent = entry.name || entry.id;
+          option.selected = !!selectedSet[option.value];
+          selectEl.appendChild(option);
+        });
+
+        data.forEach(function(entry) {
+          if (!entry || !entry.id) {
+            return;
+          }
+          const item = createAiMultiItem(entry, !!selectedSet[entry.id]);
+          if (item) {
+            if (entry.description) {
+              item.title = entry.description;
+            }
+            listEl.appendChild(item);
+          }
+        });
+
+        updateAiTextSelectionUI(selectEl);
+      }
+
 function updateAiListSelectionUI(select) {
         const listEl = document.getElementById('aiSavedTablesList');
         if (!listEl || !select) {
@@ -426,6 +524,37 @@ function updateAiListSelectionUI(select) {
           }
         });
         refreshAllReportFeatureOptions();
+      }
+
+function updateAiTextSelectionUI(select) {
+        const listEl = document.getElementById('aiSavedTextsList');
+        if (!listEl || !select) {
+          return;
+        }
+        const selectedSet = Object.create(null);
+        if (select.options) {
+          Array.prototype.forEach.call(select.options, function(option) {
+            if (option && option.value && option.selected && !option.disabled) {
+              selectedSet[option.value] = true;
+            }
+          });
+        }
+        const items = listEl.querySelectorAll('.ai-multi-item');
+        Array.prototype.forEach.call(items, function(item) {
+          const value = item && item.dataset ? item.dataset.value : '';
+          if (!value) {
+            item.classList.remove('selected');
+            item.setAttribute('aria-selected', 'false');
+            return;
+          }
+          if (selectedSet[value]) {
+            item.classList.add('selected');
+            item.setAttribute('aria-selected', 'true');
+          } else {
+            item.classList.remove('selected');
+            item.setAttribute('aria-selected', 'false');
+          }
+        });
       }
 
 function toggleAiListValue(value) {
@@ -483,6 +612,34 @@ function toggleAiListValue(value) {
         }
         selectEl.dispatchEvent(new Event('change', { bubbles: true }));
         updateAiListSelectionUI(selectEl);
+      }
+
+function toggleAiTextValue(value) {
+        const selectEl = document.getElementById('aiSavedTexts');
+        const listEl = document.getElementById('aiSavedTextsList');
+        if (!selectEl || !listEl || selectEl.disabled) {
+          return;
+        }
+        const options = selectEl.options ? Array.prototype.slice.call(selectEl.options) : [];
+        if (!options.length) {
+          return;
+        }
+        const targetValue = String(value || '');
+        if (!targetValue) {
+          return;
+        }
+        let targetOption = null;
+        options.forEach(function(option) {
+          if (option && option.value === targetValue) {
+            targetOption = option;
+          }
+        });
+        if (!targetOption) {
+          return;
+        }
+        targetOption.selected = !targetOption.selected;
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        updateAiTextSelectionUI(selectEl);
       }
 
 function normalizeReportEmailEntry(entry) {
@@ -4327,6 +4484,78 @@ function setAiTablesSelection(values) {
         refreshAllReportFeatureOptions();
       }
 
+function setAiTextsSelection(values) {
+        const select = document.getElementById('aiSavedTexts');
+        if (!select) {
+          return;
+        }
+        const normalizedValues = Array.isArray(values)
+          ? values.map(function(value) {
+              return String(value);
+            })
+          : [];
+        const selectedMap = Object.create(null);
+        normalizedValues.forEach(function(value) {
+          selectedMap[value] = true;
+        });
+        Array.prototype.forEach.call(select.options, function(option) {
+          if (!option || !option.value || option.disabled) {
+            option.selected = false;
+            return;
+          }
+          option.selected = !!selectedMap[option.value];
+        });
+        renderAiSavedTextsList(savedTextsCache, {
+          disabled: select.disabled,
+          selectedValues: getSelectedOptionValues(select)
+        });
+      }
+
+function refreshSavedTexts(options) {
+        const opts = options || {};
+        if (savedTextsLoadingPromise) {
+          return savedTextsLoadingPromise;
+        }
+        const select = document.getElementById('aiSavedTexts');
+        const previousSelection = select ? getSelectedOptionValues(select) : [];
+        const fallbackDisabled = typeof opts.disabled === 'boolean' ? opts.disabled : false;
+        savedTextsLoadingPromise = callServerFunction('listWordFavorites')
+          .then(function(result) {
+            const normalized = normalizeAiSavedTextList(result);
+            savedTextsCache = normalized;
+            savedTextsInitialized = true;
+            renderAiSavedTextsList(savedTextsCache, {
+              disabled: fallbackDisabled,
+              selectedValues: previousSelection
+            });
+            return savedTextsCache.slice();
+          })
+          .catch(function(err) {
+            const message = err && err.message ? err.message : err;
+            console.log('No se pudieron obtener los textos guardados para la IA.', err);
+            const existing = Array.isArray(savedTextsCache) ? savedTextsCache.slice() : [];
+            if (!savedTextsInitialized) {
+              renderAiSavedTextsList([], { disabled: false, selectedValues: [] });
+            } else {
+              renderAiSavedTextsList(existing, {
+                disabled: fallbackDisabled,
+                selectedValues: previousSelection
+              });
+            }
+            if (!opts.silent) {
+              showMessageModal('No se pudieron obtener los textos guardados: ' + message, {
+                title: 'No se pudo cargar',
+                variant: 'error'
+              });
+            }
+            throw err;
+          })
+          .finally(function() {
+            savedTextsLoadingPromise = null;
+          });
+        return savedTextsLoadingPromise;
+      }
+
 function setActiveReportFavorite(id, name) {
         activeReportFavoriteId = id ? String(id) : '';
         activeReportFavoriteName = name ? String(name) : '';
@@ -4454,6 +4683,20 @@ async function loadReportFavoriteIntoPanel(action, options) {
 
 function getSelectedAiTableIds() {
         const select = document.getElementById('aiSavedTables');
+        if (!select || !select.options) {
+          return [];
+        }
+        const values = [];
+        Array.prototype.forEach.call(select.options, function(option) {
+          if (option && option.value && option.selected && !option.disabled) {
+            values.push(option.value);
+          }
+        });
+        return values;
+      }
+
+function getSelectedAiTextIds() {
+        const select = document.getElementById('aiSavedTexts');
         if (!select || !select.options) {
           return [];
         }
@@ -5936,6 +6179,19 @@ function collectAskCustomization() {
         }).askQuestion(payload, question, customization || null);
       });
 
+      document.addEventListener('tc:wordFavoritesUpdated', function(event) {
+        const detail = event && event.detail ? event.detail.list : [];
+        const normalized = normalizeAiSavedTextList(detail);
+        savedTextsCache = normalized;
+        savedTextsInitialized = true;
+        const select = document.getElementById('aiSavedTexts');
+        const selectedValues = select ? getSelectedOptionValues(select) : [];
+        renderAiSavedTextsList(savedTextsCache, {
+          disabled: false,
+          selectedValues: selectedValues
+        });
+      });
+
       document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('beforeunload', handleSidebarBeforeUnload);
         setDefaultStyles();
@@ -5982,6 +6238,41 @@ function collectAskCustomization() {
             }
             event.preventDefault();
             toggleAiListValue(item.dataset.value);
+          });
+        }
+        const aiTextsSelect = document.getElementById('aiSavedTexts');
+        const aiTextsList = document.getElementById('aiSavedTextsList');
+        if (aiTextsSelect) {
+          aiTextsSelect.addEventListener('change', function() {
+            updateAiTextSelectionUI(aiTextsSelect);
+          });
+        }
+        if (aiTextsList) {
+          aiTextsList.addEventListener('click', function(event) {
+            const target = event.target;
+            if (!target) {
+              return;
+            }
+            const item = typeof target.closest === 'function' ? target.closest('.ai-multi-item') : null;
+            if (!item || !item.dataset || !item.dataset.value || aiTextsList.classList.contains('disabled')) {
+              return;
+            }
+            toggleAiTextValue(item.dataset.value);
+          });
+          aiTextsList.addEventListener('keydown', function(event) {
+            if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') {
+              return;
+            }
+            const target = event.target;
+            if (!target) {
+              return;
+            }
+            const item = typeof target.closest === 'function' ? target.closest('.ai-multi-item') : null;
+            if (!item || !item.dataset || !item.dataset.value || aiTextsList.classList.contains('disabled')) {
+              return;
+            }
+            event.preventDefault();
+            toggleAiTextValue(item.dataset.value);
           });
         }
         const aiActionSelect = document.getElementById('aiActionSelect');
@@ -6105,6 +6396,8 @@ function collectAskCustomization() {
         restoreSavedTablesCache();
         applySavedTablesFromCache(['editSavedTables', 'aiSavedTables']);
         refreshSavedTables(['editSavedTables', 'aiSavedTables']);
+        renderAiSavedTextsList(savedTextsCache, { disabled: false, selectedValues: [] });
+        refreshSavedTexts({ silent: true });
         setActiveTab('aiTab', { force: true });
       });
     
