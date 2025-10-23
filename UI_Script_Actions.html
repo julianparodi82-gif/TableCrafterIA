@@ -63,6 +63,57 @@ function filterSavedActionsForTheme(actions, theme) {
   });
 }
 
+function inferFavoriteTypeFromId(id) {
+  if (!id) {
+    return '';
+  }
+  const text = String(id).trim();
+  if (!text) {
+    return '';
+  }
+  const delimiterIndex = text.indexOf(':');
+  const prefix = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
+  const normalizedPrefix = prefix.toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    normalizedPrefix === 'reportfavorite' ||
+    normalizedPrefix === 'reporte' ||
+    normalizedPrefix === 'favorite' ||
+    normalizedPrefix === 'favorito' ||
+    normalizedPrefix === 'report'
+  ) {
+    return 'reportFavorite';
+  }
+  if (
+    normalizedPrefix === 'wordfavorite' ||
+    normalizedPrefix === 'word' ||
+    normalizedPrefix === 'texto' ||
+    normalizedPrefix === 'textfavorite' ||
+    normalizedPrefix === 'textofavorito' ||
+    normalizedPrefix === 'favoritotexto'
+  ) {
+    return 'wordFavorite';
+  }
+  if (
+    normalizedPrefix === 'tablefavorite' ||
+    normalizedPrefix === 'favoritotabla' ||
+    normalizedPrefix === 'tablafavorita'
+  ) {
+    return 'tableFavorite';
+  }
+  if (
+    normalizedPrefix === 'tableeditfavorite' ||
+    normalizedPrefix === 'tableedit' ||
+    normalizedPrefix === 'favoritoeditar' ||
+    normalizedPrefix === 'tablaeditarfavorita'
+  ) {
+    return 'tableEditFavorite';
+  }
+  if (normalizedPrefix === 'table') {
+    return 'table';
+  }
+  return '';
+}
+
 function getCurrentSavedActionId() {
   return currentSavedActionId;
 }
@@ -341,7 +392,7 @@ function normalizeFavoriteActionEntry(action) {
   }
   const rawType = action.type === null || action.type === undefined ? '' : String(action.type);
   const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
-  let type = 'reportFavorite';
+  let type = null;
   if (normalizedType === 'table') {
     type = 'table';
   } else if (normalizedType === 'wordfavorite') {
@@ -350,6 +401,10 @@ function normalizeFavoriteActionEntry(action) {
     type = 'tableFavorite';
   } else if (normalizedType === 'tableeditfavorite') {
     type = 'tableEditFavorite';
+  }
+  if (!type) {
+    const inferredType = inferFavoriteTypeFromId(id);
+    type = inferredType || 'reportFavorite';
   }
   const normalized = {
     id: id,
@@ -485,6 +540,15 @@ function filterLegacyFavoriteEntries(list) {
       normalizedType === 'textfavorite' ||
       normalizedType === 'favoritotexto' ||
       normalizedType === 'textofavorito'
+    ) {
+      return true;
+    }
+    const inferredType = inferFavoriteTypeFromId(entry.id);
+    if (
+      inferredType === 'reportFavorite' ||
+      inferredType === 'wordFavorite' ||
+      inferredType === 'tableFavorite' ||
+      inferredType === 'tableEditFavorite'
     ) {
       return true;
     }

@@ -428,6 +428,54 @@ function normalizeMetaRecordType(value) {
   return 'table';
 }
 
+function inferMetaRecordTypeFromId(value) {
+  var id = normalizeMetaId(value);
+  if (!id) {
+    return '';
+  }
+  var delimiterIndex = id.indexOf(':');
+  var prefix = delimiterIndex === -1 ? id : id.substring(0, delimiterIndex);
+  var normalizedPrefix = prefix.toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    normalizedPrefix === 'reportfavorite' ||
+    normalizedPrefix === 'reporte' ||
+    normalizedPrefix === 'favorite' ||
+    normalizedPrefix === 'favorito' ||
+    normalizedPrefix === 'report'
+  ) {
+    return 'reportFavorite';
+  }
+  if (
+    normalizedPrefix === 'wordfavorite' ||
+    normalizedPrefix === 'word' ||
+    normalizedPrefix === 'texto' ||
+    normalizedPrefix === 'textfavorite' ||
+    normalizedPrefix === 'textofavorito' ||
+    normalizedPrefix === 'favoritotexto'
+  ) {
+    return 'wordFavorite';
+  }
+  if (
+    normalizedPrefix === 'tablefavorite' ||
+    normalizedPrefix === 'favoritotabla' ||
+    normalizedPrefix === 'tablafavorita'
+  ) {
+    return 'tableFavorite';
+  }
+  if (
+    normalizedPrefix === 'tableeditfavorite' ||
+    normalizedPrefix === 'tableedit' ||
+    normalizedPrefix === 'favoritoeditar' ||
+    normalizedPrefix === 'tablaeditarfavorita'
+  ) {
+    return 'tableEditFavorite';
+  }
+  if (normalizedPrefix === 'table') {
+    return 'table';
+  }
+  return '';
+}
+
 function resolveMetaRecordType(row) {
   if (!row) {
     return 'table';
@@ -435,6 +483,10 @@ function resolveMetaRecordType(row) {
   var normalized = normalizeMetaRecordType(row[META_INDEX.recordType]);
   if (normalized !== 'table') {
     return normalized;
+  }
+  var inferredFromId = inferMetaRecordTypeFromId(row[META_INDEX.id]);
+  if (inferredFromId) {
+    return inferredFromId;
   }
   var configCell = row.length > META_INDEX.reportConfig ? row[META_INDEX.reportConfig] : '';
   var configText = configCell === null || configCell === undefined ? '' : String(configCell).trim();
@@ -499,6 +551,9 @@ function resolveMetaRecordType(row) {
     hasReportSignals = true;
   }
   if (!hasReportSignals && parsedConfig.kind === 'wordFavorite') {
+    return 'wordFavorite';
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'word') {
     return 'wordFavorite';
   }
   if (!hasReportSignals && parsedConfig.kind === 'tableFavorite') {
