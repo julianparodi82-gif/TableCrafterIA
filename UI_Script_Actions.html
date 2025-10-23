@@ -39,7 +39,11 @@ function shouldDisplayActionForTheme(action, theme) {
   if (theme === 'word') {
     const rawType = action.type === null || action.type === undefined ? '' : String(action.type);
     const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
-    if (normalizedType === 'table' || normalizedType === 'tablefavorite') {
+    if (
+      normalizedType === 'table' ||
+      normalizedType === 'tablefavorite' ||
+      normalizedType === 'tableeditfavorite'
+    ) {
       return false;
     }
   }
@@ -335,14 +339,17 @@ function normalizeFavoriteActionEntry(action) {
   if (!id) {
     return null;
   }
-  const rawType = action.type === null || action.type === undefined ? '' : String(action.type).toLowerCase();
+  const rawType = action.type === null || action.type === undefined ? '' : String(action.type);
+  const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
   let type = 'reportFavorite';
-  if (rawType === 'table') {
+  if (normalizedType === 'table') {
     type = 'table';
-  } else if (rawType === 'wordfavorite' || rawType === 'word_favorite' || rawType === 'word-favorite') {
+  } else if (normalizedType === 'wordfavorite') {
     type = 'wordFavorite';
-  } else if (rawType === 'tablefavorite' || rawType === 'table_favorite' || rawType === 'table-favorite') {
+  } else if (normalizedType === 'tablefavorite') {
     type = 'tableFavorite';
+  } else if (normalizedType === 'tableeditfavorite') {
+    type = 'tableEditFavorite';
   }
   const normalized = {
     id: id,
@@ -392,7 +399,7 @@ function normalizeFavoriteActionEntry(action) {
     } else {
       normalized.config = null;
     }
-  } else if (type === 'tableFavorite') {
+  } else if (type === 'tableFavorite' || type === 'tableEditFavorite') {
     if (action.config && typeof action.config === 'object') {
       try {
         normalized.config = JSON.parse(JSON.stringify(action.config));
@@ -489,6 +496,41 @@ function filterLegacyFavoriteEntries(list) {
   });
 }
 
+async function supplementWordFavorites(list) {
+  const normalizedList = Array.isArray(list) ? list.slice() : [];
+  const hasWordFavorites = normalizedList.some(function(entry) {
+    return entry && entry.type === 'wordFavorite';
+  });
+  if (hasWordFavorites) {
+    return normalizedList;
+  }
+  let wordResults;
+  try {
+    wordResults = await callServerFunction('listWordFavorites');
+  } catch (err) {
+    console.log('No se pudieron obtener los textos favoritos adicionales.', err);
+    return normalizedList;
+  }
+  const normalizedWordFavorites = normalizeFavoriteActionList(wordResults);
+  if (!normalizedWordFavorites.length) {
+    return normalizedList;
+  }
+  const seenIds = Object.create(null);
+  normalizedList.forEach(function(entry) {
+    if (entry && entry.id) {
+      seenIds[entry.id] = true;
+    }
+  });
+  normalizedWordFavorites.forEach(function(entry) {
+    if (!entry || !entry.id || seenIds[entry.id]) {
+      return;
+    }
+    normalizedList.push(entry);
+    seenIds[entry.id] = true;
+  });
+  return normalizedList;
+}
+
 async function fetchFavoriteActionList(options) {
   const opts = options || {};
   let primaryResult;
@@ -498,10 +540,10 @@ async function fetchFavoriteActionList(options) {
       primaryResult = await callServerFunction('listFavoriteActions');
       const normalizedPrimary = normalizeFavoriteActionList(primaryResult);
       if (normalizedPrimary.length > 0 || opts.skipLegacyFallback) {
-        return normalizedPrimary;
+        return supplementWordFavorites(normalizedPrimary);
       }
       if (opts.allowLegacyFallback === false) {
-        return normalizedPrimary;
+        return supplementWordFavorites(normalizedPrimary);
       }
     } catch (err) {
       primaryError = err;
@@ -512,27 +554,27 @@ async function fetchFavoriteActionList(options) {
   }
   if (opts.allowLegacyFallback === false) {
     if (Array.isArray(primaryResult)) {
-      return normalizeFavoriteActionList(primaryResult);
+      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
     }
     if (primaryError) {
       throw primaryError;
     }
-    return [];
+    return supplementWordFavorites([]);
   }
   try {
     const legacyResult = await callServerFunction('listSavedActions', { scope: 'all' });
     const favoritesOnly = filterLegacyFavoriteEntries(legacyResult);
     const normalizedLegacy = normalizeFavoriteActionList(favoritesOnly);
     if (normalizedLegacy.length > 0) {
-      return normalizedLegacy;
+      return supplementWordFavorites(normalizedLegacy);
     }
     if (Array.isArray(primaryResult)) {
-      return normalizeFavoriteActionList(primaryResult);
+      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
     }
-    return normalizedLegacy;
+    return supplementWordFavorites(normalizedLegacy);
   } catch (legacyError) {
     if (Array.isArray(primaryResult)) {
-      return normalizeFavoriteActionList(primaryResult);
+      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
     }
     if (primaryError) {
       throw legacyError;
@@ -1028,7 +1070,10 @@ function buildActionDetailCard(action, options) {
       summary.textContent = summaryText;
       card.appendChild(summary);
     }
-  } else if (action && action.type === 'tableFavorite') {
+  } else if (
+    action &&
+    (action.type === 'tableFavorite' || action.type === 'tableEditFavorite')
+  ) {
     const summaryText = buildTableFavoriteSummary(action);
     if (summaryText) {
       const summary = document.createElement('p');
@@ -1047,7 +1092,10 @@ function buildActionDetailCard(action, options) {
       editBtn.textContent = 'Editar tabla';
     } else if (action && action.type === 'wordFavorite') {
       editBtn.textContent = 'Editar texto';
-    } else if (action && action.type === 'tableFavorite') {
+    } else if (
+      action &&
+      (action.type === 'tableFavorite' || action.type === 'tableEditFavorite')
+    ) {
       editBtn.textContent = 'Aplicar favorito';
     } else {
       editBtn.textContent = 'Editar en panel IA';
@@ -1094,7 +1142,7 @@ function buildSavedActionTooltip(action) {
     if (summary) {
       parts.push(summary);
     }
-  } else if (action.type === 'tableFavorite') {
+  } else if (action.type === 'tableFavorite' || action.type === 'tableEditFavorite') {
     const summary = buildTableFavoriteSummary(action);
     if (summary) {
       parts.push(summary);
