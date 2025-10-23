@@ -3201,8 +3201,13 @@
       .word-format-options.is-collapsed .word-format-preview,
       .word-format-options.is-collapsed .word-section-content,
       #wordContextCard.is-collapsed .word-section-content,
+      #wordPersonalizationCard.is-collapsed .word-section-content,
+      #wordStructureCard.is-collapsed .word-section-content,
       #wordWebSourcesCard.is-collapsed .word-section-content {
         display: none;
+      }
+      .word-context-textarea--tall {
+        min-height: 112px;
       }
       .word-format-preview {
         min-width: 96px;
@@ -4205,7 +4210,8 @@
                     </label>
                     <textarea
                       id="wordIntroFocus"
-                      rows="2"
+                      class="word-context-textarea--tall"
+                      rows="3"
                       placeholder="Ej.: Presentar logros principales del trimestre y resaltar un dato clave."
                     ></textarea>
                     <p class="word-context-description">
@@ -4275,7 +4281,8 @@
                       </label>
                       <textarea
                         id="wordConclusionFocus"
-                        rows="2"
+                        class="word-context-textarea--tall"
+                        rows="3"
                         placeholder="Ej.: Destacar próximos pasos y agradecer la colaboración del equipo."
                       ></textarea>
                       <p class="word-context-description">
@@ -4635,11 +4642,18 @@
           </div>
           <div id="wordBodyOptions" class="word-text-options" style="display:none;">
             <div class="word-text-toggle-group">
-              <label
-                for="wordManualBodyFormatToggle"
-                class="checkbox-subtle tc-tooltip-target"
-                data-tooltip="Activa los controles para definir el aspecto del cuerpo del texto."
-              >
+              <div class="word-context-section-head">
+                <span
+                  class="word-context-section-title tc-tooltip-target"
+                  data-tooltip="Activa los controles para definir el aspecto del cuerpo del texto."
+                >
+                  Formato del cuerpo
+                </span>
+                <p class="word-context-description">
+                  Activa los controles para definir fuente, alineación y estilo del cuerpo generado.
+                </p>
+              </div>
+              <label for="wordManualBodyFormatToggle" class="checkbox-subtle">
                 <input type="checkbox" id="wordManualBodyFormatToggle" />
                 Editar formato del cuerpo manualmente
               </label>
