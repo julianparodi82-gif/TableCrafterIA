@@ -32,56 +32,14 @@ function getActiveThemeForActions() {
   return 'table';
 }
 
-function hasReportFavoriteTableSignals(action) {
-  if (!action || action.type !== 'reportFavorite') {
-    return false;
-  }
-  const tableList = Array.isArray(action.tables) ? action.tables : [];
-  const hasTableReference = tableList.some(function(entry) {
-    if (entry === null || entry === undefined) {
-      return false;
-    }
-    return String(entry).trim().length > 0;
-  });
-  if (hasTableReference) {
-    return true;
-  }
-  const detailList = Array.isArray(action.featureDetails) ? action.featureDetails : [];
-  return detailList.some(function(detail) {
-    if (!detail) {
-      return false;
-    }
-    const toggles = Array.isArray(detail.instanceTablesEnabled) ? detail.instanceTablesEnabled : [];
-    if (toggles.some(Boolean)) {
-      return true;
-    }
-    const selections = Array.isArray(detail.instanceTables) ? detail.instanceTables : [];
-    return selections.some(function(selection) {
-      if (Array.isArray(selection)) {
-        return selection.some(function(value) {
-          if (value === null || value === undefined) {
-            return false;
-          }
-          return String(value).trim().length > 0;
-        });
-      }
-      if (selection === null || selection === undefined) {
-        return false;
-      }
-      return String(selection).trim().length > 0;
-    });
-  });
-}
-
 function shouldDisplayActionForTheme(action, theme) {
   if (!action) {
     return false;
   }
   if (theme === 'word') {
-    if (action.type === 'table' || action.type === 'tableFavorite') {
-      return false;
-    }
-    if (action.type === 'reportFavorite' && hasReportFavoriteTableSignals(action)) {
+    const rawType = action.type === null || action.type === undefined ? '' : String(action.type);
+    const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
+    if (normalizedType === 'table' || normalizedType === 'tablefavorite') {
       return false;
     }
   }
