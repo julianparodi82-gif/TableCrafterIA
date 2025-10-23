@@ -250,7 +250,6 @@ function updateTableFavoriteButtonState() {
         if (!btn) {
           return;
         }
-        const label = btn.querySelector('.ai-favorite-label');
         const editing = !!tableFavoriteEditingId;
         btn.dataset.tableFavoriteMode = editing ? 'edit' : 'create';
         if (tableFavoriteSaving) {
@@ -260,8 +259,11 @@ function updateTableFavoriteButtonState() {
           btn.disabled = false;
           btn.removeAttribute('aria-disabled');
         }
-        if (label) {
-          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        const idleText = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        if (tableFavoriteSaving) {
+          beginFavoriteButtonLoading(btn, editing ? 'Actualizando' : 'Agregando');
+        } else {
+          endFavoriteButtonLoading(btn, idleText);
         }
       }
 
@@ -309,7 +311,9 @@ function collectTableFavoriteConfig(validation) {
             border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
             bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
           },
-          updateFormulaReferences: true
+          updateFormulaReferences: true,
+          origin: 'tableCreate',
+          kind: 'tableFavorite'
         };
       }
 
@@ -323,15 +327,29 @@ function refreshTableFavorites(options) {
         tableFavoritesLoadingPromise = callServerFunction('listTableFavorites')
           .then(function(result) {
             const favorites = Array.isArray(result) ? result : [];
-            tableFavoritesCache = favorites.slice();
+            const filtered = favorites.filter(function(entry) {
+              if (!entry) {
+                return false;
+              }
+              const recordType = entry.recordType || entry.favoriteKind || '';
+              const origin = entry.origin || '';
+              if (recordType === 'tableEditFavorite') {
+                return false;
+              }
+              if (typeof origin === 'string' && origin.toLowerCase().indexOf('edit') !== -1) {
+                return false;
+              }
+              return true;
+            });
+            tableFavoritesCache = filtered.slice();
             if (opts.broadcast !== false) {
               document.dispatchEvent(
                 new CustomEvent('tc:tableFavoritesUpdated', {
-                  detail: { list: favorites.slice() }
+                  detail: { list: filtered.slice() }
                 })
               );
             }
-            return favorites.slice();
+            return filtered.slice();
           })
           .catch(function(err) {
             if (!opts.silent) {
@@ -383,7 +401,9 @@ async function handleTableFavoriteSave() {
           id: tableFavoriteEditingId || '',
           name: name,
           description: validation.values.description || getTableFavoriteDescriptionFromConfig(config),
-          config: config
+          config: config,
+          kind: 'tableFavorite',
+          origin: 'tableCreate'
         };
         tableFavoriteSaving = true;
         updateTableFavoriteButtonState();

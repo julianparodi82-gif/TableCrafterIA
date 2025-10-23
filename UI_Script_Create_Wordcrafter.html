@@ -940,7 +940,6 @@ function updateWordFavoriteButtonState() {
         if (!btn) {
           return;
         }
-        const label = btn.querySelector('.ai-favorite-label');
         const editing = !!wordFavoriteEditingId;
         btn.dataset.wordFavoriteMode = editing ? 'edit' : 'create';
         if (wordFavoriteSaving) {
@@ -950,8 +949,11 @@ function updateWordFavoriteButtonState() {
           btn.disabled = false;
           btn.removeAttribute('aria-disabled');
         }
-        if (label) {
-          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        const idleText = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        if (wordFavoriteSaving) {
+          beginFavoriteButtonLoading(btn, editing ? 'Actualizando' : 'Agregando');
+        } else {
+          endFavoriteButtonLoading(btn, idleText);
         }
       }
 

@@ -42,6 +42,73 @@ const headerUiState = {
   editHeadersList: {}
 };
 
+const favoriteButtonLoaders = new WeakMap();
+
+function getFavoriteButtonLabelTarget(button) {
+        if (!button || typeof button.querySelector !== 'function') {
+          return null;
+        }
+        const label = button.querySelector('.ai-favorite-label');
+        return label || button;
+      }
+
+function beginFavoriteButtonLoading(button, baseWord) {
+        if (!button) {
+          return;
+        }
+        const target = getFavoriteButtonLabelTarget(button);
+        if (!target) {
+          return;
+        }
+        const normalizedWord = baseWord && typeof baseWord === 'string' ? baseWord.trim() : '';
+        const loadingWord = normalizedWord || 'Agregando';
+        const existing = favoriteButtonLoaders.get(button);
+        if (existing && existing.baseWord === loadingWord && existing.intervalId) {
+          return;
+        }
+        if (existing && existing.intervalId) {
+          window.clearInterval(existing.intervalId);
+        }
+        const idleText = target.textContent;
+        const frames = [loadingWord + '.', loadingWord + '..', loadingWord + '...'];
+        let frameIndex = 0;
+        const tick = function() {
+          target.textContent = frames[frameIndex];
+          frameIndex = (frameIndex + 1) % frames.length;
+        };
+        tick();
+        const intervalId = window.setInterval(tick, 320);
+        favoriteButtonLoaders.set(button, {
+          intervalId: intervalId,
+          baseWord: loadingWord,
+          idleText: idleText,
+          target: target
+        });
+        button.dataset.loading = 'true';
+        button.classList.add('is-loading');
+        button.setAttribute('aria-busy', 'true');
+      }
+
+function endFavoriteButtonLoading(button, text) {
+        if (!button) {
+          return;
+        }
+        const state = favoriteButtonLoaders.get(button);
+        const target = state && state.target ? state.target : getFavoriteButtonLabelTarget(button);
+        if (state && state.intervalId) {
+          window.clearInterval(state.intervalId);
+        }
+        favoriteButtonLoaders.delete(button);
+        if (target && text !== undefined) {
+          target.textContent = text;
+        } else if (target && state && state.idleText !== undefined && text === undefined) {
+          target.textContent = state.idleText;
+        }
+        button.classList.remove('is-loading');
+        button.removeAttribute('data-loading');
+        button.removeAttribute('aria-busy');
+      }
+
 function generateHeaderKey() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
           return 'hdr_' + crypto.randomUUID();

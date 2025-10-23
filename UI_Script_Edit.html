@@ -677,7 +677,9 @@ function collectEditFavoriteConfig(validation) {
             border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
             bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
           },
-          updateFormulaReferences: updateFormulaReferences
+          updateFormulaReferences: updateFormulaReferences,
+          origin: 'tableEdit',
+          kind: 'tableEditFavorite'
         };
       }
 
@@ -697,13 +699,10 @@ function updateEditFavoriteButtonState() {
           btn.disabled = false;
           btn.removeAttribute('aria-disabled');
         }
-        btn.dataset.loading = editFavoriteSaving ? 'true' : 'false';
-        const label = btn.querySelector('.ai-favorite-label');
-        const text = editFavoriteSaving ? 'Guardando…' : 'Agregar a favoritos';
-        if (label) {
-          label.textContent = text;
+        if (editFavoriteSaving) {
+          beginFavoriteButtonLoading(btn, 'Agregando');
         } else {
-          btn.textContent = text;
+          endFavoriteButtonLoading(btn, 'Agregar a favoritos');
         }
       }
 
@@ -761,7 +760,9 @@ async function handleEditSaveFavorite() {
           id: '',
           name: config.name || validation.values.name,
           description: validation.values.description || config.description || '',
-          config: config
+          config: config,
+          kind: 'tableEditFavorite',
+          origin: 'tableEdit'
         };
         editFavoriteSaving = true;
         updateEditFavoriteButtonState();
