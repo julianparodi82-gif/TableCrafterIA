@@ -217,11 +217,28 @@
       }, {});
       const REPORT_FEATURE_MAX_QUANTITY = 3;
       const REPORT_FEATURE_WEB_SOURCE_LIMIT = 3;
+      const AI_ACTION_OPTIONS = Object.freeze({
+        table: [
+          { value: '', label: 'Seleccionar' },
+          { value: 'report', label: 'Reporte' },
+          { value: 'ask', label: 'Pregunta IA' }
+        ],
+        word: [
+          { value: '', label: 'Seleccionar' },
+          { value: 'word-length', label: 'Cambiar longitud del texto' },
+          { value: 'word-rewrite', label: 'Reformular texto' },
+          { value: 'word-tone', label: 'Ajustar tono' },
+          { value: 'word-summary', label: 'Resumir contenido' }
+        ]
+      });
+      const WORD_ACTION_DEFAULT = 'word-length';
 
       let savedReportEmails = [];
       let savedReportPhones = [];
       let selectedReportFormat = '';
       let reportSectionInitialized = false;
+      let currentAiTheme = 'table';
+      let pendingAiActionTheme = null;
       let selectedReportChannels = [];
       let selectedReportFeatures = [];
       let reportFeatureState = {};
@@ -238,6 +255,9 @@
       let reportDeliveryOutsideListenerAttached = false;
       let reportFileDateEnabled = false;
       let favoriteModalEscapeListenerAttached = false;
+      let savedTextsCache = [];
+      let savedTextsInitialized = false;
+      let savedTextsLoadingPromise = null;
 
 
       
@@ -289,6 +309,32 @@ function createAiMultiItem(entry, selected, options) {
         item.appendChild(check);
 
         return item;
+      }
+
+function normalizeAiSavedTextList(entries) {
+        if (!Array.isArray(entries)) {
+          return [];
+        }
+        const seen = Object.create(null);
+        return entries
+          .map(function(entry) {
+            if (!entry || !entry.id) {
+              return null;
+            }
+            const id = String(entry.id);
+            if (!id || seen[id]) {
+              return null;
+            }
+            seen[id] = true;
+            return {
+              id: id,
+              name: entry.name ? String(entry.name) : id,
+              description: entry.description ? String(entry.description) : ''
+            };
+          })
+          .filter(function(item) {
+            return !!item;
+          });
       }
 
 function renderAiSavedTablesList(entries, config) {
@@ -379,6 +425,75 @@ function renderAiSavedTablesList(entries, config) {
         updateAiListSelectionUI(selectEl);
       }
 
+function renderAiSavedTextsList(entries, config) {
+        const listEl = document.getElementById('aiSavedTextsList');
+        const selectEl = document.getElementById('aiSavedTexts');
+        if (!listEl || !selectEl) {
+          return;
+        }
+        const data = Array.isArray(entries) ? entries : [];
+        const options = config || {};
+        const disabled = !!options.disabled;
+        const selectedValues = Array.isArray(options.selectedValues) ? options.selectedValues : [];
+        const selectedSet = Object.create(null);
+        selectedValues.forEach(function(value) {
+          selectedSet[String(value)] = true;
+        });
+
+        listEl.innerHTML = '';
+        listEl.setAttribute('role', 'listbox');
+        listEl.setAttribute('aria-multiselectable', 'true');
+        listEl.classList.toggle('disabled', disabled);
+        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+
+        selectEl.innerHTML = '';
+        selectEl.disabled = disabled;
+
+        if (disabled) {
+          const empty = document.createElement('div');
+          empty.className = 'ai-multi-empty';
+          empty.textContent = 'No hay textos guardados';
+          listEl.appendChild(empty);
+          return;
+        }
+
+        if (data.length === 0) {
+          selectEl.disabled = true;
+          const empty = document.createElement('div');
+          empty.className = 'ai-multi-empty';
+          empty.textContent = 'No hay textos guardados';
+          listEl.appendChild(empty);
+          return;
+        }
+
+        selectEl.disabled = false;
+        data.forEach(function(entry) {
+          if (!entry || !entry.id) {
+            return;
+          }
+          const option = document.createElement('option');
+          option.value = String(entry.id);
+          option.textContent = entry.name || entry.id;
+          option.selected = !!selectedSet[option.value];
+          selectEl.appendChild(option);
+        });
+
+        data.forEach(function(entry) {
+          if (!entry || !entry.id) {
+            return;
+          }
+          const item = createAiMultiItem(entry, !!selectedSet[entry.id]);
+          if (item) {
+            if (entry.description) {
+              item.title = entry.description;
+            }
+            listEl.appendChild(item);
+          }
+        });
+
+        updateAiTextSelectionUI(selectEl);
+      }
+
 function updateAiListSelectionUI(select) {
         const listEl = document.getElementById('aiSavedTablesList');
         if (!listEl || !select) {
@@ -409,6 +524,37 @@ function updateAiListSelectionUI(select) {
           }
         });
         refreshAllReportFeatureOptions();
+      }
+
+function updateAiTextSelectionUI(select) {
+        const listEl = document.getElementById('aiSavedTextsList');
+        if (!listEl || !select) {
+          return;
+        }
+        const selectedSet = Object.create(null);
+        if (select.options) {
+          Array.prototype.forEach.call(select.options, function(option) {
+            if (option && option.value && option.selected && !option.disabled) {
+              selectedSet[option.value] = true;
+            }
+          });
+        }
+        const items = listEl.querySelectorAll('.ai-multi-item');
+        Array.prototype.forEach.call(items, function(item) {
+          const value = item && item.dataset ? item.dataset.value : '';
+          if (!value) {
+            item.classList.remove('selected');
+            item.setAttribute('aria-selected', 'false');
+            return;
+          }
+          if (selectedSet[value]) {
+            item.classList.add('selected');
+            item.setAttribute('aria-selected', 'true');
+          } else {
+            item.classList.remove('selected');
+            item.setAttribute('aria-selected', 'false');
+          }
+        });
       }
 
 function toggleAiListValue(value) {
@@ -466,6 +612,34 @@ function toggleAiListValue(value) {
         }
         selectEl.dispatchEvent(new Event('change', { bubbles: true }));
         updateAiListSelectionUI(selectEl);
+      }
+
+function toggleAiTextValue(value) {
+        const selectEl = document.getElementById('aiSavedTexts');
+        const listEl = document.getElementById('aiSavedTextsList');
+        if (!selectEl || !listEl || selectEl.disabled) {
+          return;
+        }
+        const options = selectEl.options ? Array.prototype.slice.call(selectEl.options) : [];
+        if (!options.length) {
+          return;
+        }
+        const targetValue = String(value || '');
+        if (!targetValue) {
+          return;
+        }
+        let targetOption = null;
+        options.forEach(function(option) {
+          if (option && option.value === targetValue) {
+            targetOption = option;
+          }
+        });
+        if (!targetOption) {
+          return;
+        }
+        targetOption.selected = !targetOption.selected;
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        updateAiTextSelectionUI(selectEl);
       }
 
 function normalizeReportEmailEntry(entry) {
@@ -4310,6 +4484,78 @@ function setAiTablesSelection(values) {
         refreshAllReportFeatureOptions();
       }
 
+function setAiTextsSelection(values) {
+        const select = document.getElementById('aiSavedTexts');
+        if (!select) {
+          return;
+        }
+        const normalizedValues = Array.isArray(values)
+          ? values.map(function(value) {
+              return String(value);
+            })
+          : [];
+        const selectedMap = Object.create(null);
+        normalizedValues.forEach(function(value) {
+          selectedMap[value] = true;
+        });
+        Array.prototype.forEach.call(select.options, function(option) {
+          if (!option || !option.value || option.disabled) {
+            option.selected = false;
+            return;
+          }
+          option.selected = !!selectedMap[option.value];
+        });
+        renderAiSavedTextsList(savedTextsCache, {
+          disabled: select.disabled,
+          selectedValues: getSelectedOptionValues(select)
+        });
+      }
+
+function refreshSavedTexts(options) {
+        const opts = options || {};
+        if (savedTextsLoadingPromise) {
+          return savedTextsLoadingPromise;
+        }
+        const select = document.getElementById('aiSavedTexts');
+        const previousSelection = select ? getSelectedOptionValues(select) : [];
+        const fallbackDisabled = typeof opts.disabled === 'boolean' ? opts.disabled : false;
+        savedTextsLoadingPromise = callServerFunction('listWordFavorites')
+          .then(function(result) {
+            const normalized = normalizeAiSavedTextList(result);
+            savedTextsCache = normalized;
+            savedTextsInitialized = true;
+            renderAiSavedTextsList(savedTextsCache, {
+              disabled: fallbackDisabled,
+              selectedValues: previousSelection
+            });
+            return savedTextsCache.slice();
+          })
+          .catch(function(err) {
+            const message = err && err.message ? err.message : err;
+            console.log('No se pudieron obtener los textos guardados para la IA.', err);
+            const existing = Array.isArray(savedTextsCache) ? savedTextsCache.slice() : [];
+            if (!savedTextsInitialized) {
+              renderAiSavedTextsList([], { disabled: false, selectedValues: [] });
+            } else {
+              renderAiSavedTextsList(existing, {
+                disabled: fallbackDisabled,
+                selectedValues: previousSelection
+              });
+            }
+            if (!opts.silent) {
+              showMessageModal('No se pudieron obtener los textos guardados: ' + message, {
+                title: 'No se pudo cargar',
+                variant: 'error'
+              });
+            }
+            throw err;
+          })
+          .finally(function() {
+            savedTextsLoadingPromise = null;
+          });
+        return savedTextsLoadingPromise;
+      }
+
 function setActiveReportFavorite(id, name) {
         activeReportFavoriteId = id ? String(id) : '';
         activeReportFavoriteName = name ? String(name) : '';
@@ -4361,6 +4607,7 @@ async function loadReportFavoriteIntoPanel(action, options) {
         if (!opts.skipTabChange) {
           await attemptTabChange('aiTab', { force: true });
         }
+        populateAiActionOptions('table', { force: true, preferredValue: 'report' });
         const aiActionSelect = document.getElementById('aiActionSelect');
         if (aiActionSelect) {
           aiActionSelect.value = 'report';
@@ -4436,6 +4683,20 @@ async function loadReportFavoriteIntoPanel(action, options) {
 
 function getSelectedAiTableIds() {
         const select = document.getElementById('aiSavedTables');
+        if (!select || !select.options) {
+          return [];
+        }
+        const values = [];
+        Array.prototype.forEach.call(select.options, function(option) {
+          if (option && option.value && option.selected && !option.disabled) {
+            values.push(option.value);
+          }
+        });
+        return values;
+      }
+
+function getSelectedAiTextIds() {
+        const select = document.getElementById('aiSavedTexts');
         if (!select || !select.options) {
           return [];
         }
@@ -5368,6 +5629,58 @@ function initializeReportSection() {
         reportSectionInitialized = true;
       }
 
+function getNormalizedAiTheme(theme) {
+        return theme === 'word' ? 'word' : 'table';
+      }
+
+function populateAiActionOptions(theme, options) {
+        const select = document.getElementById('aiActionSelect');
+        const normalized = getNormalizedAiTheme(theme);
+        const opts = options || {};
+        if (!select) {
+          pendingAiActionTheme = normalized;
+          return;
+        }
+        const previousTheme = select.dataset.aiActionTheme || '';
+        if (!opts.force && previousTheme === normalized) {
+          if (opts.preferredValue) {
+            select.value = opts.preferredValue;
+          }
+          return;
+        }
+        const config = AI_ACTION_OPTIONS[normalized] || AI_ACTION_OPTIONS.table;
+        select.innerHTML = '';
+        config.forEach(function(option) {
+          const opt = document.createElement('option');
+          opt.value = option.value;
+          opt.textContent = option.label;
+          select.appendChild(opt);
+        });
+        select.dataset.aiActionTheme = normalized;
+        let desiredValue = '';
+        const preferred = opts.preferredValue || '';
+        if (preferred && config.some(function(option) { return option.value === preferred; })) {
+          desiredValue = preferred;
+        } else if (opts.reset !== false) {
+          const defaultValue = normalized === 'word' ? WORD_ACTION_DEFAULT : 'report';
+          if (config.some(function(option) { return option.value === defaultValue; })) {
+            desiredValue = defaultValue;
+          }
+        }
+        if (desiredValue) {
+          select.value = desiredValue;
+        } else if (config.length > 0) {
+          select.value = config[0].value;
+        }
+        pendingAiActionTheme = null;
+      }
+
+function notifyAiThemeChanged(theme) {
+        currentAiTheme = getNormalizedAiTheme(theme);
+        populateAiActionOptions(currentAiTheme, { force: true });
+        updateAiActionState();
+      }
+
 function updateAiActionState() {
         const select = document.getElementById('aiActionSelect');
         const askSection = document.getElementById('aiAskSection');
@@ -5375,9 +5688,27 @@ function updateAiActionState() {
         const questionInput = document.getElementById('questionInput');
         const askBtn = document.getElementById('askBtn');
         const answerBox = document.getElementById('answerBox');
+        const wordLengthSection = document.getElementById('aiWordLengthSection');
+        const wordRewriteSection = document.getElementById('aiWordRewriteSection');
+        const wordToneSection = document.getElementById('aiWordToneSection');
+        const wordSummarySection = document.getElementById('aiWordSummarySection');
         if (!select || !askSection) {
           return;
         }
+        const sections = {
+          ask: askSection,
+          report: reportSection,
+          'word-length': wordLengthSection,
+          'word-rewrite': wordRewriteSection,
+          'word-tone': wordToneSection,
+          'word-summary': wordSummarySection
+        };
+        Object.keys(sections).forEach(function(key) {
+          const section = sections[key];
+          if (section) {
+            section.style.display = 'none';
+          }
+        });
         const action = select.value;
         if (action === 'ask') {
           askSection.style.display = 'block';
@@ -5422,7 +5753,120 @@ function updateAiActionState() {
           if (answerBox) {
             answerBox.value = '';
           }
+          if (action && sections[action]) {
+            sections[action].style.display = 'block';
+          }
         }
+      }
+
+function updateWordLengthSummary() {
+        const summary = document.getElementById('wordLengthSummary');
+        if (!summary) {
+          return;
+        }
+        const options = document.querySelectorAll('input[name="wordLengthTarget"]');
+        let selected = 'short';
+        options.forEach(function(option) {
+          if (option.checked) {
+            selected = option.value;
+          }
+        });
+        let message = 'La IA ajustará el texto a una extensión equilibrada.';
+        if (selected === 'short') {
+          message = 'La IA acortará el texto y destacará los puntos esenciales.';
+        } else if (selected === 'balanced') {
+          message = 'El contenido se mantendrá completo pero con ritmo más ágil y 300 palabras aproximadas.';
+        } else if (selected === 'detailed') {
+          message = 'La IA ampliará el texto con ejemplos y matices adicionales para superar las 450 palabras.';
+        }
+        summary.textContent = message;
+      }
+
+function updateWordRewriteSummary() {
+        const summary = document.getElementById('wordRewriteSummary');
+        if (!summary) {
+          return;
+        }
+        const goalSelect = document.getElementById('wordRewriteGoal');
+        const customInput = document.getElementById('wordRewriteCustom');
+        const goal = goalSelect ? goalSelect.value : 'clarity';
+        const customText = customInput ? customInput.value.trim() : '';
+        const goalMessages = {
+          clarity: 'La IA reescribirá el texto con oraciones cortas y lenguaje accesible.',
+          persuasive: 'El contenido se reforzará con argumentos convincentes y llamados a la acción.',
+          executive: 'Obtendrás un resumen ejecutivo enfocado en hallazgos y próximos pasos.',
+          custom: customText
+            ? customText
+            : 'Personaliza el enfoque indicando qué aspectos debe priorizar la IA.'
+        };
+        summary.textContent = goalMessages[goal] || goalMessages.clarity;
+      }
+
+function updateWordToneSummary() {
+        const summary = document.getElementById('wordToneSummary');
+        if (!summary) {
+          return;
+        }
+        const select = document.getElementById('wordToneSelect');
+        const wrapper = document.getElementById('wordToneCustomWrapper');
+        const customInput = document.getElementById('wordToneCustom');
+        const highlightToggle = document.getElementById('wordToneHighlight');
+        const value = select ? select.value : 'professional';
+        const showCustom = value === 'custom';
+        if (wrapper) {
+          wrapper.style.display = showCustom ? 'block' : 'none';
+        }
+        if (customInput) {
+          customInput.disabled = !showCustom;
+        }
+        const toneMessages = {
+          professional: 'La IA aplicará un tono profesional y formal respetando el mensaje original.',
+          friendly: 'El texto adoptará una voz cercana, empática y fácil de leer.',
+          inspirational: 'La redacción buscará inspirar y motivar con mensajes positivos.',
+          analytical: 'Se reforzará un tono analítico con foco en datos y conclusiones objetivas.',
+          custom: customInput && customInput.value.trim()
+            ? customInput.value.trim()
+            : 'Describe el tono personalizado para orientar la reformulación.'
+        };
+        let message = toneMessages[value] || toneMessages.professional;
+        if (highlightToggle && highlightToggle.checked) {
+          message += ' Se conservarán frases y citas clave sin modificaciones.';
+        }
+        summary.textContent = message;
+      }
+
+function updateWordSummaryPreview() {
+        const summary = document.getElementById('wordSummaryPreview');
+        if (!summary) {
+          return;
+        }
+        const includeBullets = document.getElementById('wordSummaryIncludeBullets');
+        const includeMetrics = document.getElementById('wordSummaryIncludeMetrics');
+        const includeRecommendations = document.getElementById('wordSummaryIncludeRecommendations');
+        const lengthSelect = document.getElementById('wordSummaryLength');
+        const features = [];
+        if (includeBullets && includeBullets.checked) {
+          features.push('viñetas con ideas clave');
+        }
+        if (includeMetrics && includeMetrics.checked) {
+          features.push('métricas destacadas');
+        }
+        if (includeRecommendations && includeRecommendations.checked) {
+          features.push('recomendaciones accionables');
+        }
+        const lengthValue = lengthSelect ? lengthSelect.value : 'balanced';
+        const lengthMessages = {
+          brief: 'un párrafo breve',
+          balanced: 'dos párrafos equilibrados',
+          detailed: 'un desarrollo detallado en varios párrafos'
+        };
+        const lengthText = lengthMessages[lengthValue] || lengthMessages.balanced;
+        if (features.length === 0) {
+          summary.textContent = 'El resumen se enfocará en ' + lengthText + ' manteniendo las ideas centrales.';
+          return;
+        }
+        summary.textContent =
+          'El resumen incluirá ' + features.join(', ') + ' en ' + lengthText + '.';
       }
 
 function updateAskCustomizationSummary() {
@@ -5532,6 +5976,7 @@ function collectAskCustomization() {
         setEditSavedListCollapsed(true);
         resetEditTabView({ preserveSelection: true, clearEditingId: false });
         editingId = val;
+        updateEditFavoriteButtonState();
         const cachedMeta = getSavedTableFromCache(val);
         if (cachedMeta) {
           populateEditForm(cachedMeta);
@@ -5735,6 +6180,19 @@ function collectAskCustomization() {
         }).askQuestion(payload, question, customization || null);
       });
 
+      document.addEventListener('tc:wordFavoritesUpdated', function(event) {
+        const detail = event && event.detail ? event.detail.list : [];
+        const normalized = normalizeAiSavedTextList(detail);
+        savedTextsCache = normalized;
+        savedTextsInitialized = true;
+        const select = document.getElementById('aiSavedTexts');
+        const selectedValues = select ? getSelectedOptionValues(select) : [];
+        renderAiSavedTextsList(savedTextsCache, {
+          disabled: false,
+          selectedValues: selectedValues
+        });
+      });
+
       document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('beforeunload', handleSidebarBeforeUnload);
         setDefaultStyles();
@@ -5743,6 +6201,11 @@ function collectAskCustomization() {
         if (askSection) {
           setupCollapsibleControls(askSection);
         }
+        const bodyTheme = document.body && document.body.classList.contains('theme-wordcrafter') ? 'word' : 'table';
+        const startupTheme = pendingAiActionTheme || bodyTheme;
+        currentAiTheme = getNormalizedAiTheme(startupTheme);
+        populateAiActionOptions(currentAiTheme, { force: true });
+        pendingAiActionTheme = null;
         const aiSelect = document.getElementById('aiSavedTables');
         const aiList = document.getElementById('aiSavedTablesList');
         if (aiSelect) {
@@ -5778,11 +6241,89 @@ function collectAskCustomization() {
             toggleAiListValue(item.dataset.value);
           });
         }
+        const aiTextsSelect = document.getElementById('aiSavedTexts');
+        const aiTextsList = document.getElementById('aiSavedTextsList');
+        if (aiTextsSelect) {
+          aiTextsSelect.addEventListener('change', function() {
+            updateAiTextSelectionUI(aiTextsSelect);
+          });
+        }
+        if (aiTextsList) {
+          aiTextsList.addEventListener('click', function(event) {
+            const target = event.target;
+            if (!target) {
+              return;
+            }
+            const item = typeof target.closest === 'function' ? target.closest('.ai-multi-item') : null;
+            if (!item || !item.dataset || !item.dataset.value || aiTextsList.classList.contains('disabled')) {
+              return;
+            }
+            toggleAiTextValue(item.dataset.value);
+          });
+          aiTextsList.addEventListener('keydown', function(event) {
+            if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') {
+              return;
+            }
+            const target = event.target;
+            if (!target) {
+              return;
+            }
+            const item = typeof target.closest === 'function' ? target.closest('.ai-multi-item') : null;
+            if (!item || !item.dataset || !item.dataset.value || aiTextsList.classList.contains('disabled')) {
+              return;
+            }
+            event.preventDefault();
+            toggleAiTextValue(item.dataset.value);
+          });
+        }
         const aiActionSelect = document.getElementById('aiActionSelect');
         if (aiActionSelect) {
           aiActionSelect.addEventListener('change', updateAiActionState);
           updateAiActionState();
         }
+        const wordLengthOptions = document.querySelectorAll('input[name="wordLengthTarget"]');
+        wordLengthOptions.forEach(function(option) {
+          option.addEventListener('change', updateWordLengthSummary);
+        });
+        updateWordLengthSummary();
+        const wordRewriteGoal = document.getElementById('wordRewriteGoal');
+        if (wordRewriteGoal) {
+          wordRewriteGoal.addEventListener('change', updateWordRewriteSummary);
+        }
+        const wordRewriteCustom = document.getElementById('wordRewriteCustom');
+        if (wordRewriteCustom) {
+          wordRewriteCustom.addEventListener('input', updateWordRewriteSummary);
+        }
+        updateWordRewriteSummary();
+        const wordToneSelect = document.getElementById('wordToneSelect');
+        if (wordToneSelect) {
+          wordToneSelect.addEventListener('change', updateWordToneSummary);
+        }
+        const wordToneCustom = document.getElementById('wordToneCustom');
+        if (wordToneCustom) {
+          wordToneCustom.addEventListener('input', updateWordToneSummary);
+        }
+        const wordToneHighlight = document.getElementById('wordToneHighlight');
+        if (wordToneHighlight) {
+          wordToneHighlight.addEventListener('change', updateWordToneSummary);
+        }
+        updateWordToneSummary();
+        const wordSummaryLength = document.getElementById('wordSummaryLength');
+        if (wordSummaryLength) {
+          wordSummaryLength.addEventListener('change', updateWordSummaryPreview);
+        }
+        [
+          document.getElementById('wordSummaryIncludeBullets'),
+          document.getElementById('wordSummaryIncludeMetrics'),
+          document.getElementById('wordSummaryIncludeRecommendations')
+        ]
+          .filter(function(input) {
+            return !!input;
+          })
+          .forEach(function(input) {
+            input.addEventListener('change', updateWordSummaryPreview);
+          });
+        updateWordSummaryPreview();
         const askToneSelect = document.getElementById('aiAskTone');
         if (askToneSelect) {
           askToneSelect.addEventListener('change', updateAskToneCustom);
@@ -5856,6 +6397,8 @@ function collectAskCustomization() {
         restoreSavedTablesCache();
         applySavedTablesFromCache(['editSavedTables', 'aiSavedTables']);
         refreshSavedTables(['editSavedTables', 'aiSavedTables']);
+        renderAiSavedTextsList(savedTextsCache, { disabled: false, selectedValues: [] });
+        refreshSavedTexts({ silent: true });
         setActiveTab('aiTab', { force: true });
       });
     
@@ -5870,5 +6413,6 @@ const TableCrafterAiTab = Object.freeze({
       });
 
 window.TableCrafterAiTab = TableCrafterAiTab;
+window.notifyAiThemeChanged = notifyAiThemeChanged;
 
 </script>

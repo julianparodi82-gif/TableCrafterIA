@@ -412,6 +412,16 @@ function normalizeMetaRecordType(value) {
   ) {
     return 'tableFavorite';
   }
+  if (
+    text === 'tableeditfavorite' ||
+    text === 'table_edit_favorite' ||
+    text === 'table-edit-favorite' ||
+    text === 'favoritoeditar' ||
+    text === 'tabla_editar_favorita' ||
+    text === 'tabla-editar-favorita'
+  ) {
+    return 'tableEditFavorite';
+  }
   if (text === 'table') {
     return 'table';
   }
@@ -434,6 +444,26 @@ function resolveMetaRecordType(row) {
   var parsedConfig = parseJsonValue(configText, null);
   if (!parsedConfig || typeof parsedConfig !== 'object') {
     return normalized;
+  }
+  var parsedKind = Object.prototype.hasOwnProperty.call(parsedConfig, 'kind') ? parsedConfig.kind : '';
+  if ((!parsedKind || parsedKind === '') && parsedConfig.config && typeof parsedConfig.config === 'object') {
+    parsedKind = parsedConfig.config.kind;
+  }
+  var normalizedKind = normalizeMetaRecordType(parsedKind);
+  if (normalizedKind && normalizedKind !== 'table') {
+    return normalizedKind;
+  }
+  var parsedOrigin = '';
+  if (Object.prototype.hasOwnProperty.call(parsedConfig, 'origin')) {
+    parsedOrigin = parsedConfig.origin;
+  } else if (parsedConfig.config && typeof parsedConfig.config === 'object' && Object.prototype.hasOwnProperty.call(parsedConfig.config, 'origin')) {
+    parsedOrigin = parsedConfig.config.origin;
+  }
+  if (parsedOrigin !== null && parsedOrigin !== undefined) {
+    var originText = String(parsedOrigin).toLowerCase();
+    if (originText.indexOf('edit') !== -1) {
+      return 'tableEditFavorite';
+    }
   }
   var hasReportSignals = false;
   if (!hasReportSignals && Array.isArray(parsedConfig.features) && parsedConfig.features.length > 0) {
@@ -1586,6 +1616,25 @@ function normalizeTableFavoriteRange(source) {
   };
 }
 
+function normalizeTableFavoriteOrigin(origin, kind) {
+  var originText = origin === null || origin === undefined ? '' : String(origin).trim();
+  var kindValue = kind === null || kind === undefined ? '' : String(kind).trim();
+  var normalizedKind = normalizeMetaRecordType(kindValue);
+  var lowered = originText.toLowerCase();
+  if (!lowered && normalizedKind === 'tableEditFavorite') {
+    lowered = 'edit';
+  } else if (!lowered && normalizedKind === 'tableFavorite') {
+    lowered = 'create';
+  }
+  if (lowered.indexOf('edit') !== -1 || lowered.indexOf('editar') !== -1) {
+    return 'tableEdit';
+  }
+  if (lowered.indexOf('create') !== -1 || lowered.indexOf('crear') !== -1) {
+    return 'tableCreate';
+  }
+  return 'tableCreate';
+}
+
 function normalizeTableFavoriteConfig(source) {
   var config = source && typeof source === 'object' ? source : {};
   var versionValue = parseInt(config.version, 10);
@@ -1593,6 +1642,12 @@ function normalizeTableFavoriteConfig(source) {
     versionValue = 1;
   }
   var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(config.headers));
+  var kindValue = config.kind === null || config.kind === undefined ? '' : String(config.kind).trim();
+  var originValue = normalizeTableFavoriteOrigin(config.origin, kindValue);
+  var normalizedKind = normalizeMetaRecordType(kindValue);
+  if (!normalizedKind || normalizedKind === 'table') {
+    normalizedKind = originValue === 'tableEdit' ? 'tableEditFavorite' : 'tableFavorite';
+  }
   return {
     version: versionValue,
     name: config.name ? String(config.name).trim() : '',
@@ -1600,7 +1655,9 @@ function normalizeTableFavoriteConfig(source) {
     range: normalizeTableFavoriteRange(config.range),
     headers: normalizedHeaders,
     style: normalizeTableFavoriteStyle(config.style),
-    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true)
+    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true),
+    origin: originValue,
+    kind: normalizedKind
   };
 }
 
@@ -1613,7 +1670,39 @@ function buildTableFavoriteResponse(entry) {
   var rawConfig = storedConfig && typeof storedConfig === 'object' && Object.prototype.hasOwnProperty.call(storedConfig, 'config')
     ? storedConfig.config
     : storedConfig;
+  var entryRecordType = entry && entry.type ? normalizeMetaRecordType(entry.type) : '';
+  if (!entryRecordType || entryRecordType === 'table') {
+    entryRecordType = normalizeMetaRecordType(data[META_INDEX.recordType]);
+  }
+  if (!entryRecordType || entryRecordType === 'table') {
+    entryRecordType = 'tableFavorite';
+  }
+  var storedKind = '';
+  var storedOrigin = '';
+  if (storedConfig && typeof storedConfig === 'object') {
+    if (Object.prototype.hasOwnProperty.call(storedConfig, 'kind')) {
+      storedKind = storedConfig.kind;
+    }
+    if (Object.prototype.hasOwnProperty.call(storedConfig, 'origin')) {
+      storedOrigin = storedConfig.origin;
+    }
+    if ((!storedKind || storedKind === '') && storedConfig.config && typeof storedConfig.config === 'object') {
+      if (Object.prototype.hasOwnProperty.call(storedConfig.config, 'kind')) {
+        storedKind = storedConfig.config.kind;
+      }
+      if (Object.prototype.hasOwnProperty.call(storedConfig.config, 'origin')) {
+        storedOrigin = storedConfig.config.origin;
+      }
+    }
+  }
   var config = normalizeTableFavoriteConfig(rawConfig);
+  var normalizedKind = normalizeMetaRecordType(config.kind || storedKind || entryRecordType);
+  if (!normalizedKind || normalizedKind === 'table') {
+    normalizedKind = entryRecordType === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite';
+  }
+  var normalizedOrigin = normalizeTableFavoriteOrigin(config.origin || storedOrigin, normalizedKind);
+  config.kind = normalizedKind;
+  config.origin = normalizedOrigin;
   var id = normalizeMetaId(data[META_INDEX.id]);
   var name = data[META_INDEX.name] || config.name || '';
   var description = data[META_INDEX.description] || config.description || '';
@@ -1623,9 +1712,13 @@ function buildTableFavoriteResponse(entry) {
   if (!config.description) {
     config.description = description;
   }
+  var recordType = normalizedKind || 'tableFavorite';
   return {
     id: id,
     type: 'tableFavorite',
+    recordType: recordType,
+    favoriteKind: recordType,
+    origin: config.origin,
     name: name,
     description: description,
     createdAt: data[META_INDEX.createdAt] || '',
@@ -1644,10 +1737,11 @@ function listTableFavorites() {
   var favorites = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    if (resolveMetaRecordType(row) !== 'tableFavorite') {
+    var recordType = resolveMetaRecordType(row);
+    if (recordType !== 'tableFavorite' && recordType !== 'tableEditFavorite') {
       continue;
     }
-    var favorite = buildTableFavoriteResponse({ data: row });
+    var favorite = buildTableFavoriteResponse({ data: row, type: recordType });
     if (!favorite || favorite.error) {
       continue;
     }
@@ -1665,10 +1759,11 @@ function getTableFavoriteDetails(favoriteId) {
   if (!entry || !entry.data) {
     return { error: 'Tabla favorita no encontrada.' };
   }
-  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+  var recordType = resolveMetaRecordType(entry.data);
+  if (recordType !== 'tableFavorite' && recordType !== 'tableEditFavorite') {
     return { error: 'La entrada indicada no es una tabla favorita.' };
   }
-  return buildTableFavoriteResponse(entry);
+  return buildTableFavoriteResponse({ data: entry.data, type: recordType });
 }
 
 function saveTableFavorite(payload) {
@@ -1681,6 +1776,16 @@ function saveTableFavorite(payload) {
   var config = normalizeTableFavoriteConfig(data.config);
   config.name = name;
   config.description = data.description ? String(data.description).trim() : config.description;
+  var explicitKind = data.kind ? normalizeMetaRecordType(data.kind) : '';
+  if (explicitKind && explicitKind !== 'table') {
+    config.kind = explicitKind;
+  }
+  if (data.origin !== null && data.origin !== undefined && data.origin !== '') {
+    config.origin = normalizeTableFavoriteOrigin(data.origin, config.kind);
+  }
+  var recordTypeValue = config.kind === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite';
+  config.kind = recordTypeValue;
+  config.origin = normalizeTableFavoriteOrigin(config.origin, recordTypeValue);
   var meta = getMetaSheet();
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   var normalizedHeaders = ensureHeaderKeys(config.headers);
@@ -1700,7 +1805,8 @@ function saveTableFavorite(payload) {
   }
   var formulaPreferenceValue = config.updateFormulaReferences ? 'TRUE' : 'FALSE';
   var storedConfig = stringifyJsonValue({
-    kind: 'tableFavorite',
+    kind: recordTypeValue,
+    origin: config.origin,
     version: config.version || 1,
     config: config
   });
@@ -1710,10 +1816,11 @@ function saveTableFavorite(payload) {
     if (!existing || !existing.data) {
       throw new Error('No se encontró la tabla favorita indicada.');
     }
-    if (resolveMetaRecordType(existing.data) !== 'tableFavorite') {
+    var existingType = resolveMetaRecordType(existing.data);
+    if (existingType !== recordTypeValue) {
       throw new Error('El elemento indicado no es una tabla favorita.');
     }
-    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: 'tableFavorite' });
+    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: recordTypeValue });
     if (conflict) {
       throw new Error('Ya existe una tabla favorita con ese nombre.');
     }
@@ -1734,16 +1841,17 @@ function saveTableFavorite(payload) {
           storedStyle,
           storedHeaders,
           formulaPreferenceValue,
-          'tableFavorite',
+          recordTypeValue,
           storedConfig
         ]
       ]);
   } else {
-    var nameConflict = findMetaByName(name, { type: 'tableFavorite' });
+    var nameConflict = findMetaByName(name, { type: recordTypeValue });
     if (nameConflict) {
       throw new Error('Ya existe una tabla favorita con ese nombre.');
     }
-    normalizedId = 'tableFavorite:' + Utilities.getUuid();
+    var idPrefix = recordTypeValue === 'tableEditFavorite' ? 'tableEditFavorite:' : 'tableFavorite:';
+    normalizedId = idPrefix + Utilities.getUuid();
     meta.appendRow([
       normalizedId,
       name,
@@ -1757,12 +1865,15 @@ function saveTableFavorite(payload) {
       storedStyle,
       storedHeaders,
       formulaPreferenceValue,
-      'tableFavorite',
+      recordTypeValue,
       storedConfig
     ]);
   }
   SpreadsheetApp.flush();
-  return { ok: true, id: normalizedId, message: 'Tabla favorita guardada.' };
+  var successMessage = recordTypeValue === 'tableEditFavorite'
+    ? 'Tabla de edición guardada en favoritos.'
+    : 'Tabla favorita guardada.';
+  return { ok: true, id: normalizedId, message: successMessage };
 }
 
 function deleteTableFavorite(favoriteId) {
@@ -1774,7 +1885,8 @@ function deleteTableFavorite(favoriteId) {
   if (!entry || !entry.data) {
     return { ok: true, removed: true };
   }
-  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+  var recordType = resolveMetaRecordType(entry.data);
+  if (recordType !== 'tableFavorite' && recordType !== 'tableEditFavorite') {
     return { error: 'Tabla favorita no encontrada.' };
   }
   getMetaSheet().deleteRow(entry.row);

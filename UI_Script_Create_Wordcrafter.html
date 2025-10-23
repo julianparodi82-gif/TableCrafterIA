@@ -940,7 +940,6 @@ function updateWordFavoriteButtonState() {
         if (!btn) {
           return;
         }
-        const label = btn.querySelector('.ai-favorite-label');
         const editing = !!wordFavoriteEditingId;
         btn.dataset.wordFavoriteMode = editing ? 'edit' : 'create';
         if (wordFavoriteSaving) {
@@ -950,8 +949,11 @@ function updateWordFavoriteButtonState() {
           btn.disabled = false;
           btn.removeAttribute('aria-disabled');
         }
-        if (label) {
-          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        const idleText = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        if (wordFavoriteSaving) {
+          beginFavoriteButtonLoading(btn, editing ? 'Actualizando' : 'Agregando');
+        } else {
+          endFavoriteButtonLoading(btn, idleText);
         }
       }
 
@@ -1615,6 +1617,72 @@ function pruneWordWebSavedSelections() {
           });
       }
 
+function getWordWebSavedSourceLabel(source) {
+        switch (source) {
+          case 'reportFavorite':
+            return 'Reporte favorito';
+          case 'wordFavorite':
+            return 'Texto favorito';
+          default:
+            return '';
+        }
+      }
+
+function createWordWebSavedItem(entry, options) {
+        if (!entry || !entry.id) {
+          return null;
+        }
+        const settings = options || {};
+        const id = String(entry.id);
+        const label = document.createElement('label');
+        label.className =
+          'word-web-saved-item word-web-saved-item--' + (settings.type || 'tables') +
+          (settings.selected ? ' is-selected' : '');
+        label.title = entry.details ? entry.details : entry.name || id;
+        if (entry.accentColor) {
+          label.style.setProperty('--word-saved-accent', entry.accentColor);
+        }
+
+        const info = document.createElement('div');
+        info.className = 'word-web-saved-info';
+        const name = document.createElement('span');
+        name.className = 'word-web-saved-name';
+        name.textContent = entry.name || id;
+        info.appendChild(name);
+        const metaText = settings.meta || '';
+        if (metaText) {
+          const meta = document.createElement('span');
+          meta.className = 'word-web-saved-meta';
+          meta.textContent = metaText;
+          info.appendChild(meta);
+        } else if (entry.details) {
+          const meta = document.createElement('span');
+          meta.className = 'word-web-saved-meta';
+          meta.textContent = entry.details;
+          info.appendChild(meta);
+        }
+        label.appendChild(info);
+
+        const control = document.createElement('span');
+        control.className = 'word-web-saved-control';
+        const checkbox = document.createElement('input');
+        checkbox.className = 'word-web-saved-checkbox';
+        checkbox.type = 'checkbox';
+        checkbox.value = id;
+        checkbox.checked = !!settings.selected;
+        if (settings.type) {
+          checkbox.dataset.wordWebSavedType = settings.type;
+        }
+        control.appendChild(checkbox);
+        const indicator = document.createElement('span');
+        indicator.className = 'word-web-saved-check';
+        indicator.setAttribute('aria-hidden', 'true');
+        control.appendChild(indicator);
+        label.appendChild(control);
+
+        return label;
+      }
+
 function renderWordWebSavedLists() {
         const tablesList = document.getElementById('wordWebSavedTables');
         const textsList = document.getElementById('wordWebSavedTexts');
@@ -1644,19 +1712,14 @@ function renderWordWebSavedLists() {
               const isSelected = Array.isArray(wordWebSavedSelections.tables)
                 ? wordWebSavedSelections.tables.includes(id)
                 : false;
-              const label = document.createElement('label');
-              label.className = 'word-web-saved-item' + (isSelected ? ' is-selected' : '');
-              label.title = entry.details ? entry.details : entry.name;
-              const name = document.createElement('span');
-              name.textContent = entry.name;
-              label.appendChild(name);
-              const checkbox = document.createElement('input');
-              checkbox.type = 'checkbox';
-              checkbox.value = id;
-              checkbox.checked = isSelected;
-              checkbox.dataset.wordWebSavedType = 'tables';
-              label.appendChild(checkbox);
-              tablesList.appendChild(label);
+              const item = createWordWebSavedItem(entry, {
+                selected: isSelected,
+                type: 'tables',
+                meta: entry.details || ''
+              });
+              if (item) {
+                tablesList.appendChild(item);
+              }
             });
           }
         }
@@ -1675,19 +1738,14 @@ function renderWordWebSavedLists() {
               const isSelected = Array.isArray(wordWebSavedSelections.texts)
                 ? wordWebSavedSelections.texts.includes(id)
                 : false;
-              const label = document.createElement('label');
-              label.className = 'word-web-saved-item' + (isSelected ? ' is-selected' : '');
-              label.title = entry.name;
-              const name = document.createElement('span');
-              name.textContent = entry.name;
-              label.appendChild(name);
-              const checkbox = document.createElement('input');
-              checkbox.type = 'checkbox';
-              checkbox.value = id;
-              checkbox.checked = isSelected;
-              checkbox.dataset.wordWebSavedType = 'texts';
-              label.appendChild(checkbox);
-              textsList.appendChild(label);
+              const item = createWordWebSavedItem(entry, {
+                selected: isSelected,
+                type: 'texts',
+                meta: getWordWebSavedSourceLabel(entry.source)
+              });
+              if (item) {
+                textsList.appendChild(item);
+              }
             });
           }
         }
