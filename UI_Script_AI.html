@@ -217,11 +217,28 @@
       }, {});
       const REPORT_FEATURE_MAX_QUANTITY = 3;
       const REPORT_FEATURE_WEB_SOURCE_LIMIT = 3;
+      const AI_ACTION_OPTIONS = Object.freeze({
+        table: [
+          { value: '', label: 'Seleccionar' },
+          { value: 'report', label: 'Reporte' },
+          { value: 'ask', label: 'Pregunta IA' }
+        ],
+        word: [
+          { value: '', label: 'Seleccionar' },
+          { value: 'word-length', label: 'Cambiar longitud del texto' },
+          { value: 'word-rewrite', label: 'Reformular texto' },
+          { value: 'word-tone', label: 'Ajustar tono' },
+          { value: 'word-summary', label: 'Resumir contenido' }
+        ]
+      });
+      const WORD_ACTION_DEFAULT = 'word-length';
 
       let savedReportEmails = [];
       let savedReportPhones = [];
       let selectedReportFormat = '';
       let reportSectionInitialized = false;
+      let currentAiTheme = 'table';
+      let pendingAiActionTheme = null;
       let selectedReportChannels = [];
       let selectedReportFeatures = [];
       let reportFeatureState = {};
@@ -4361,6 +4378,7 @@ async function loadReportFavoriteIntoPanel(action, options) {
         if (!opts.skipTabChange) {
           await attemptTabChange('aiTab', { force: true });
         }
+        populateAiActionOptions('table', { force: true, preferredValue: 'report' });
         const aiActionSelect = document.getElementById('aiActionSelect');
         if (aiActionSelect) {
           aiActionSelect.value = 'report';
@@ -5368,6 +5386,58 @@ function initializeReportSection() {
         reportSectionInitialized = true;
       }
 
+function getNormalizedAiTheme(theme) {
+        return theme === 'word' ? 'word' : 'table';
+      }
+
+function populateAiActionOptions(theme, options) {
+        const select = document.getElementById('aiActionSelect');
+        const normalized = getNormalizedAiTheme(theme);
+        const opts = options || {};
+        if (!select) {
+          pendingAiActionTheme = normalized;
+          return;
+        }
+        const previousTheme = select.dataset.aiActionTheme || '';
+        if (!opts.force && previousTheme === normalized) {
+          if (opts.preferredValue) {
+            select.value = opts.preferredValue;
+          }
+          return;
+        }
+        const config = AI_ACTION_OPTIONS[normalized] || AI_ACTION_OPTIONS.table;
+        select.innerHTML = '';
+        config.forEach(function(option) {
+          const opt = document.createElement('option');
+          opt.value = option.value;
+          opt.textContent = option.label;
+          select.appendChild(opt);
+        });
+        select.dataset.aiActionTheme = normalized;
+        let desiredValue = '';
+        const preferred = opts.preferredValue || '';
+        if (preferred && config.some(function(option) { return option.value === preferred; })) {
+          desiredValue = preferred;
+        } else if (opts.reset !== false) {
+          const defaultValue = normalized === 'word' ? WORD_ACTION_DEFAULT : 'report';
+          if (config.some(function(option) { return option.value === defaultValue; })) {
+            desiredValue = defaultValue;
+          }
+        }
+        if (desiredValue) {
+          select.value = desiredValue;
+        } else if (config.length > 0) {
+          select.value = config[0].value;
+        }
+        pendingAiActionTheme = null;
+      }
+
+function notifyAiThemeChanged(theme) {
+        currentAiTheme = getNormalizedAiTheme(theme);
+        populateAiActionOptions(currentAiTheme, { force: true });
+        updateAiActionState();
+      }
+
 function updateAiActionState() {
         const select = document.getElementById('aiActionSelect');
         const askSection = document.getElementById('aiAskSection');
@@ -5375,9 +5445,27 @@ function updateAiActionState() {
         const questionInput = document.getElementById('questionInput');
         const askBtn = document.getElementById('askBtn');
         const answerBox = document.getElementById('answerBox');
+        const wordLengthSection = document.getElementById('aiWordLengthSection');
+        const wordRewriteSection = document.getElementById('aiWordRewriteSection');
+        const wordToneSection = document.getElementById('aiWordToneSection');
+        const wordSummarySection = document.getElementById('aiWordSummarySection');
         if (!select || !askSection) {
           return;
         }
+        const sections = {
+          ask: askSection,
+          report: reportSection,
+          'word-length': wordLengthSection,
+          'word-rewrite': wordRewriteSection,
+          'word-tone': wordToneSection,
+          'word-summary': wordSummarySection
+        };
+        Object.keys(sections).forEach(function(key) {
+          const section = sections[key];
+          if (section) {
+            section.style.display = 'none';
+          }
+        });
         const action = select.value;
         if (action === 'ask') {
           askSection.style.display = 'block';
@@ -5422,7 +5510,120 @@ function updateAiActionState() {
           if (answerBox) {
             answerBox.value = '';
           }
+          if (action && sections[action]) {
+            sections[action].style.display = 'block';
+          }
         }
+      }
+
+function updateWordLengthSummary() {
+        const summary = document.getElementById('wordLengthSummary');
+        if (!summary) {
+          return;
+        }
+        const options = document.querySelectorAll('input[name="wordLengthTarget"]');
+        let selected = 'short';
+        options.forEach(function(option) {
+          if (option.checked) {
+            selected = option.value;
+          }
+        });
+        let message = 'La IA ajustará el texto a una extensión equilibrada.';
+        if (selected === 'short') {
+          message = 'La IA acortará el texto y destacará los puntos esenciales.';
+        } else if (selected === 'balanced') {
+          message = 'El contenido se mantendrá completo pero con ritmo más ágil y 300 palabras aproximadas.';
+        } else if (selected === 'detailed') {
+          message = 'La IA ampliará el texto con ejemplos y matices adicionales para superar las 450 palabras.';
+        }
+        summary.textContent = message;
+      }
+
+function updateWordRewriteSummary() {
+        const summary = document.getElementById('wordRewriteSummary');
+        if (!summary) {
+          return;
+        }
+        const goalSelect = document.getElementById('wordRewriteGoal');
+        const customInput = document.getElementById('wordRewriteCustom');
+        const goal = goalSelect ? goalSelect.value : 'clarity';
+        const customText = customInput ? customInput.value.trim() : '';
+        const goalMessages = {
+          clarity: 'La IA reescribirá el texto con oraciones cortas y lenguaje accesible.',
+          persuasive: 'El contenido se reforzará con argumentos convincentes y llamados a la acción.',
+          executive: 'Obtendrás un resumen ejecutivo enfocado en hallazgos y próximos pasos.',
+          custom: customText
+            ? customText
+            : 'Personaliza el enfoque indicando qué aspectos debe priorizar la IA.'
+        };
+        summary.textContent = goalMessages[goal] || goalMessages.clarity;
+      }
+
+function updateWordToneSummary() {
+        const summary = document.getElementById('wordToneSummary');
+        if (!summary) {
+          return;
+        }
+        const select = document.getElementById('wordToneSelect');
+        const wrapper = document.getElementById('wordToneCustomWrapper');
+        const customInput = document.getElementById('wordToneCustom');
+        const highlightToggle = document.getElementById('wordToneHighlight');
+        const value = select ? select.value : 'professional';
+        const showCustom = value === 'custom';
+        if (wrapper) {
+          wrapper.style.display = showCustom ? 'block' : 'none';
+        }
+        if (customInput) {
+          customInput.disabled = !showCustom;
+        }
+        const toneMessages = {
+          professional: 'La IA aplicará un tono profesional y formal respetando el mensaje original.',
+          friendly: 'El texto adoptará una voz cercana, empática y fácil de leer.',
+          inspirational: 'La redacción buscará inspirar y motivar con mensajes positivos.',
+          analytical: 'Se reforzará un tono analítico con foco en datos y conclusiones objetivas.',
+          custom: customInput && customInput.value.trim()
+            ? customInput.value.trim()
+            : 'Describe el tono personalizado para orientar la reformulación.'
+        };
+        let message = toneMessages[value] || toneMessages.professional;
+        if (highlightToggle && highlightToggle.checked) {
+          message += ' Se conservarán frases y citas clave sin modificaciones.';
+        }
+        summary.textContent = message;
+      }
+
+function updateWordSummaryPreview() {
+        const summary = document.getElementById('wordSummaryPreview');
+        if (!summary) {
+          return;
+        }
+        const includeBullets = document.getElementById('wordSummaryIncludeBullets');
+        const includeMetrics = document.getElementById('wordSummaryIncludeMetrics');
+        const includeRecommendations = document.getElementById('wordSummaryIncludeRecommendations');
+        const lengthSelect = document.getElementById('wordSummaryLength');
+        const features = [];
+        if (includeBullets && includeBullets.checked) {
+          features.push('viñetas con ideas clave');
+        }
+        if (includeMetrics && includeMetrics.checked) {
+          features.push('métricas destacadas');
+        }
+        if (includeRecommendations && includeRecommendations.checked) {
+          features.push('recomendaciones accionables');
+        }
+        const lengthValue = lengthSelect ? lengthSelect.value : 'balanced';
+        const lengthMessages = {
+          brief: 'un párrafo breve',
+          balanced: 'dos párrafos equilibrados',
+          detailed: 'un desarrollo detallado en varios párrafos'
+        };
+        const lengthText = lengthMessages[lengthValue] || lengthMessages.balanced;
+        if (features.length === 0) {
+          summary.textContent = 'El resumen se enfocará en ' + lengthText + ' manteniendo las ideas centrales.';
+          return;
+        }
+        summary.textContent =
+          'El resumen incluirá ' + features.join(', ') + ' en ' + lengthText + '.';
       }
 
 function updateAskCustomizationSummary() {
@@ -5743,6 +5944,11 @@ function collectAskCustomization() {
         if (askSection) {
           setupCollapsibleControls(askSection);
         }
+        const bodyTheme = document.body && document.body.classList.contains('theme-wordcrafter') ? 'word' : 'table';
+        const startupTheme = pendingAiActionTheme || bodyTheme;
+        currentAiTheme = getNormalizedAiTheme(startupTheme);
+        populateAiActionOptions(currentAiTheme, { force: true });
+        pendingAiActionTheme = null;
         const aiSelect = document.getElementById('aiSavedTables');
         const aiList = document.getElementById('aiSavedTablesList');
         if (aiSelect) {
@@ -5783,6 +5989,49 @@ function collectAskCustomization() {
           aiActionSelect.addEventListener('change', updateAiActionState);
           updateAiActionState();
         }
+        const wordLengthOptions = document.querySelectorAll('input[name="wordLengthTarget"]');
+        wordLengthOptions.forEach(function(option) {
+          option.addEventListener('change', updateWordLengthSummary);
+        });
+        updateWordLengthSummary();
+        const wordRewriteGoal = document.getElementById('wordRewriteGoal');
+        if (wordRewriteGoal) {
+          wordRewriteGoal.addEventListener('change', updateWordRewriteSummary);
+        }
+        const wordRewriteCustom = document.getElementById('wordRewriteCustom');
+        if (wordRewriteCustom) {
+          wordRewriteCustom.addEventListener('input', updateWordRewriteSummary);
+        }
+        updateWordRewriteSummary();
+        const wordToneSelect = document.getElementById('wordToneSelect');
+        if (wordToneSelect) {
+          wordToneSelect.addEventListener('change', updateWordToneSummary);
+        }
+        const wordToneCustom = document.getElementById('wordToneCustom');
+        if (wordToneCustom) {
+          wordToneCustom.addEventListener('input', updateWordToneSummary);
+        }
+        const wordToneHighlight = document.getElementById('wordToneHighlight');
+        if (wordToneHighlight) {
+          wordToneHighlight.addEventListener('change', updateWordToneSummary);
+        }
+        updateWordToneSummary();
+        const wordSummaryLength = document.getElementById('wordSummaryLength');
+        if (wordSummaryLength) {
+          wordSummaryLength.addEventListener('change', updateWordSummaryPreview);
+        }
+        [
+          document.getElementById('wordSummaryIncludeBullets'),
+          document.getElementById('wordSummaryIncludeMetrics'),
+          document.getElementById('wordSummaryIncludeRecommendations')
+        ]
+          .filter(function(input) {
+            return !!input;
+          })
+          .forEach(function(input) {
+            input.addEventListener('change', updateWordSummaryPreview);
+          });
+        updateWordSummaryPreview();
         const askToneSelect = document.getElementById('aiAskTone');
         if (askToneSelect) {
           askToneSelect.addEventListener('change', updateAskToneCustom);
@@ -5870,5 +6119,6 @@ const TableCrafterAiTab = Object.freeze({
       });
 
 window.TableCrafterAiTab = TableCrafterAiTab;
+window.notifyAiThemeChanged = notifyAiThemeChanged;
 
 </script>

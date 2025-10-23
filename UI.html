@@ -3672,6 +3672,74 @@
         color: #000000;
         line-height: 1.4;
       }
+      .word-ai-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #FFFFFF;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      }
+      .word-ai-fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .word-ai-legend {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6B7280;
+        margin-bottom: 4px;
+      }
+      .word-ai-option {
+        display: inline-flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 13px;
+        color: #1F2937;
+      }
+      .word-ai-option input[type="radio"],
+      .word-ai-option input[type="checkbox"] {
+        margin-top: 2px;
+      }
+      .word-ai-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .word-ai-column {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .word-ai-column select,
+      .word-ai-column textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #D1D5DB;
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+      .word-ai-summary {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(236, 72, 153, 0.08);
+        color: #9D174D;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .word-ai-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #1F2937;
+        font-weight: 500;
+      }
       .word-action-buttons {
         display: flex;
         flex-direction: column;
@@ -3679,6 +3747,12 @@
         margin-top: 16px;
       }
       .word-favorite-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .table-favorite-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -3731,41 +3805,116 @@
         color: #000000;
       }
       .word-web-saved-list {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
+        display: grid;
+        gap: 8px;
       }
       .word-web-saved-list.is-disabled .word-web-saved-item {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .word-web-saved-list.is-disabled .word-web-saved-item input[type="checkbox"] {
+        opacity: 0.65;
         cursor: not-allowed;
       }
       .word-web-saved-item {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        padding: 8px 12px;
-        border: 1px solid rgba(28, 141, 212, 0.28);
+        gap: 16px;
+        padding: 10px 14px 10px 18px;
+        border: 1px solid #D1D5DB;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.92);
+        background: #FFFFFF;
         font-size: 13px;
         font-weight: 500;
-        color: #000000;
+        color: #111827;
         cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
-      .word-web-saved-item span {
-        flex: 1 1 auto;
-        text-align: left;
+      .word-web-saved-item::before {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 12px;
+        bottom: 12px;
+        width: 4px;
+        border-radius: 999px;
+        background: var(--word-saved-accent, rgba(28, 141, 212, 0.35));
       }
-      .word-web-saved-item input[type="checkbox"] {
-        margin: 0;
+      .word-web-saved-item:hover {
+        border-color: rgba(28, 141, 212, 0.48);
       }
       .word-web-saved-item.is-selected {
         border-color: rgba(2, 132, 199, 0.75);
-        box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.36);
+        box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.28);
+        background: rgba(239, 246, 255, 0.65);
+      }
+      .word-web-saved-item--texts::before {
+        background: var(--word-saved-accent, rgba(236, 72, 153, 0.4));
+      }
+      .word-web-saved-info {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .word-web-saved-name {
+        font-weight: 600;
+        color: #0F172A;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .word-web-saved-meta {
+        font-size: 12px;
+        color: #6B7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .word-web-saved-control {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        position: relative;
+        width: 18px;
+        height: 18px;
+      }
+      .word-web-saved-checkbox {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .word-web-saved-list.is-disabled .word-web-saved-checkbox {
+        cursor: not-allowed;
+      }
+      .word-web-saved-check {
+        width: 18px;
+        height: 18px;
+        border-radius: 6px;
+        border: 2px solid #94A3B8;
+        background: #FFFFFF;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .word-web-saved-check::after {
+        content: '✓';
+        font-size: 11px;
+        color: #FFFFFF;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .word-web-saved-item.is-selected .word-web-saved-check {
+        background: #0284C7;
+        border-color: #0284C7;
+      }
+      .word-web-saved-item.is-selected .word-web-saved-check::after {
+        opacity: 1;
       }
       .word-web-saved-empty {
         margin: 0;
@@ -5033,10 +5182,127 @@
               readonly
             ></textarea>
           </div>
+          <div id="aiWordLengthSection" class="ai-action-section word-ai-section" style="display:none;">
+            <h3 class="ai-action-title">Cambiar longitud del texto</h3>
+            <p class="ai-action-description">
+              Ajusta la extensión del contenido generado para adaptarlo a diferentes formatos o audiencias.
+            </p>
+            <fieldset class="word-ai-fieldset" aria-labelledby="wordLengthLegend">
+              <legend id="wordLengthLegend" class="word-ai-legend">Selecciona la extensión deseada</legend>
+              <label class="word-ai-option">
+                <input type="radio" name="wordLengthTarget" value="short" checked />
+                Resumen breve (hasta 150 palabras)
+              </label>
+              <label class="word-ai-option">
+                <input type="radio" name="wordLengthTarget" value="balanced" />
+                Equilibrado (aprox. 300 palabras)
+              </label>
+              <label class="word-ai-option">
+                <input type="radio" name="wordLengthTarget" value="detailed" />
+                Detallado (más de 450 palabras)
+              </label>
+            </fieldset>
+            <div class="word-ai-summary" id="wordLengthSummary">
+              La IA acortará el texto y destacará los puntos esenciales.
+            </div>
+          </div>
+          <div id="aiWordRewriteSection" class="ai-action-section word-ai-section" style="display:none;">
+            <h3 class="ai-action-title">Reformular texto</h3>
+            <p class="ai-action-description">
+              Reescribe el contenido manteniendo la idea original pero con un estilo diferente.
+            </p>
+            <div class="word-ai-grid">
+              <div class="word-ai-column">
+                <label for="wordRewriteGoal">Objetivo de la reformulación</label>
+                <select id="wordRewriteGoal">
+                  <option value="clarity">Más claridad y sencillez</option>
+                  <option value="persuasive">Mayor impacto persuasivo</option>
+                  <option value="executive">Formato ejecutivo</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+              <div class="word-ai-column">
+                <label for="wordRewriteCustom">Indicaciones adicionales</label>
+                <textarea
+                  id="wordRewriteCustom"
+                  placeholder="Ej. Resalta beneficios clave y agrega un llamado a la acción"
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+            <div class="word-ai-summary" id="wordRewriteSummary">
+              Reformula el texto con un estilo más claro y directo.
+            </div>
+          </div>
+          <div id="aiWordToneSection" class="ai-action-section word-ai-section" style="display:none;">
+            <h3 class="ai-action-title">Ajustar tono del texto</h3>
+            <p class="ai-action-description">
+              Elige la voz y la intención que querés transmitir para alinear el texto con tu audiencia.
+            </p>
+            <div class="word-ai-grid">
+              <div class="word-ai-column">
+                <label for="wordToneSelect">Tono deseado</label>
+                <select id="wordToneSelect">
+                  <option value="professional">Profesional y formal</option>
+                  <option value="friendly">Cercano y empático</option>
+                  <option value="inspirational">Inspirador y motivador</option>
+                  <option value="analytical">Analítico y preciso</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+              <div class="word-ai-column" id="wordToneCustomWrapper" style="display:none;">
+                <label for="wordToneCustom">Describe el tono personalizado</label>
+                <textarea
+                  id="wordToneCustom"
+                  placeholder="Ej. Voz cercana, con ejemplos prácticos y toques de humor moderado"
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+            <label class="word-ai-toggle">
+              <input type="checkbox" id="wordToneHighlight" /> Mantener frases clave sin cambios
+            </label>
+            <div class="word-ai-summary" id="wordToneSummary">
+              La IA aplicará un tono profesional y formal respetando el mensaje original.
+            </div>
+          </div>
+          <div id="aiWordSummarySection" class="ai-action-section word-ai-section" style="display:none;">
+            <h3 class="ai-action-title">Resumir contenido</h3>
+            <p class="ai-action-description">
+              Genera una síntesis enfocada en los puntos que más te interesan destacar.
+            </p>
+            <div class="word-ai-grid">
+              <div class="word-ai-column">
+                <label class="word-ai-option">
+                  <input type="checkbox" id="wordSummaryIncludeBullets" checked />
+                  Incluir viñetas con ideas clave
+                </label>
+                <label class="word-ai-option">
+                  <input type="checkbox" id="wordSummaryIncludeMetrics" />
+                  Resaltar métricas y cifras
+                </label>
+                <label class="word-ai-option">
+                  <input type="checkbox" id="wordSummaryIncludeRecommendations" />
+                  Agregar recomendaciones accionables
+                </label>
+              </div>
+              <div class="word-ai-column">
+                <label for="wordSummaryLength">Extensión del resumen</label>
+                <select id="wordSummaryLength">
+                  <option value="brief">Breve (1 párrafo)</option>
+                  <option value="balanced" selected>Equilibrado (2 párrafos)</option>
+                  <option value="detailed">Detallado (3 párrafos o más)</option>
+                </select>
+              </div>
+            </div>
+            <div class="word-ai-summary" id="wordSummaryPreview">
+              El resumen incluirá viñetas con ideas clave en un formato equilibrado.
+            </div>
+          </div>
           <div id="aiReportSection" class="ai-action-section">
             <label
               class="ai-report-description-toggle js-comment-hint-trigger"
-              
+
             >
               <input type="checkbox" id="aiReportDescriptionToggle" /> Agregar descripción del reporte
             </label>

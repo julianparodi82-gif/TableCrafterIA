@@ -3371,6 +3371,13 @@ function playSidebarAnimation() {
               console.log('No se pudo sincronizar la vista de creación con el cambio de tema.', err);
             }
           }
+          if (typeof notifyAiThemeChanged === 'function') {
+            try {
+              notifyAiThemeChanged(nextTheme);
+            } catch (err) {
+              console.log('No se pudo sincronizar la vista de IA con el cambio de tema.', err);
+            }
+          }
           updateTabVisibilityForTheme(nextTheme);
           if (themeChanged) {
             refreshActiveTabForTheme(nextTheme);
