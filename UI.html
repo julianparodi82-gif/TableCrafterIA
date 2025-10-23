@@ -3158,6 +3158,11 @@
         color: inherit;
         cursor: pointer;
       }
+      .word-section-toggle--inline {
+        padding: 4px;
+        border-radius: 8px;
+        gap: 4px;
+      }
       .word-section-toggle:focus-visible {
         outline: 2px solid rgba(2, 132, 199, 0.65);
         outline-offset: 2px;
@@ -3187,6 +3192,11 @@
       #wordContextCard .word-section-content,
       #wordWebSourcesCard .word-section-content {
         margin-top: 16px;
+      }
+      .word-context-fields.is-collapsed,
+      .word-web-body.is-collapsed,
+      .word-web-saved-body.is-collapsed {
+        display: none;
       }
       .word-format-options.is-collapsed .word-format-preview,
       .word-format-options.is-collapsed .word-section-content,
@@ -3477,10 +3487,21 @@
       #wordWebSourcesCard .word-context-header .word-web-toggle-row {
         margin-left: auto;
       }
+      .word-structure-toggle-row,
       .word-web-toggle-row {
-        display: inline-flex;
+        display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
+      }
+      .word-structure-toggle-row label,
+      .word-web-toggle-row label {
+        flex: 1 1 auto;
+      }
+      .word-structure-toggle-row .word-section-toggle,
+      .word-web-toggle-row .word-section-toggle {
+        flex: 0 0 auto;
+        color: rgba(31, 41, 55, 0.75);
       }
       .word-context-helper {
         margin-top: 10px;
@@ -4134,23 +4155,47 @@
                   class="tc-tooltip-target"
                   data-tooltip="Activa bloques adicionales para guiar la introducción y la conclusión."
                 >
-                  Componentes opcionales
+                  <button
+                    type="button"
+                    class="word-section-toggle"
+                    data-word-collapse-target="wordStructureCard"
+                    data-word-collapse-content="wordStructureContent"
+                    aria-expanded="true"
+                    aria-controls="wordStructureContent"
+                  >
+                    <span class="word-section-toggle-label">Componentes opcionales</span>
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                  </button>
                 </h3>
                 <p>Define cómo quieres complementar el texto con secciones extra y fuentes destacadas.</p>
               </div>
             </div>
-            <div class="word-structure-columns">
-              <div id="wordIntroSection" class="word-context-section">
-                <label
-                  for="wordIntroToggle"
-                  class="checkbox-subtle word-context-toggle tc-tooltip-target"
-                  data-tooltip="Activa una introducción personalizada para contextualizar desde el inicio."
-                >
-                  <input type="checkbox" id="wordIntroToggle" />
-                  Agregar introducción
-                </label>
-                <div id="wordIntroFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
-                  <div class="word-format-group">
+            <div id="wordStructureContent" class="word-section-content">
+              <div class="word-structure-columns">
+                <div id="wordIntroSection" class="word-context-section">
+                  <div class="word-structure-toggle-row">
+                    <label
+                      for="wordIntroToggle"
+                      class="checkbox-subtle word-context-toggle tc-tooltip-target"
+                      data-tooltip="Activa una introducción personalizada para contextualizar desde el inicio."
+                    >
+                      <input type="checkbox" id="wordIntroToggle" />
+                      Agregar introducción
+                    </label>
+                    <button
+                      type="button"
+                      class="word-section-toggle word-section-toggle--inline"
+                      data-word-collapse-target="wordIntroFields"
+                      data-word-collapse-content="wordIntroFields"
+                      aria-expanded="false"
+                      aria-controls="wordIntroFields"
+                    >
+                      <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                      <span class="visually-hidden">Mostrar u ocultar detalles de la introducción</span>
+                    </button>
+                  </div>
+                  <div id="wordIntroFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
+                    <div class="word-format-group">
                     <label
                       for="wordIntroFocus"
                       class="tc-tooltip-target"
@@ -4168,14 +4213,27 @@
                     </p>
                   </div>
                   <div class="word-structure-web">
-                    <label
-                      for="wordIntroWebToggle"
-                      class="checkbox-subtle word-context-toggle tc-tooltip-target"
-                      data-tooltip="Activa enlaces que la IA puede usar para fundamentar la introducción."
-                    >
-                      <input type="checkbox" id="wordIntroWebToggle" />
-                      Usar información de páginas web
-                    </label>
+                    <div class="word-web-toggle-row">
+                      <label
+                        for="wordIntroWebToggle"
+                        class="checkbox-subtle word-context-toggle tc-tooltip-target"
+                        data-tooltip="Activa enlaces que la IA puede usar para fundamentar la introducción."
+                      >
+                        <input type="checkbox" id="wordIntroWebToggle" />
+                        Usar información de páginas web
+                      </label>
+                      <button
+                        type="button"
+                        class="word-section-toggle word-section-toggle--inline"
+                        data-word-collapse-target="wordIntroWebBody"
+                        data-word-collapse-content="wordIntroWebBody"
+                        aria-expanded="false"
+                        aria-controls="wordIntroWebBody"
+                      >
+                        <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Mostrar u ocultar enlaces web de la introducción</span>
+                      </button>
+                    </div>
                     <div id="wordIntroWebBody" class="word-web-body is-hidden" aria-hidden="true">
                       <div id="wordIntroWebList" class="word-web-items"></div>
                       <button type="button" id="wordIntroWebAdd" class="word-web-add">Agregar link</button>
@@ -4184,49 +4242,77 @@
                   </div>
                 </div>
               </div>
-              <div id="wordConclusionSection" class="word-context-section">
-                <label
-                  for="wordConclusionToggle"
-                  class="checkbox-subtle word-context-toggle tc-tooltip-target"
-                  data-tooltip="Añade una conclusión guiada para cerrar con mensajes claros."
-                >
-                  <input type="checkbox" id="wordConclusionToggle" />
-                  Agregar conclusión
-                </label>
-                <div id="wordConclusionFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
-                  <div class="word-format-group">
+                <div id="wordConclusionSection" class="word-context-section">
+                  <div class="word-structure-toggle-row">
                     <label
-                      for="wordConclusionFocus"
-                      class="tc-tooltip-target"
-                      data-tooltip="Describe los puntos que deben reforzarse al finalizar."
-                    >
-                      Enfoque de la conclusión
-                    </label>
-                    <textarea
-                      id="wordConclusionFocus"
-                      rows="2"
-                      placeholder="Ej.: Destacar próximos pasos y agradecer la colaboración del equipo."
-                    ></textarea>
-                    <p class="word-context-description">
-                      Señala el mensaje de cierre que esperas transmitir.
-                    </p>
-                  </div>
-                  <div class="word-structure-web">
-                    <label
-                      for="wordConclusionWebToggle"
+                      for="wordConclusionToggle"
                       class="checkbox-subtle word-context-toggle tc-tooltip-target"
-                      data-tooltip="Activa enlaces que la IA puede usar para reforzar la conclusión."
+                      data-tooltip="Añade una conclusión guiada para cerrar con mensajes claros."
                     >
-                      <input type="checkbox" id="wordConclusionWebToggle" />
-                      Usar información de páginas web
+                      <input type="checkbox" id="wordConclusionToggle" />
+                      Agregar conclusión
                     </label>
-                    <div id="wordConclusionWebBody" class="word-web-body is-hidden" aria-hidden="true">
-                      <div id="wordConclusionWebList" class="word-web-items"></div>
-                      <button type="button" id="wordConclusionWebAdd" class="word-web-add">Agregar link</button>
-                      <p class="word-context-helper">Puedes añadir hasta 3 enlaces con su descripción.</p>
+                    <button
+                      type="button"
+                      class="word-section-toggle word-section-toggle--inline"
+                      data-word-collapse-target="wordConclusionFields"
+                      data-word-collapse-content="wordConclusionFields"
+                      aria-expanded="false"
+                      aria-controls="wordConclusionFields"
+                    >
+                      <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                      <span class="visually-hidden">Mostrar u ocultar detalles de la conclusión</span>
+                    </button>
+                  </div>
+                  <div id="wordConclusionFields" class="word-context-fields word-context-fields-compact is-hidden" aria-hidden="true">
+                    <div class="word-format-group">
+                      <label
+                        for="wordConclusionFocus"
+                        class="tc-tooltip-target"
+                        data-tooltip="Describe los puntos que deben reforzarse al finalizar."
+                      >
+                        Enfoque de la conclusión
+                      </label>
+                      <textarea
+                        id="wordConclusionFocus"
+                        rows="2"
+                        placeholder="Ej.: Destacar próximos pasos y agradecer la colaboración del equipo."
+                      ></textarea>
+                      <p class="word-context-description">
+                        Señala el mensaje de cierre que esperas transmitir.
+                      </p>
+                    </div>
+                    <div class="word-structure-web">
+                      <div class="word-web-toggle-row">
+                        <label
+                          for="wordConclusionWebToggle"
+                          class="checkbox-subtle word-context-toggle tc-tooltip-target"
+                          data-tooltip="Activa enlaces que la IA puede usar para reforzar la conclusión."
+                        >
+                          <input type="checkbox" id="wordConclusionWebToggle" />
+                          Usar información de páginas web
+                        </label>
+                        <button
+                          type="button"
+                          class="word-section-toggle word-section-toggle--inline"
+                          data-word-collapse-target="wordConclusionWebBody"
+                          data-word-collapse-content="wordConclusionWebBody"
+                          aria-expanded="false"
+                          aria-controls="wordConclusionWebBody"
+                        >
+                          <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                          <span class="visually-hidden">Mostrar u ocultar enlaces web de la conclusión</span>
+                        </button>
+                      </div>
+                      <div id="wordConclusionWebBody" class="word-web-body is-hidden" aria-hidden="true">
+                        <div id="wordConclusionWebList" class="word-web-items"></div>
+                        <button type="button" id="wordConclusionWebAdd" class="word-web-add">Agregar link</button>
+                        <p class="word-context-helper">Puedes añadir hasta 3 enlaces con su descripción.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -4300,13 +4386,24 @@
                   class="tc-tooltip-target"
                   data-tooltip="Configura el idioma, tono y perfil para personalizar el texto."
                 >
-                  Personalización
+                  <button
+                    type="button"
+                    class="word-section-toggle"
+                    data-word-collapse-target="wordPersonalizationCard"
+                    data-word-collapse-content="wordPersonalizationContent"
+                    aria-expanded="true"
+                    aria-controls="wordPersonalizationContent"
+                  >
+                    <span class="word-section-toggle-label">Personalización</span>
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                  </button>
                 </h3>
                 <p>Elige cómo debe entregarse el texto para mantenerse alineado con tu marca.</p>
               </div>
             </div>
-            <div class="word-personalization-grid">
-              <div id="wordLengthSection" class="word-context-section">
+            <div id="wordPersonalizationContent" class="word-section-content">
+              <div class="word-personalization-grid">
+                <div id="wordLengthSection" class="word-context-section">
                 <div class="word-context-section-head">
                   <span
                     class="word-context-section-title tc-tooltip-target"
@@ -4338,7 +4435,7 @@
                   </div>
                 </div>
               </div>
-              <div id="wordLanguageSection" class="word-context-section">
+                <div id="wordLanguageSection" class="word-context-section">
                 <div class="word-context-section-head">
                   <span
                     class="word-context-section-title tc-tooltip-target"
@@ -4374,7 +4471,7 @@
                   </div>
                 </div>
               </div>
-              <div id="wordToneSection" class="word-context-section">
+                <div id="wordToneSection" class="word-context-section">
                 <div class="word-context-section-head">
                   <span
                     class="word-context-section-title tc-tooltip-target"
@@ -4409,7 +4506,7 @@
                   </div>
                 </div>
               </div>
-              <div id="wordProfileSection" class="word-context-section">
+                <div id="wordProfileSection" class="word-context-section">
                 <div class="word-context-section-head">
                   <span
                     class="word-context-section-title tc-tooltip-target"
@@ -4442,6 +4539,7 @@
                     </select>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
             <p class="word-context-helper">
@@ -4482,6 +4580,17 @@
                     <input type="checkbox" id="wordWebSourcesToggle" />
                     Usar información de páginas web
                   </label>
+                  <button
+                    type="button"
+                    class="word-section-toggle word-section-toggle--inline"
+                    data-word-collapse-target="wordWebSourcesBody"
+                    data-word-collapse-content="wordWebSourcesBody"
+                    aria-expanded="false"
+                    aria-controls="wordWebSourcesBody"
+                  >
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Mostrar u ocultar enlaces de apoyo</span>
+                  </button>
                 </div>
                 <div id="wordWebSourcesBody" class="word-web-body is-hidden" aria-hidden="true">
                   <div id="wordWebSourcesList" class="word-web-items"></div>
@@ -4498,6 +4607,17 @@
                     <input type="checkbox" id="wordWebSavedToggle" />
                     Asociar tablas y textos guardados
                   </label>
+                  <button
+                    type="button"
+                    class="word-section-toggle word-section-toggle--inline"
+                    data-word-collapse-target="wordWebSavedBody"
+                    data-word-collapse-content="wordWebSavedBody"
+                    aria-expanded="false"
+                    aria-controls="wordWebSavedBody"
+                  >
+                    <span class="word-section-toggle-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Mostrar u ocultar referencias guardadas</span>
+                  </button>
                 </div>
                 <div id="wordWebSavedBody" class="word-web-saved-body is-hidden" aria-hidden="true">
                   <p id="wordWebSavedStatus" class="word-web-saved-status is-hidden"></p>
