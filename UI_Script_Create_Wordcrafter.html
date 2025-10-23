@@ -1040,6 +1040,30 @@ async function handleWordFavoriteSave() {
           const savedId = response.id || wordFavoriteEditingId || '';
           setWordFavoriteEditingId(savedId);
           await refreshWordFavorites({ selectId: savedId });
+          if (typeof notifySavedActionMutation === 'function') {
+            notifySavedActionMutation({
+              id: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof requestSavedActionsRefresh === 'function') {
+            requestSavedActionsRefresh({
+              selectId: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof refreshSavedActions === 'function') {
+            refreshSavedActions({
+              selectId: savedId,
+              force: true,
+              autoSelectFirst: false,
+              forceLoad: true
+            }).catch(function() {});
+          }
           await showMessageModal((response && response.message) || 'Texto guardado en favoritos.', {
             title: 'Favorito guardado',
             variant: 'success'

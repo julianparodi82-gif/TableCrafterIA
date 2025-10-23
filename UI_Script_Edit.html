@@ -967,16 +967,25 @@ async function openActionForEditing(action) {
           return;
         }
         if (action.type === 'table') {
-          await refreshSavedTables(['editSavedTables', 'aiSavedTables'], { selectId: action.id });
-          await attemptTabChange('editTab', { force: true });
-          selectEditSavedTable(action.id);
-        } else if (action.type === 'reportFavorite') {
-          await loadReportFavoriteIntoPanel(action);
-        } else {
-          await showMessageModal('Esta acción todavía no se puede editar desde el panel.', {
-            title: 'Acción no soportada',
-            variant: 'warning'
-          });
+      await refreshSavedTables(['editSavedTables', 'aiSavedTables'], { selectId: action.id });
+      await attemptTabChange('editTab', { force: true });
+      selectEditSavedTable(action.id);
+    } else if (action.type === 'reportFavorite') {
+      await loadReportFavoriteIntoPanel(action);
+    } else if (action.type === 'wordFavorite') {
+      if (!window.WordFavoriteManager || typeof window.WordFavoriteManager.openFavorite !== 'function') {
+        await showMessageModal('No se pudo abrir el texto guardado automáticamente.', {
+          title: 'Función no disponible',
+          variant: 'warning'
+        });
+        return;
+      }
+      await window.WordFavoriteManager.openFavorite(action.id, { focusTitle: false });
+    } else {
+      await showMessageModal('Esta acción todavía no se puede editar desde el panel.', {
+        title: 'Acción no soportada',
+        variant: 'warning'
+      });
         }
       }
 
