@@ -209,8 +209,8 @@ function createEditSavedTextItem(entry, selected, disabled) {
         btn.type = 'button';
         btn.className = 'edit-saved-locate';
         btn.dataset.value = entryId;
-        btn.title = 'Ver texto';
-        btn.disabled = true;
+        btn.title = 'Abrir texto en WordCrafter';
+        btn.disabled = !!disabled;
         btn.tabIndex = disabled ? -1 : 0;
         const icon = document.createElement('span');
         icon.setAttribute('aria-hidden', 'true');
@@ -218,7 +218,7 @@ function createEditSavedTextItem(entry, selected, disabled) {
         btn.appendChild(icon);
         const sr = document.createElement('span');
         sr.className = 'visually-hidden';
-        sr.textContent = 'Ver texto';
+        sr.textContent = 'Abrir texto en WordCrafter';
         btn.appendChild(sr);
         item.appendChild(btn);
         return item;
@@ -406,8 +406,59 @@ function initializeSavedTextsUi() {
         if (select && select.dataset.wordTextBound !== 'true') {
           select.addEventListener('change', function() {
             syncEditSavedTextsHighlight();
+            const value = select.value ? String(select.value).trim() : '';
+            if (value) {
+              openSavedTextForEditing(value);
+            }
           });
           select.dataset.wordTextBound = 'true';
+        }
+        const list = document.getElementById('editSavedTextsList');
+        if (list && list.dataset.wordTextBound !== 'true') {
+          list.addEventListener('click', function(event) {
+            const target = event.target;
+            if (!target) {
+              return;
+            }
+            const button = typeof target.closest === 'function' ? target.closest('.edit-saved-locate') : null;
+            if (button && !button.disabled) {
+              const value = button.dataset.value ? String(button.dataset.value).trim() : '';
+              if (value) {
+                openSavedTextForEditing(value);
+              }
+              return;
+            }
+            const item = typeof target.closest === 'function' ? target.closest('.edit-saved-item') : null;
+            if (!item || item.classList.contains('disabled')) {
+              return;
+            }
+            const value = item.dataset.value ? String(item.dataset.value).trim() : '';
+            if (!value) {
+              return;
+            }
+            selectEditSavedText(value);
+            openSavedTextForEditing(value);
+          });
+          list.addEventListener('keydown', function(event) {
+            if (event.defaultPrevented) {
+              return;
+            }
+            if (event.key !== 'Enter' && event.key !== ' ') {
+              return;
+            }
+            const item = typeof event.target.closest === 'function' ? event.target.closest('.edit-saved-item') : null;
+            if (!item || item.classList.contains('disabled')) {
+              return;
+            }
+            const value = item.dataset.value ? String(item.dataset.value).trim() : '';
+            if (!value) {
+              return;
+            }
+            event.preventDefault();
+            selectEditSavedText(value);
+            openSavedTextForEditing(value);
+          });
+          list.dataset.wordTextBound = 'true';
         }
         if (!initializeSavedTextsUi._initialized) {
           renderEditSavedTextsList([], {});
@@ -497,6 +548,28 @@ function selectEditSavedText(value) {
         }
         const event = new Event('change', { bubbles: true });
         select.dispatchEvent(event);
+      }
+
+async function openSavedTextForEditing(textId, options) {
+        const id = textId ? String(textId).trim() : '';
+        if (!id) {
+          return;
+        }
+        if (!window.WordFavoriteManager || typeof window.WordFavoriteManager.openFavorite !== 'function') {
+          await showMessageModal('Esta versión no permite cargar textos guardados automáticamente.', {
+            title: 'Función no disponible',
+            variant: 'warning'
+          });
+          return;
+        }
+        try {
+          await window.WordFavoriteManager.openFavorite(id, options || {});
+        } catch (err) {
+          await showMessageModal('No se pudo cargar el texto guardado: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo cargar',
+            variant: 'error'
+          });
+        }
       }
 
 async function locateSavedTable(tableId) {
@@ -1295,7 +1368,8 @@ const TableCrafterEditTab = Object.freeze({
         applyFormat: handleEditApplyFormat,
         saveTable: handleEditSaveAction,
         selectSavedText: selectEditSavedText,
-        renderSavedTexts: renderEditSavedTextsList
+        renderSavedTexts: renderEditSavedTextsList,
+        openSavedText: openSavedTextForEditing
       });
 
 window.TableCrafterEditTab = TableCrafterEditTab;

@@ -390,6 +390,18 @@ function normalizeMetaRecordType(value) {
   ) {
     return 'reportFavorite';
   }
+  if (
+    text === 'wordfavorite' ||
+    text === 'word_favorite' ||
+    text === 'word-favorite' ||
+    text === 'word' ||
+    text === 'texto' ||
+    text === 'textfavorite' ||
+    text === 'texto_favorito' ||
+    text === 'texto-favorito'
+  ) {
+    return 'wordFavorite';
+  }
   if (text === 'table') {
     return 'table';
   }
@@ -445,6 +457,9 @@ function resolveMetaRecordType(row) {
       (parsedConfig.description && String(parsedConfig.description).trim() !== ''))
   ) {
     hasReportSignals = true;
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'wordFavorite') {
+    return 'wordFavorite';
   }
   return hasReportSignals ? 'reportFavorite' : normalized;
 }
@@ -1419,6 +1434,237 @@ function buildReportFavoriteResponse(entry) {
   };
 }
 
+function normalizeWordFavoriteIdArray(source) {
+  var list = Array.isArray(source) ? source : [];
+  var seen = {};
+  var result = [];
+  list.forEach(function(entry) {
+    var id = entry === null || entry === undefined ? '' : String(entry).trim();
+    if (!id || seen[id]) {
+      return;
+    }
+    seen[id] = true;
+    result.push(id);
+  });
+  return result;
+}
+
+function normalizeWordFavoriteLinksArray(source) {
+  var list = Array.isArray(source) ? source : [];
+  return list.map(function(entry) {
+    var obj = entry && typeof entry === 'object' ? entry : {};
+    var url = obj.url ? String(obj.url).trim() : '';
+    var description = obj.description ? String(obj.description).trim() : '';
+    var hasDescription = parseBooleanValue(obj.hasDescription, false) && !!description;
+    return {
+      url: url,
+      description: hasDescription ? description : '',
+      hasDescription: hasDescription
+    };
+  });
+}
+
+function normalizeWordFavoriteWebSources(source) {
+  var list = Array.isArray(source) ? source : [];
+  return list.map(function(entry) {
+    var obj = entry && typeof entry === 'object' ? entry : {};
+    var url = obj.url ? String(obj.url).trim() : '';
+    var description = obj.description ? String(obj.description).trim() : '';
+    var hasDescription = parseBooleanValue(obj.hasDescription, false) && !!description;
+    return {
+      url: url,
+      description: hasDescription ? description : '',
+      hasDescription: hasDescription
+    };
+  });
+}
+
+function normalizeWordFavoriteFormat(format, kind) {
+  var source = format && typeof format === 'object' ? format : {};
+  var result = {
+    fontFamily: source.fontFamily ? String(source.fontFamily).trim() : '',
+    color: source.color ? String(source.color).trim() : '',
+    fontSize: source.fontSize ? String(source.fontSize).trim() : '',
+    alignment: source.alignment ? String(source.alignment).trim() : '',
+    bold: parseBooleanValue(source.bold, false),
+    underline: parseBooleanValue(source.underline, false),
+    italics: parseBooleanValue(source.italics, false)
+  };
+  if (kind === 'title') {
+    result.uppercase = parseBooleanValue(source.uppercase, false);
+  } else {
+    result.lineSpacing = source.lineSpacing ? String(source.lineSpacing).trim() : '';
+    result.highlight = parseBooleanValue(source.highlight, false);
+  }
+  return result;
+}
+
+function normalizeWordFavoriteConfig(config) {
+  var source = config && typeof config === 'object' ? config : {};
+  var range = source.range && typeof source.range === 'object' ? source.range : {};
+  var structure = source.structure && typeof source.structure === 'object' ? source.structure : {};
+  var intro = structure.intro && typeof structure.intro === 'object' ? structure.intro : {};
+  var conclusion = structure.conclusion && typeof structure.conclusion === 'object' ? structure.conclusion : {};
+  var personalization =
+    source.personalization && typeof source.personalization === 'object' ? source.personalization : {};
+  var web = source.web && typeof source.web === 'object' ? source.web : {};
+  var normalized = {
+    version: 1,
+    name: source.name ? String(source.name).trim() : '',
+    range: {
+      useRange: parseBooleanValue(range.useRange, true),
+      value: range.value ? String(range.value).trim() : ''
+    },
+    autoTitle: parseBooleanValue(source.autoTitle, false),
+    manualTitleFormat: parseBooleanValue(source.manualTitleFormat, false),
+    manualBodyFormat: parseBooleanValue(source.manualBodyFormat, false),
+    titleFormat: normalizeWordFavoriteFormat(source.titleFormat, 'title'),
+    bodyFormat: normalizeWordFavoriteFormat(source.bodyFormat, 'body'),
+    context: {
+      instructions:
+        source.context && source.context.instructions
+          ? String(source.context.instructions).trim()
+          : ''
+    },
+    structure: {
+      intro: {
+        enabled: parseBooleanValue(intro.enabled, false),
+        focus: intro.focus ? String(intro.focus).trim() : '',
+        webEnabled: parseBooleanValue(intro.webEnabled, false),
+        links: normalizeWordFavoriteLinksArray(intro.links)
+      },
+      conclusion: {
+        enabled: parseBooleanValue(conclusion.enabled, false),
+        focus: conclusion.focus ? String(conclusion.focus).trim() : '',
+        webEnabled: parseBooleanValue(conclusion.webEnabled, false),
+        links: normalizeWordFavoriteLinksArray(conclusion.links)
+      }
+    },
+    personalization: {
+      length: personalization.length ? String(personalization.length).trim() : '',
+      language: personalization.language ? String(personalization.language).trim() : '',
+      tone: personalization.tone ? String(personalization.tone).trim() : '',
+      profile: personalization.profile ? String(personalization.profile).trim() : ''
+    },
+    web: {
+      externalEnabled: parseBooleanValue(web.externalEnabled, false),
+      sources: normalizeWordFavoriteWebSources(web.sources),
+      savedEnabled: parseBooleanValue(web.savedEnabled, false),
+      savedTables: normalizeWordFavoriteIdArray(web.savedTables),
+      savedTexts: normalizeWordFavoriteIdArray(web.savedTexts)
+    }
+  };
+  return normalized;
+}
+
+function buildWordFavoriteResponse(entry) {
+  var data = entry && entry.data ? entry.data : [];
+  var storedConfig = parseJsonValue(data[META_INDEX.reportConfig], {});
+  if (!storedConfig || typeof storedConfig !== 'object') {
+    storedConfig = {};
+  }
+  var config = normalizeWordFavoriteConfig(storedConfig.config);
+  return {
+    id: normalizeMetaId(data[META_INDEX.id]),
+    type: 'wordFavorite',
+    name: data[META_INDEX.name] || '',
+    description: data[META_INDEX.description] || '',
+    createdAt: data[META_INDEX.createdAt] || '',
+    updatedAt: data[META_INDEX.updatedAt] || '',
+    config: config
+  };
+}
+
+function listWordFavorites() {
+  SpreadsheetApp.flush();
+  var meta = getMetaSheet();
+  var data = meta.getDataRange().getValues();
+  var favorites = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (resolveMetaRecordType(row) !== 'wordFavorite') {
+      continue;
+    }
+    var favorite = buildWordFavoriteResponse({ data: row });
+    if (!favorite || favorite.error) {
+      continue;
+    }
+    favorites.push(favorite);
+  }
+  favorites.sort(function(a, b) {
+    var nameA = (a && a.name ? String(a.name) : '').toLowerCase();
+    var nameB = (b && b.name ? String(b.name) : '').toLowerCase();
+    if (nameA < nameB) {
+      return -1;
+    }
+    if (nameA > nameB) {
+      return 1;
+    }
+    return 0;
+  });
+  return favorites;
+}
+
+function getWordFavoriteDetails(favoriteId) {
+  var id = normalizeMetaId(favoriteId);
+  if (!id) {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  var entry = findMetaById(id);
+  if (!entry || !entry.data) {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'wordFavorite') {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  return buildWordFavoriteResponse(entry);
+}
+
+function saveWordFavorite(payload) {
+  var data = payload && typeof payload === 'object' ? payload : {};
+  var name = data.name ? String(data.name).trim() : '';
+  if (!name) {
+    throw new Error('Debe indicar un título para el texto favorito.');
+  }
+  var normalizedId = normalizeMetaId(data.id);
+  var config = normalizeWordFavoriteConfig(data.config);
+  config.name = name;
+  var description = data.description ? String(data.description).trim() : '';
+  if (!description && config.context && config.context.instructions) {
+    description = config.context.instructions.substring(0, 180);
+  }
+  var meta = getMetaSheet();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
+  var createdAt = now;
+  if (normalizedId) {
+    var existing = findMetaById(normalizedId);
+    if (!existing || !existing.data) {
+      throw new Error('No se encontró el texto favorito indicado.');
+    }
+    if (resolveMetaRecordType(existing.data) !== 'wordFavorite') {
+      throw new Error('El elemento indicado no es un texto favorito.');
+    }
+    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: 'wordFavorite' });
+    if (conflict) {
+      throw new Error('Ya existe un texto favorito con ese nombre.');
+    }
+    createdAt = existing.data[META_INDEX.createdAt] || now;
+    meta
+      .getRange(existing.row, 1, 1, META_HEADERS.length)
+      .setValues([[normalizedId, name, '', description, '', '', '', createdAt, now, '', '', 'FALSE', 'wordFavorite', storedConfig]]);
+  } else {
+    var nameConflict = findMetaByName(name, { type: 'wordFavorite' });
+    if (nameConflict) {
+      throw new Error('Ya existe un texto favorito con ese nombre.');
+    }
+    normalizedId = 'wordFavorite:' + Utilities.getUuid();
+    meta.appendRow([normalizedId, name, '', description, '', '', '', now, now, '', '', 'FALSE', 'wordFavorite', storedConfig]);
+  }
+  SpreadsheetApp.flush();
+  return { ok: true, id: normalizedId, message: 'Texto favorito guardado.' };
+}
+
 function getFavoriteActionDetails(favoriteId) {
   var normalizedId = normalizeMetaId(favoriteId);
   if (!normalizedId) {
@@ -1465,6 +1711,9 @@ function getSavedActionDetails(actionId) {
   }
   if (type === 'reportFavorite') {
     return getFavoriteActionDetails(id);
+  }
+  if (type === 'wordFavorite') {
+    return getWordFavoriteDetails(id);
   }
   return { error: 'Acción no soportada.' };
 }

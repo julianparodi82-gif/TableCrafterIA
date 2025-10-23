@@ -72,6 +72,10 @@ let wordWebSavedCache = { tables: [], texts: [] };
 let wordWebSavedInitialized = false;
 let wordWebSavedLoadingPromise = null;
 let wordWebSavedLastError = '';
+let wordFavoriteEditingId = '';
+let wordFavoritesCache = [];
+let wordFavoritesLoadingPromise = null;
+let wordFavoriteSaving = false;
 
 function normalizeWordWebSourceEntry(entry) {
         if (!entry || typeof entry !== 'object') {
@@ -252,6 +256,7 @@ function resetWordTextOptions() {
         refreshWordPreviews();
         syncWordWebSourcesCard();
         syncWordStructureCard();
+        setWordFavoriteEditingId('');
       }
 
 function updateWordFormatFlagClasses(container) {
@@ -566,6 +571,542 @@ function setWordSectionLinksState(sectionKey, newState) {
         wordStructureSectionLinksState[sectionKey] = newState.map(function(entry) {
           return normalizeWordSectionLinkEntry(entry);
         });
+      }
+
+function cloneWordSectionLinks(sectionKey) {
+        const list = ensureWordSectionLinksState(sectionKey);
+        return list.map(function(entry) {
+          const normalized = normalizeWordSectionLinkEntry(entry);
+          return {
+            url: normalized.url ? String(normalized.url) : '',
+            description: normalized.description ? String(normalized.description) : '',
+            hasDescription: normalized.hasDescription === true
+          };
+        });
+      }
+
+function cloneWordWebSources(entries) {
+        return Array.isArray(entries)
+          ? entries.map(function(entry) {
+              const normalized = normalizeWordWebSourceEntry(entry);
+              return {
+                url: normalized.url ? String(normalized.url) : '',
+                description: normalized.description ? String(normalized.description) : '',
+                hasDescription: normalized.hasDescription === true
+              };
+            })
+          : [];
+      }
+
+function getControlDefaultValue(control) {
+        if (!control) {
+          return '';
+        }
+        if (control.type === 'checkbox') {
+          return !!control.defaultChecked;
+        }
+        if (control.dataset && control.dataset.defaultValue !== undefined) {
+          return control.dataset.defaultValue;
+        }
+        if (control.defaultValue !== undefined) {
+          return control.defaultValue;
+        }
+        return '';
+      }
+
+function setControlValue(control, value) {
+        if (!control) {
+          return;
+        }
+        if (control.type === 'checkbox') {
+          if (value === undefined) {
+            control.checked = !!getControlDefaultValue(control);
+          } else {
+            control.checked = !!value;
+          }
+          return;
+        }
+        const resolvedValue = value !== undefined && value !== null ? String(value) : String(getControlDefaultValue(control) || '');
+        const tagName = control.tagName ? control.tagName.toLowerCase() : '';
+        if (tagName === 'select') {
+          let hasMatch = false;
+          const options = Array.prototype.slice.call(control.options || []);
+          options.forEach(function(option) {
+            if (option && option.value === resolvedValue) {
+              hasMatch = true;
+            }
+          });
+          if (hasMatch) {
+            control.value = resolvedValue;
+          } else {
+            control.value = String(getControlDefaultValue(control) || '');
+          }
+          return;
+        }
+        control.value = resolvedValue;
+      }
+
+function collectWordFormatValues(kind) {
+        const prefix = kind === 'title' ? 'wordTitle' : 'wordBody';
+        const format = {};
+        const fontFamily = document.getElementById(prefix + 'FontFamily');
+        const colorInput = document.getElementById(prefix + 'Color');
+        const sizeInput = document.getElementById(prefix + 'FontSize');
+        const alignment = document.getElementById(prefix + 'Alignment');
+        const boldToggle = document.getElementById(prefix + 'Bold');
+        const underlineToggle = document.getElementById(prefix + 'Underline');
+        const italicsToggle = document.getElementById(prefix + 'Italics');
+        if (fontFamily) {
+          format.fontFamily = fontFamily.value;
+        }
+        if (colorInput) {
+          format.color = colorInput.value;
+        }
+        if (sizeInput) {
+          format.fontSize = sizeInput.value;
+        }
+        if (alignment) {
+          format.alignment = alignment.value;
+        }
+        if (boldToggle) {
+          format.bold = !!boldToggle.checked;
+        }
+        if (underlineToggle) {
+          format.underline = !!underlineToggle.checked;
+        }
+        if (italicsToggle) {
+          format.italics = !!italicsToggle.checked;
+        }
+        if (kind === 'title') {
+          const uppercaseToggle = document.getElementById('wordTitleUppercase');
+          format.uppercase = !!(uppercaseToggle && uppercaseToggle.checked);
+        } else {
+          const lineSpacing = document.getElementById('wordBodyLineSpacing');
+          const highlightToggle = document.getElementById('wordBodyHighlight');
+          if (lineSpacing) {
+            format.lineSpacing = lineSpacing.value;
+          }
+          if (highlightToggle) {
+            format.highlight = !!highlightToggle.checked;
+          }
+        }
+        return format;
+      }
+
+function applyWordFormatValues(kind, values) {
+        const prefix = kind === 'title' ? 'wordTitle' : 'wordBody';
+        const format = values && typeof values === 'object' ? values : {};
+        setControlValue(document.getElementById(prefix + 'FontFamily'), format.fontFamily);
+        setControlValue(document.getElementById(prefix + 'Color'), format.color);
+        setControlValue(document.getElementById(prefix + 'FontSize'), format.fontSize);
+        setControlValue(document.getElementById(prefix + 'Alignment'), format.alignment);
+        setControlValue(document.getElementById(prefix + 'Bold'), format.bold);
+        setControlValue(document.getElementById(prefix + 'Underline'), format.underline);
+        setControlValue(document.getElementById(prefix + 'Italics'), format.italics);
+        if (kind === 'title') {
+          setControlValue(document.getElementById('wordTitleUppercase'), format.uppercase);
+        } else {
+          setControlValue(document.getElementById('wordBodyLineSpacing'), format.lineSpacing);
+          setControlValue(document.getElementById('wordBodyHighlight'), format.highlight);
+        }
+        updateWordPreview(kind);
+      }
+
+function getWordFavoriteName() {
+        const nameInput = document.getElementById('tableName');
+        return nameInput ? nameInput.value.trim() : '';
+      }
+
+function collectWordFavoriteConfig() {
+        const autoToggle = document.getElementById('wordAutoTitleToggle');
+        const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
+        const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
+        const contextInput = document.getElementById('wordBodyContext');
+        const introToggle = document.getElementById('wordIntroToggle');
+        const conclusionToggle = document.getElementById('wordConclusionToggle');
+        const introFocusInput = document.getElementById('wordIntroFocus');
+        const conclusionFocusInput = document.getElementById('wordConclusionFocus');
+        const introWebToggle = document.getElementById('wordIntroWebToggle');
+        const conclusionWebToggle = document.getElementById('wordConclusionWebToggle');
+        const lengthSelect = document.getElementById('wordBodyLength');
+        const languageSelect = document.getElementById('wordBodyLanguage');
+        const toneSelect = document.getElementById('wordBodyTone');
+        const profileSelect = document.getElementById('wordBodyProfile');
+        const webSourcesToggle = document.getElementById('wordWebSourcesToggle');
+        const webSavedToggle = document.getElementById('wordWebSavedToggle');
+        const savedTables = Array.isArray(wordWebSavedSelections.tables)
+          ? wordWebSavedSelections.tables.map(function(entry) {
+              return String(entry);
+            })
+          : [];
+        const savedTexts = Array.isArray(wordWebSavedSelections.texts)
+          ? wordWebSavedSelections.texts.map(function(entry) {
+              return String(entry);
+            })
+          : [];
+        return {
+          version: 1,
+          name: getWordFavoriteName(),
+          range: {
+            useRange: isWordRangeSelectionEnabled(),
+            value: getRangeInputValue()
+          },
+          autoTitle: !!(autoToggle && autoToggle.checked),
+          manualTitleFormat: !!(manualTitleToggle && manualTitleToggle.checked),
+          manualBodyFormat: !!(manualBodyToggle && manualBodyToggle.checked),
+          titleFormat: collectWordFormatValues('title'),
+          bodyFormat: collectWordFormatValues('body'),
+          context: {
+            instructions: contextInput ? contextInput.value : ''
+          },
+          structure: {
+            intro: {
+              enabled: !!(introToggle && introToggle.checked),
+              focus: introFocusInput ? introFocusInput.value : '',
+              webEnabled: !!(introWebToggle && introWebToggle.checked),
+              links: cloneWordSectionLinks('intro')
+            },
+            conclusion: {
+              enabled: !!(conclusionToggle && conclusionToggle.checked),
+              focus: conclusionFocusInput ? conclusionFocusInput.value : '',
+              webEnabled: !!(conclusionWebToggle && conclusionWebToggle.checked),
+              links: cloneWordSectionLinks('conclusion')
+            }
+          },
+          personalization: {
+            length: lengthSelect ? lengthSelect.value : '',
+            language: languageSelect ? languageSelect.value : '',
+            tone: toneSelect ? toneSelect.value : '',
+            profile: profileSelect ? profileSelect.value : ''
+          },
+          web: {
+            externalEnabled: !!(webSourcesToggle && webSourcesToggle.checked),
+            sources: cloneWordWebSources(wordWebSourcesState),
+            savedEnabled: !!(webSavedToggle && webSavedToggle.checked),
+            savedTables: savedTables,
+            savedTexts: savedTexts
+          }
+        };
+      }
+
+function applyWordFavoriteConfig(config) {
+        const safe = config && typeof config === 'object' ? config : {};
+        const rangeToggle = document.getElementById('wordUseRangeToggle');
+        const rangeInfo = safe.range && typeof safe.range === 'object' ? safe.range : {};
+        if (rangeToggle) {
+          rangeToggle.checked = !!rangeInfo.useRange;
+        }
+        syncCreateRangeModeUI();
+        const rangeLabel = document.getElementById('rangeLabel');
+        const rangeInput = document.getElementById('rangeInput');
+        const normalizedRange = rangeInfo.value ? String(rangeInfo.value) : '';
+        if (rangeLabel) {
+          rangeLabel.textContent = normalizedRange ? normalizedRange : '—';
+        }
+        if (rangeInput) {
+          rangeInput.value = normalizedRange;
+          rangeInput.dataset.manual = normalizedRange ? 'true' : 'false';
+        }
+
+        setControlValue(document.getElementById('wordAutoTitleToggle'), safe.autoTitle);
+        setControlValue(document.getElementById('wordManualTitleFormatToggle'), safe.manualTitleFormat);
+        setControlValue(document.getElementById('wordManualBodyFormatToggle'), safe.manualBodyFormat);
+
+        const contextInput = document.getElementById('wordBodyContext');
+        if (contextInput) {
+          contextInput.value = safe.context && safe.context.instructions ? safe.context.instructions : '';
+        }
+
+        const structure = safe.structure && typeof safe.structure === 'object' ? safe.structure : {};
+        const introConfig = structure.intro && typeof structure.intro === 'object' ? structure.intro : {};
+        const conclusionConfig =
+          structure.conclusion && typeof structure.conclusion === 'object' ? structure.conclusion : {};
+
+        setControlValue(document.getElementById('wordIntroToggle'), introConfig.enabled);
+        const introFocusInput = document.getElementById('wordIntroFocus');
+        if (introFocusInput) {
+          introFocusInput.value = introConfig.focus ? String(introConfig.focus) : '';
+        }
+        setControlValue(document.getElementById('wordIntroWebToggle'), introConfig.webEnabled);
+        setWordSectionLinksState('intro', Array.isArray(introConfig.links) ? introConfig.links : []);
+
+        setControlValue(document.getElementById('wordConclusionToggle'), conclusionConfig.enabled);
+        const conclusionFocusInput = document.getElementById('wordConclusionFocus');
+        if (conclusionFocusInput) {
+          conclusionFocusInput.value = conclusionConfig.focus ? String(conclusionConfig.focus) : '';
+        }
+        setControlValue(document.getElementById('wordConclusionWebToggle'), conclusionConfig.webEnabled);
+        setWordSectionLinksState('conclusion', Array.isArray(conclusionConfig.links) ? conclusionConfig.links : []);
+
+        WORD_STRUCTURE_SECTION_CONFIG.forEach(function(section) {
+          renderWordSectionLinksList(section);
+          syncWordSectionWebControls(section);
+        });
+
+        const personalization =
+          safe.personalization && typeof safe.personalization === 'object' ? safe.personalization : {};
+        setControlValue(document.getElementById('wordBodyLength'), personalization.length);
+        setControlValue(document.getElementById('wordBodyLanguage'), personalization.language);
+        setControlValue(document.getElementById('wordBodyTone'), personalization.tone);
+        setControlValue(document.getElementById('wordBodyProfile'), personalization.profile);
+
+        const web = safe.web && typeof safe.web === 'object' ? safe.web : {};
+        setControlValue(document.getElementById('wordWebSourcesToggle'), web.externalEnabled);
+        wordWebSourcesState = cloneWordWebSources(web.sources);
+        renderWordWebSourcesList();
+        const webSavedToggle = document.getElementById('wordWebSavedToggle');
+        setControlValue(webSavedToggle, web.savedEnabled);
+        wordWebSavedSelections = {
+          tables: Array.isArray(web.savedTables)
+            ? web.savedTables.map(function(entry) {
+                return String(entry);
+              })
+            : [],
+          texts: Array.isArray(web.savedTexts)
+            ? web.savedTexts.map(function(entry) {
+                return String(entry);
+              })
+            : []
+        };
+        pruneWordWebSavedSelections();
+        renderWordWebSavedLists();
+
+        const nameInput = document.getElementById('tableName');
+        if (nameInput) {
+          nameInput.value = safe.name ? String(safe.name) : '';
+        }
+
+        applyWordFormatValues('title', safe.titleFormat);
+        applyWordFormatValues('body', safe.bodyFormat);
+        syncWordCreateOptions();
+        refreshWordPreviews();
+      }
+
+function getWordFavoriteDescriptionFromConfig(config) {
+        if (!config || typeof config !== 'object' || !config.context || !config.context.instructions) {
+          return '';
+        }
+        const text = String(config.context.instructions).trim();
+        if (!text) {
+          return '';
+        }
+        if (text.length <= 180) {
+          return text;
+        }
+        return text.substring(0, 177) + '…';
+      }
+
+function normalizeWordFavoriteList(entries) {
+        if (!Array.isArray(entries)) {
+          return [];
+        }
+        return entries
+          .map(function(entry) {
+            if (!entry || !entry.id) {
+              return null;
+            }
+            return {
+              id: String(entry.id),
+              name: entry.name ? String(entry.name) : String(entry.id),
+              description: entry.description ? String(entry.description) : '',
+              createdAt: entry.createdAt || '',
+              updatedAt: entry.updatedAt || ''
+            };
+          })
+          .filter(function(item) {
+            return !!item;
+          });
+      }
+
+function mergeWordFavoritesIntoSavedCache(favorites) {
+        if (!wordWebSavedCache || typeof wordWebSavedCache !== 'object') {
+          wordWebSavedCache = { tables: [], texts: [] };
+        }
+        const existing = Array.isArray(wordWebSavedCache.texts)
+          ? wordWebSavedCache.texts.filter(function(entry) {
+              return entry && entry.source !== 'wordFavorite';
+            })
+          : [];
+        const mapped = favorites.map(function(entry) {
+          return { id: entry.id, name: entry.name, source: 'wordFavorite' };
+        });
+        wordWebSavedCache.texts = existing.concat(mapped);
+        pruneWordWebSavedSelections();
+        renderWordWebSavedLists();
+      }
+
+function updateWordFavoriteButtonState() {
+        const btn = document.getElementById('wordFavoriteBtn');
+        if (!btn) {
+          return;
+        }
+        const label = btn.querySelector('.ai-favorite-label');
+        const editing = !!wordFavoriteEditingId;
+        btn.dataset.wordFavoriteMode = editing ? 'edit' : 'create';
+        if (wordFavoriteSaving) {
+          btn.disabled = true;
+          btn.setAttribute('aria-disabled', 'true');
+        } else {
+          btn.disabled = false;
+          btn.removeAttribute('aria-disabled');
+        }
+        if (label) {
+          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        }
+      }
+
+function setWordFavoriteEditingId(id) {
+        wordFavoriteEditingId = id ? String(id) : '';
+        updateWordFavoriteButtonState();
+      }
+
+function refreshWordFavorites(options) {
+        const opts = options || {};
+        if (wordFavoritesLoadingPromise) {
+          return wordFavoritesLoadingPromise.then(function(list) {
+            if (opts.selectId && typeof TableCrafterEditTab !== 'undefined' && TableCrafterEditTab.selectSavedText) {
+              TableCrafterEditTab.selectSavedText(opts.selectId);
+            }
+            return list.slice();
+          });
+        }
+        wordFavoritesLoadingPromise = callServerFunction('listWordFavorites')
+          .then(function(result) {
+            const favorites = normalizeWordFavoriteList(result);
+            wordFavoritesCache = favorites;
+            if (opts.updateEditTab !== false && typeof TableCrafterEditTab !== 'undefined') {
+              if (typeof TableCrafterEditTab.renderSavedTexts === 'function') {
+                TableCrafterEditTab.renderSavedTexts(favorites, {
+                  selectedValue: opts.selectId ? String(opts.selectId) : ''
+                });
+              }
+              if (opts.selectId && typeof TableCrafterEditTab.selectSavedText === 'function') {
+                TableCrafterEditTab.selectSavedText(opts.selectId);
+              }
+            }
+            if (opts.updateSavedCache !== false) {
+              mergeWordFavoritesIntoSavedCache(favorites);
+            }
+            if (opts.broadcast !== false) {
+              document.dispatchEvent(
+                new CustomEvent('tc:wordFavoritesUpdated', {
+                  detail: { list: favorites.slice() }
+                })
+              );
+            }
+            return favorites.slice();
+          })
+          .catch(function(err) {
+            if (!opts.silent) {
+              showMessageModal('No se pudieron obtener los textos guardados: ' + (err && err.message ? err.message : err), {
+                title: 'No se pudo cargar',
+                variant: 'error'
+              });
+            }
+            throw err;
+          })
+          .finally(function() {
+            wordFavoritesLoadingPromise = null;
+          });
+        return wordFavoritesLoadingPromise;
+      }
+
+async function handleWordFavoriteSave() {
+        if (wordFavoriteSaving) {
+          return;
+        }
+        const name = getWordFavoriteName();
+        if (!name) {
+          await showMessageModal('Agrega un título al texto antes de guardarlo como favorito.', {
+            title: 'Título requerido',
+            variant: 'warning'
+          });
+          return;
+        }
+        const config = collectWordFavoriteConfig();
+        const payload = {
+          id: wordFavoriteEditingId || '',
+          name: name,
+          description: getWordFavoriteDescriptionFromConfig(config),
+          config: config
+        };
+        wordFavoriteSaving = true;
+        updateWordFavoriteButtonState();
+        try {
+          const response = await callServerFunction('saveWordFavorite', payload);
+          if (!response || response.error) {
+            throw new Error((response && response.error) || 'No se pudo guardar el texto favorito.');
+          }
+          const savedId = response.id || wordFavoriteEditingId || '';
+          setWordFavoriteEditingId(savedId);
+          await refreshWordFavorites({ selectId: savedId });
+          await showMessageModal((response && response.message) || 'Texto guardado en favoritos.', {
+            title: 'Favorito guardado',
+            variant: 'success'
+          });
+        } catch (err) {
+          await showMessageModal('No se pudo guardar el texto favorito: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo guardar',
+            variant: 'error'
+          });
+        } finally {
+          wordFavoriteSaving = false;
+          updateWordFavoriteButtonState();
+        }
+      }
+
+async function openWordFavoriteForEditing(favoriteId, options) {
+        const id = favoriteId ? String(favoriteId).trim() : '';
+        if (!id) {
+          return;
+        }
+        let details;
+        try {
+          details = await callServerFunction('getWordFavoriteDetails', id);
+        } catch (err) {
+          await showMessageModal('No se pudo cargar el texto guardado: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo cargar',
+            variant: 'error'
+          });
+          return;
+        }
+        if (!details || details.error) {
+          await showMessageModal((details && details.error) || 'No se pudo cargar el texto guardado.', {
+            title: 'No se pudo cargar',
+            variant: 'error'
+          });
+          return;
+        }
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle && !themeToggle.checked) {
+          themeToggle.checked = true;
+          themeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await attemptTabChange('createTab', { force: true, preserveForm: true });
+        resetWordTextOptions();
+        const nameInput = document.getElementById('tableName');
+        if (nameInput) {
+          nameInput.value = details.name ? String(details.name) : '';
+        }
+        applyWordFavoriteConfig(details.config || {});
+        setWordFavoriteEditingId(details.id || id);
+        await refreshWordFavorites({ selectId: details.id || id, silent: true });
+        updateWordFavoriteButtonState();
+        if (options && options.focusTitle && nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+      }
+
+function bindWordFavoriteButton() {
+        const btn = document.getElementById('wordFavoriteBtn');
+        if (btn && btn.dataset.wordFavoriteBound !== 'true') {
+          btn.addEventListener('click', function() {
+            handleWordFavoriteSave();
+          });
+          btn.dataset.wordFavoriteBound = 'true';
+          updateWordFavoriteButtonState();
+        }
       }
 
 function renderWordSectionLinksList(section) {
@@ -1164,14 +1705,26 @@ function loadWordWebSavedItems() {
           : Promise.resolve(Array.isArray(actionsFallback) ? actionsFallback.slice() : []))
           .catch(function(err) {
             const message = err && err.message ? err.message : err;
-            loadErrors.push('textos (' + message + ')');
+            loadErrors.push('textos IA (' + message + ')');
             console.log('No se pudieron cargar los textos guardados para WordCrafter.', err);
             return Array.isArray(actionsFallback) ? actionsFallback.slice() : [];
           });
-        wordWebSavedLoadingPromise = Promise.all([tablesPromise, actionsPromise])
+        const favoritesPromise = refreshWordFavorites({
+          updateEditTab: false,
+          broadcast: false,
+          silent: true,
+          updateSavedCache: false
+        }).catch(function(err) {
+          const message = err && err.message ? err.message : err;
+          loadErrors.push('textos favoritos (' + message + ')');
+          console.log('No se pudieron cargar los textos favoritos para WordCrafter.', err);
+          return [];
+        });
+        wordWebSavedLoadingPromise = Promise.all([tablesPromise, actionsPromise, favoritesPromise])
           .then(function(results) {
             const tables = Array.isArray(results[0]) ? results[0] : [];
             const actions = Array.isArray(results[1]) ? results[1] : [];
+            const favorites = normalizeWordFavoriteList(results[2]);
             const normalizedTables = tables
               .map(function(entry) {
                 if (!entry || !entry.id) {
@@ -1190,21 +1743,46 @@ function loadWordWebSavedItems() {
               .filter(function(item) {
                 return !!item;
               });
-            const normalizedTexts = actions
-              .map(function(entry) {
-                if (!entry || !entry.id) {
-                  return null;
-                }
-                if (entry.type && entry.type !== 'reportFavorite') {
-                  return null;
-                }
-                const id = String(entry.id);
-                const name = entry.name ? String(entry.name) : id;
-                return { id: id, name: name };
-              })
-              .filter(function(item) {
-                return !!item;
-              });
+            const normalizedTextsMap = Object.create(null);
+            const normalizedTexts = [];
+            actions.forEach(function(entry) {
+              if (!entry || !entry.id) {
+                return;
+              }
+              if (entry.type && entry.type !== 'reportFavorite') {
+                return;
+              }
+              const id = String(entry.id);
+              if (normalizedTextsMap[id]) {
+                return;
+              }
+              const name = entry.name ? String(entry.name) : id;
+              normalizedTexts.push({ id: id, name: name, source: 'reportFavorite' });
+              normalizedTextsMap[id] = true;
+            });
+            favorites.forEach(function(entry) {
+              if (!entry || !entry.id) {
+                return;
+              }
+              const id = String(entry.id);
+              if (normalizedTextsMap[id]) {
+                return;
+              }
+              const name = entry.name ? String(entry.name) : id;
+              normalizedTexts.push({ id: id, name: name, source: 'wordFavorite' });
+              normalizedTextsMap[id] = true;
+            });
+            normalizedTexts.sort(function(a, b) {
+              const nameA = a && a.name ? a.name.toLowerCase() : '';
+              const nameB = b && b.name ? b.name.toLowerCase() : '';
+              if (nameA < nameB) {
+                return -1;
+              }
+              if (nameA > nameB) {
+                return 1;
+              }
+              return 0;
+            });
             wordWebSavedCache = {
               tables: normalizedTables,
               texts: normalizedTexts
@@ -1693,12 +2271,14 @@ function initializeWordRangeMode() {
         bindWordFormatInputs();
         bindWordStructureControls();
         bindWordWebSourcesControls();
+        bindWordFavoriteButton();
         bindWordCollapsibleSections();
         renderWordWebSourcesList();
         renderWordStructureLinksList();
         syncCreateRangeModeUI();
         syncWordCreateOptions();
         refreshWordPreviews();
+        refreshWordFavorites({ silent: true }).catch(function() {});
       }
 
 if (document.readyState === 'loading') {
@@ -1713,6 +2293,7 @@ function notifyCreateThemeChanged(nextTheme) {
         bindWordFormatInputs();
         bindWordStructureControls();
         bindWordWebSourcesControls();
+        bindWordFavoriteButton();
         renderWordWebSourcesList();
         renderWordStructureLinksList();
         syncCreateRangeModeUI();
@@ -1738,4 +2319,13 @@ const WordCrafterCreateTab = Object.freeze({
       });
 
 window.WordCrafterCreateTab = WordCrafterCreateTab;
+const WordFavoriteManager = Object.freeze({
+        save: handleWordFavoriteSave,
+        refreshSavedLists: refreshWordFavorites,
+        openFavorite: openWordFavoriteForEditing,
+        getEditingId: function() {
+          return wordFavoriteEditingId;
+        }
+      });
+window.WordFavoriteManager = WordFavoriteManager;
 </script>
