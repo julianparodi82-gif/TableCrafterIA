@@ -3283,6 +3283,27 @@ function playSidebarAnimation() {
           }
         }
 
+        function refreshActiveTabForTheme(theme, options) {
+          options = options || {};
+          const normalizedTheme = theme === 'word' ? 'word' : 'table';
+          let targetTabId = null;
+          if (currentTab && isTabAllowedForTheme(currentTab, normalizedTheme)) {
+            targetTabId = currentTab;
+          } else {
+            const fallbackButton = findFirstTabForTheme(normalizedTheme);
+            targetTabId = fallbackButton && fallbackButton.dataset ? fallbackButton.dataset.tab : null;
+          }
+          if (!targetTabId) {
+            return;
+          }
+          const refreshOptions = { force: true };
+          if (options.preserveForm && targetTabId === 'createTab') {
+            refreshOptions.preserveForm = true;
+            refreshOptions.keepHeaders = true;
+          }
+          setActiveTab(targetTabId, refreshOptions);
+        }
+
         function updateTabLabelsForTheme(theme) {
           const normalizedTheme = theme === 'word' ? 'word' : 'table';
           const isWord = normalizedTheme === 'word';
@@ -3345,6 +3366,11 @@ function playSidebarAnimation() {
             }
           }
           updateTabVisibilityForTheme(nextTheme);
+          if (themeChanged) {
+            refreshActiveTabForTheme(nextTheme);
+          } else if (settings.forceSync) {
+            refreshActiveTabForTheme(nextTheme, { preserveForm: true });
+          }
           syncMessageVisibility();
           if (themeChanged || settings.forceSync) {
             syncAddonThemeMode(nextTheme);
