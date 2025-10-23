@@ -390,6 +390,28 @@ function normalizeMetaRecordType(value) {
   ) {
     return 'reportFavorite';
   }
+  if (
+    text === 'wordfavorite' ||
+    text === 'word_favorite' ||
+    text === 'word-favorite' ||
+    text === 'word' ||
+    text === 'texto' ||
+    text === 'textfavorite' ||
+    text === 'texto_favorito' ||
+    text === 'texto-favorito'
+  ) {
+    return 'wordFavorite';
+  }
+  if (
+    text === 'tablefavorite' ||
+    text === 'table_favorite' ||
+    text === 'table-favorite' ||
+    text === 'favoritotabla' ||
+    text === 'tabla_favorita' ||
+    text === 'tabla-favorita'
+  ) {
+    return 'tableFavorite';
+  }
   if (text === 'table') {
     return 'table';
   }
@@ -445,6 +467,12 @@ function resolveMetaRecordType(row) {
       (parsedConfig.description && String(parsedConfig.description).trim() !== ''))
   ) {
     hasReportSignals = true;
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'wordFavorite') {
+    return 'wordFavorite';
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'tableFavorite') {
+    return 'tableFavorite';
   }
   return hasReportSignals ? 'reportFavorite' : normalized;
 }
@@ -1135,99 +1163,172 @@ function listFavoriteActions() {
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     var entryId = normalizeMetaId(row[META_INDEX.id]);
-    if (!entryId || resolveMetaRecordType(row) !== 'reportFavorite') {
+    if (!entryId) {
+      continue;
+    }
+    var type = resolveMetaRecordType(row);
+    if (type !== 'reportFavorite' && type !== 'wordFavorite' && type !== 'tableFavorite') {
       continue;
     }
     if (seenIds[entryId]) {
       continue;
     }
-    var favorite = buildReportFavoriteResponse({ data: row });
-    if (!favorite || favorite.error) {
+    if (type === 'reportFavorite') {
+      var favorite = buildReportFavoriteResponse({ data: row });
+      if (!favorite || favorite.error) {
+        continue;
+      }
+      var featureDetails = [];
+      if (Array.isArray(favorite.featureDetails)) {
+        featureDetails = favorite.featureDetails
+          .map(function(detail) {
+            if (!detail) {
+              return null;
+            }
+            try {
+              return JSON.parse(JSON.stringify(detail));
+            } catch (err) {
+              return {
+                feature: detail.feature || '',
+                quantity: detail.quantity,
+                instanceDescriptions: Array.isArray(detail.instanceDescriptions)
+                  ? detail.instanceDescriptions.slice()
+                  : ['', '', ''],
+                instanceTitles: Array.isArray(detail.instanceTitles)
+                  ? detail.instanceTitles.slice()
+                  : createEmptyFeatureTitleArray(),
+                instanceChartTypes: Array.isArray(detail.instanceChartTypes)
+                  ? detail.instanceChartTypes.slice()
+                  : normalizeFeatureChartTypeArray([]),
+                instanceListOrders: Array.isArray(detail.instanceListOrders)
+                  ? detail.instanceListOrders.slice()
+                  : normalizeFeatureListOrderArray([]),
+                instanceListEnumerate: Array.isArray(detail.instanceListEnumerate)
+                  ? detail.instanceListEnumerate.slice()
+                  : normalizeFeatureListEnumerateArray([]),
+                instanceListEnumStyles: Array.isArray(detail.instanceListEnumStyles)
+                  ? detail.instanceListEnumStyles.slice()
+                  : normalizeFeatureListEnumStyleArray([]),
+                summaryLength: detail.summaryLength || '',
+                instanceTablesEnabled: Array.isArray(detail.instanceTablesEnabled)
+                  ? detail.instanceTablesEnabled.slice()
+                  : createEmptyFeatureTableToggleArray(),
+                instanceTables: Array.isArray(detail.instanceTables)
+                  ? detail.instanceTables.slice()
+                  : createEmptyFeatureTableSelectionArray(),
+                instanceWebSourcesEnabled: Array.isArray(detail.instanceWebSourcesEnabled)
+                  ? detail.instanceWebSourcesEnabled.slice()
+                  : createEmptyFeatureWebToggleArray(),
+                instanceWebSources: Array.isArray(detail.instanceWebSources)
+                  ? detail.instanceWebSources.slice()
+                  : createEmptyFeatureWebSourceArray()
+              };
+            }
+          })
+          .filter(function(detail) {
+            return !!detail;
+          });
+      }
+      var featureOrder = Array.isArray(favorite.featureOrder) ? favorite.featureOrder.slice() : [];
+      var customization = {};
+      if (favorite.customization && typeof favorite.customization === 'object') {
+        try {
+          customization = JSON.parse(JSON.stringify(favorite.customization));
+        } catch (err) {
+          customization = {};
+        }
+      }
+      favorites.push({
+        id: favorite.id || entryId,
+        type: 'reportFavorite',
+        name: favorite.name || '',
+        description: favorite.description || '',
+        createdAt: favorite.createdAt || '',
+        updatedAt: favorite.updatedAt || '',
+        format: favorite.format || '',
+        fileName: favorite.fileName || '',
+        fileExtension: favorite.fileExtension || '',
+        appendDateToFile: !!favorite.appendDateToFile,
+        tables: Array.isArray(favorite.tables) ? favorite.tables.slice() : [],
+        channels: Array.isArray(favorite.channels) ? favorite.channels.slice() : [],
+        descriptionEnabled: !!favorite.descriptionEnabled,
+        descriptionText: favorite.descriptionText || '',
+        features: Array.isArray(favorite.features) ? favorite.features.slice() : [],
+        featureDetails: featureDetails,
+        featureOrder: featureOrder,
+        emails: Array.isArray(favorite.emails) ? favorite.emails.slice() : [],
+        phones: Array.isArray(favorite.phones) ? favorite.phones.slice() : [],
+        customization: customization
+      });
+      seenIds[entryId] = true;
       continue;
     }
-    var featureDetails = [];
-    if (Array.isArray(favorite.featureDetails)) {
-      featureDetails = favorite.featureDetails
-        .map(function(detail) {
-          if (!detail) {
-            return null;
-          }
-          try {
-            return JSON.parse(JSON.stringify(detail));
-          } catch (err) {
-            return {
-              feature: detail.feature || '',
-              quantity: detail.quantity,
-              instanceDescriptions: Array.isArray(detail.instanceDescriptions)
-                ? detail.instanceDescriptions.slice()
-                : ['', '', ''],
-              instanceTitles: Array.isArray(detail.instanceTitles)
-                ? detail.instanceTitles.slice()
-                : createEmptyFeatureTitleArray(),
-              instanceChartTypes: Array.isArray(detail.instanceChartTypes)
-                ? detail.instanceChartTypes.slice()
-                : normalizeFeatureChartTypeArray([]),
-              instanceListOrders: Array.isArray(detail.instanceListOrders)
-                ? detail.instanceListOrders.slice()
-                : normalizeFeatureListOrderArray([]),
-              instanceListEnumerate: Array.isArray(detail.instanceListEnumerate)
-                ? detail.instanceListEnumerate.slice()
-                : normalizeFeatureListEnumerateArray([]),
-              instanceListEnumStyles: Array.isArray(detail.instanceListEnumStyles)
-                ? detail.instanceListEnumStyles.slice()
-                : normalizeFeatureListEnumStyleArray([]),
-              summaryLength: detail.summaryLength || '',
-              instanceTablesEnabled: Array.isArray(detail.instanceTablesEnabled)
-                ? detail.instanceTablesEnabled.slice()
-                : createEmptyFeatureTableToggleArray(),
-              instanceTables: Array.isArray(detail.instanceTables)
-                ? detail.instanceTables.slice()
-                : createEmptyFeatureTableSelectionArray(),
-              instanceWebSourcesEnabled: Array.isArray(detail.instanceWebSourcesEnabled)
-                ? detail.instanceWebSourcesEnabled.slice()
-                : createEmptyFeatureWebToggleArray(),
-              instanceWebSources: Array.isArray(detail.instanceWebSources)
-                ? detail.instanceWebSources.slice()
-                : createEmptyFeatureWebSourceArray()
-            };
-          }
-        })
-        .filter(function(detail) {
-          return !!detail;
-        });
-    }
-    var featureOrder = Array.isArray(favorite.featureOrder) ? favorite.featureOrder.slice() : [];
-    var customization = {};
-    if (favorite.customization && typeof favorite.customization === 'object') {
-      try {
-        customization = JSON.parse(JSON.stringify(favorite.customization));
-      } catch (err) {
-        customization = {};
+    if (type === 'wordFavorite') {
+      var wordFavorite = buildWordFavoriteResponse({ data: row });
+      if (!wordFavorite || wordFavorite.error) {
+        continue;
       }
+      favorites.push({
+        id: wordFavorite.id || entryId,
+        type: 'wordFavorite',
+        name: wordFavorite.name || '',
+        description: wordFavorite.description || '',
+        createdAt: wordFavorite.createdAt || '',
+        updatedAt: wordFavorite.updatedAt || ''
+      });
+      seenIds[entryId] = true;
+      continue;
     }
-    favorites.push({
-      id: favorite.id || entryId,
-      type: 'reportFavorite',
-      name: favorite.name || '',
-      description: favorite.description || '',
-      createdAt: favorite.createdAt || '',
-      updatedAt: favorite.updatedAt || '',
-      format: favorite.format || '',
-      fileName: favorite.fileName || '',
-      fileExtension: favorite.fileExtension || '',
-      appendDateToFile: !!favorite.appendDateToFile,
-      tables: Array.isArray(favorite.tables) ? favorite.tables.slice() : [],
-      channels: Array.isArray(favorite.channels) ? favorite.channels.slice() : [],
-      descriptionEnabled: !!favorite.descriptionEnabled,
-      descriptionText: favorite.descriptionText || '',
-      features: Array.isArray(favorite.features) ? favorite.features.slice() : [],
-      featureDetails: featureDetails,
-      featureOrder: featureOrder,
-      emails: Array.isArray(favorite.emails) ? favorite.emails.slice() : [],
-      phones: Array.isArray(favorite.phones) ? favorite.phones.slice() : [],
-      customization: customization
-    });
-    seenIds[entryId] = true;
+    if (type === 'tableFavorite') {
+      var tableFavorite = buildTableFavoriteResponse({ data: row });
+      if (!tableFavorite || tableFavorite.error) {
+        continue;
+      }
+      var tableConfig = tableFavorite.config || {};
+      var clonedConfig = {};
+      try {
+        clonedConfig = JSON.parse(JSON.stringify(tableConfig));
+      } catch (err) {
+        clonedConfig = tableConfig;
+      }
+      var rangeInfo = tableFavorite.range || {};
+      var clonedHeaders = [];
+      if (Array.isArray(tableFavorite.headers)) {
+        try {
+          clonedHeaders = JSON.parse(JSON.stringify(tableFavorite.headers));
+        } catch (err2) {
+          clonedHeaders = tableFavorite.headers.slice();
+        }
+      }
+      var clonedStyle = {};
+      if (tableFavorite.style && typeof tableFavorite.style === 'object') {
+        try {
+          clonedStyle = JSON.parse(JSON.stringify(tableFavorite.style));
+        } catch (err3) {
+          clonedStyle = tableFavorite.style;
+        }
+      }
+      favorites.push({
+        id: tableFavorite.id || entryId,
+        type: 'tableFavorite',
+        name: tableFavorite.name || '',
+        description: tableFavorite.description || '',
+        createdAt: tableFavorite.createdAt || '',
+        updatedAt: tableFavorite.updatedAt || '',
+        config: clonedConfig,
+        rangeA1: rangeInfo.a1Notation || '',
+        fullRangeA1: rangeInfo.fullA1 || '',
+        sheetName: rangeInfo.sheetName || '',
+        rows: rangeInfo.rows || '',
+        cols: rangeInfo.cols || '',
+        style: clonedStyle,
+        headers: clonedHeaders,
+        updateFormulaReferences: Object.prototype.hasOwnProperty.call(tableConfig, 'updateFormulaReferences')
+          ? !!tableConfig.updateFormulaReferences
+          : true
+      });
+      seenIds[entryId] = true;
+    }
   }
   favorites.sort(function(a, b) {
     var nameA = (a && a.name ? String(a.name) : '').toLowerCase();
@@ -1419,19 +1520,519 @@ function buildReportFavoriteResponse(entry) {
   };
 }
 
-function getFavoriteActionDetails(favoriteId) {
+function normalizeTableFavoriteStyle(style) {
+  var normalized = {
+    headerColor: '#66D68E',
+    altColor1: '#FFFFFF',
+    altColor2: '#DCDFE5',
+    border: true,
+    bold: true
+  };
+  if (style && typeof style === 'object') {
+    if (style.headerColor !== undefined && style.headerColor !== null) {
+      normalized.headerColor = String(style.headerColor);
+    }
+    if (style.altColor1 !== undefined && style.altColor1 !== null) {
+      normalized.altColor1 = String(style.altColor1);
+    }
+    if (style.altColor2 !== undefined && style.altColor2 !== null) {
+      normalized.altColor2 = String(style.altColor2);
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'border')) {
+      normalized.border = !!style.border;
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'bold')) {
+      normalized.bold = !!style.bold;
+    }
+  }
+  return normalized;
+}
+
+function normalizeTableFavoriteRange(source) {
+  var range = source && typeof source === 'object' ? source : {};
+  var value = range.value === null || range.value === undefined ? '' : String(range.value).trim();
+  var sheetName = range.sheetName === null || range.sheetName === undefined ? '' : String(range.sheetName).trim();
+  var a1Notation = range.a1Notation === null || range.a1Notation === undefined ? '' : String(range.a1Notation).trim();
+  var rows = parseInt(range.rows, 10);
+  if (isNaN(rows) || rows < 0) {
+    rows = 0;
+  }
+  var cols = parseInt(range.cols, 10);
+  if (isNaN(cols) || cols < 0) {
+    cols = 0;
+  }
+  if (!a1Notation) {
+    a1Notation = stripSheetFromRange(value);
+  }
+  if (!sheetName) {
+    sheetName = extractSheetNameFromRange(value);
+  }
+  if (!value && sheetName && a1Notation) {
+    value = buildFullRangeNotation(sheetName, a1Notation);
+  }
+  var fullRange = '';
+  if (a1Notation) {
+    fullRange = buildFullRangeNotation(sheetName, a1Notation);
+  } else if (value) {
+    fullRange = value;
+  }
+  return {
+    value: value || '',
+    sheetName: sheetName || '',
+    a1Notation: a1Notation || '',
+    rows: rows,
+    cols: cols,
+    fullA1: fullRange || ''
+  };
+}
+
+function normalizeTableFavoriteConfig(source) {
+  var config = source && typeof source === 'object' ? source : {};
+  var versionValue = parseInt(config.version, 10);
+  if (isNaN(versionValue) || versionValue < 1) {
+    versionValue = 1;
+  }
+  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(config.headers));
+  return {
+    version: versionValue,
+    name: config.name ? String(config.name).trim() : '',
+    description: config.description ? String(config.description).trim() : '',
+    range: normalizeTableFavoriteRange(config.range),
+    headers: normalizedHeaders,
+    style: normalizeTableFavoriteStyle(config.style),
+    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true)
+  };
+}
+
+function buildTableFavoriteResponse(entry) {
+  var data = entry && entry.data ? entry.data : null;
+  if (!data) {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  var storedConfig = parseJsonValue(data[META_INDEX.reportConfig], {});
+  var rawConfig = storedConfig && typeof storedConfig === 'object' && Object.prototype.hasOwnProperty.call(storedConfig, 'config')
+    ? storedConfig.config
+    : storedConfig;
+  var config = normalizeTableFavoriteConfig(rawConfig);
+  var id = normalizeMetaId(data[META_INDEX.id]);
+  var name = data[META_INDEX.name] || config.name || '';
+  var description = data[META_INDEX.description] || config.description || '';
+  if (!config.name) {
+    config.name = name;
+  }
+  if (!config.description) {
+    config.description = description;
+  }
+  return {
+    id: id,
+    type: 'tableFavorite',
+    name: name,
+    description: description,
+    createdAt: data[META_INDEX.createdAt] || '',
+    updatedAt: data[META_INDEX.updatedAt] || '',
+    config: config,
+    range: config.range,
+    style: config.style,
+    headers: config.headers
+  };
+}
+
+function listTableFavorites() {
+  SpreadsheetApp.flush();
+  var meta = getMetaSheet();
+  var data = meta.getDataRange().getValues();
+  var favorites = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (resolveMetaRecordType(row) !== 'tableFavorite') {
+      continue;
+    }
+    var favorite = buildTableFavoriteResponse({ data: row });
+    if (!favorite || favorite.error) {
+      continue;
+    }
+    favorites.push(favorite);
+  }
+  return favorites;
+}
+
+function getTableFavoriteDetails(favoriteId) {
   var normalizedId = normalizeMetaId(favoriteId);
   if (!normalizedId) {
-    return { error: 'Reporte favorito no encontrado.' };
+    return { error: 'Tabla favorita no encontrada.' };
   }
   var entry = findMetaById(normalizedId);
   if (!entry || !entry.data) {
-    return { error: 'Reporte favorito no encontrado.' };
+    return { error: 'Tabla favorita no encontrada.' };
   }
-  if (resolveMetaRecordType(entry.data) !== 'reportFavorite') {
-    return { error: 'Reporte favorito no encontrado.' };
+  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+    return { error: 'La entrada indicada no es una tabla favorita.' };
   }
-  return buildReportFavoriteResponse(entry);
+  return buildTableFavoriteResponse(entry);
+}
+
+function saveTableFavorite(payload) {
+  var data = payload && typeof payload === 'object' ? payload : {};
+  var name = data.name ? String(data.name).trim() : '';
+  if (!name) {
+    throw new Error('Debe indicar un nombre para la tabla favorita.');
+  }
+  var normalizedId = normalizeMetaId(data.id);
+  var config = normalizeTableFavoriteConfig(data.config);
+  config.name = name;
+  config.description = data.description ? String(data.description).trim() : config.description;
+  var meta = getMetaSheet();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var normalizedHeaders = ensureHeaderKeys(config.headers);
+  config.headers = normalizedHeaders;
+  var storedHeaders = stringifyJsonValue(normalizedHeaders);
+  var storedStyle = stringifyJsonValue(config.style);
+  var range = config.range || normalizeTableFavoriteRange({});
+  var fullRange = range.fullA1 || range.value || '';
+  var sheetName = range.sheetName || extractSheetNameFromRange(fullRange);
+  var cols = parseInt(range.cols, 10);
+  if (isNaN(cols) || cols < 0) {
+    cols = normalizedHeaders.length;
+  }
+  var rows = parseInt(range.rows, 10);
+  if (isNaN(rows) || rows < 0) {
+    rows = 0;
+  }
+  var formulaPreferenceValue = config.updateFormulaReferences ? 'TRUE' : 'FALSE';
+  var storedConfig = stringifyJsonValue({
+    kind: 'tableFavorite',
+    version: config.version || 1,
+    config: config
+  });
+  var createdAt = now;
+  if (normalizedId) {
+    var existing = findMetaById(normalizedId);
+    if (!existing || !existing.data) {
+      throw new Error('No se encontró la tabla favorita indicada.');
+    }
+    if (resolveMetaRecordType(existing.data) !== 'tableFavorite') {
+      throw new Error('El elemento indicado no es una tabla favorita.');
+    }
+    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: 'tableFavorite' });
+    if (conflict) {
+      throw new Error('Ya existe una tabla favorita con ese nombre.');
+    }
+    createdAt = existing.data[META_INDEX.createdAt] || now;
+    meta
+      .getRange(existing.row, 1, 1, META_HEADERS.length)
+      .setValues([
+        [
+          normalizedId,
+          name,
+          fullRange,
+          config.description || '',
+          sheetName || '',
+          cols,
+          rows,
+          createdAt,
+          now,
+          storedStyle,
+          storedHeaders,
+          formulaPreferenceValue,
+          'tableFavorite',
+          storedConfig
+        ]
+      ]);
+  } else {
+    var nameConflict = findMetaByName(name, { type: 'tableFavorite' });
+    if (nameConflict) {
+      throw new Error('Ya existe una tabla favorita con ese nombre.');
+    }
+    normalizedId = 'tableFavorite:' + Utilities.getUuid();
+    meta.appendRow([
+      normalizedId,
+      name,
+      fullRange,
+      config.description || '',
+      sheetName || '',
+      cols,
+      rows,
+      now,
+      now,
+      storedStyle,
+      storedHeaders,
+      formulaPreferenceValue,
+      'tableFavorite',
+      storedConfig
+    ]);
+  }
+  SpreadsheetApp.flush();
+  return { ok: true, id: normalizedId, message: 'Tabla favorita guardada.' };
+}
+
+function deleteTableFavorite(favoriteId) {
+  var normalizedId = normalizeMetaId(favoriteId);
+  if (!normalizedId) {
+    return { ok: true, removed: true };
+  }
+  var entry = findMetaById(normalizedId);
+  if (!entry || !entry.data) {
+    return { ok: true, removed: true };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  getMetaSheet().deleteRow(entry.row);
+  SpreadsheetApp.flush();
+  return { ok: true };
+}
+
+function normalizeWordFavoriteIdArray(source) {
+  var list = Array.isArray(source) ? source : [];
+  var seen = {};
+  var result = [];
+  list.forEach(function(entry) {
+    var id = entry === null || entry === undefined ? '' : String(entry).trim();
+    if (!id || seen[id]) {
+      return;
+    }
+    seen[id] = true;
+    result.push(id);
+  });
+  return result;
+}
+
+function normalizeWordFavoriteLinksArray(source) {
+  var list = Array.isArray(source) ? source : [];
+  return list.map(function(entry) {
+    var obj = entry && typeof entry === 'object' ? entry : {};
+    var url = obj.url ? String(obj.url).trim() : '';
+    var description = obj.description ? String(obj.description).trim() : '';
+    var hasDescription = parseBooleanValue(obj.hasDescription, false) && !!description;
+    return {
+      url: url,
+      description: hasDescription ? description : '',
+      hasDescription: hasDescription
+    };
+  });
+}
+
+function normalizeWordFavoriteWebSources(source) {
+  var list = Array.isArray(source) ? source : [];
+  return list.map(function(entry) {
+    var obj = entry && typeof entry === 'object' ? entry : {};
+    var url = obj.url ? String(obj.url).trim() : '';
+    var description = obj.description ? String(obj.description).trim() : '';
+    var hasDescription = parseBooleanValue(obj.hasDescription, false) && !!description;
+    return {
+      url: url,
+      description: hasDescription ? description : '',
+      hasDescription: hasDescription
+    };
+  });
+}
+
+function normalizeWordFavoriteFormat(format, kind) {
+  var source = format && typeof format === 'object' ? format : {};
+  var result = {
+    fontFamily: source.fontFamily ? String(source.fontFamily).trim() : '',
+    color: source.color ? String(source.color).trim() : '',
+    fontSize: source.fontSize ? String(source.fontSize).trim() : '',
+    alignment: source.alignment ? String(source.alignment).trim() : '',
+    bold: parseBooleanValue(source.bold, false),
+    underline: parseBooleanValue(source.underline, false),
+    italics: parseBooleanValue(source.italics, false)
+  };
+  if (kind === 'title') {
+    result.uppercase = parseBooleanValue(source.uppercase, false);
+  } else {
+    result.lineSpacing = source.lineSpacing ? String(source.lineSpacing).trim() : '';
+    result.highlight = parseBooleanValue(source.highlight, false);
+  }
+  return result;
+}
+
+function normalizeWordFavoriteConfig(config) {
+  var source = config && typeof config === 'object' ? config : {};
+  var range = source.range && typeof source.range === 'object' ? source.range : {};
+  var structure = source.structure && typeof source.structure === 'object' ? source.structure : {};
+  var intro = structure.intro && typeof structure.intro === 'object' ? structure.intro : {};
+  var conclusion = structure.conclusion && typeof structure.conclusion === 'object' ? structure.conclusion : {};
+  var personalization =
+    source.personalization && typeof source.personalization === 'object' ? source.personalization : {};
+  var web = source.web && typeof source.web === 'object' ? source.web : {};
+  var normalized = {
+    version: 1,
+    name: source.name ? String(source.name).trim() : '',
+    range: {
+      useRange: parseBooleanValue(range.useRange, true),
+      value: range.value ? String(range.value).trim() : ''
+    },
+    autoTitle: parseBooleanValue(source.autoTitle, false),
+    manualTitleFormat: parseBooleanValue(source.manualTitleFormat, false),
+    manualBodyFormat: parseBooleanValue(source.manualBodyFormat, false),
+    titleFormat: normalizeWordFavoriteFormat(source.titleFormat, 'title'),
+    bodyFormat: normalizeWordFavoriteFormat(source.bodyFormat, 'body'),
+    context: {
+      instructions:
+        source.context && source.context.instructions
+          ? String(source.context.instructions).trim()
+          : ''
+    },
+    structure: {
+      intro: {
+        enabled: parseBooleanValue(intro.enabled, false),
+        focus: intro.focus ? String(intro.focus).trim() : '',
+        webEnabled: parseBooleanValue(intro.webEnabled, false),
+        links: normalizeWordFavoriteLinksArray(intro.links)
+      },
+      conclusion: {
+        enabled: parseBooleanValue(conclusion.enabled, false),
+        focus: conclusion.focus ? String(conclusion.focus).trim() : '',
+        webEnabled: parseBooleanValue(conclusion.webEnabled, false),
+        links: normalizeWordFavoriteLinksArray(conclusion.links)
+      }
+    },
+    personalization: {
+      length: personalization.length ? String(personalization.length).trim() : '',
+      language: personalization.language ? String(personalization.language).trim() : '',
+      tone: personalization.tone ? String(personalization.tone).trim() : '',
+      profile: personalization.profile ? String(personalization.profile).trim() : ''
+    },
+    web: {
+      externalEnabled: parseBooleanValue(web.externalEnabled, false),
+      sources: normalizeWordFavoriteWebSources(web.sources),
+      savedEnabled: parseBooleanValue(web.savedEnabled, false),
+      savedTables: normalizeWordFavoriteIdArray(web.savedTables),
+      savedTexts: normalizeWordFavoriteIdArray(web.savedTexts)
+    }
+  };
+  return normalized;
+}
+
+function buildWordFavoriteResponse(entry) {
+  var data = entry && entry.data ? entry.data : [];
+  var storedConfig = parseJsonValue(data[META_INDEX.reportConfig], {});
+  if (!storedConfig || typeof storedConfig !== 'object') {
+    storedConfig = {};
+  }
+  var config = normalizeWordFavoriteConfig(storedConfig.config);
+  return {
+    id: normalizeMetaId(data[META_INDEX.id]),
+    type: 'wordFavorite',
+    name: data[META_INDEX.name] || '',
+    description: data[META_INDEX.description] || '',
+    createdAt: data[META_INDEX.createdAt] || '',
+    updatedAt: data[META_INDEX.updatedAt] || '',
+    config: config
+  };
+}
+
+function listWordFavorites() {
+  SpreadsheetApp.flush();
+  var meta = getMetaSheet();
+  var data = meta.getDataRange().getValues();
+  var favorites = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (resolveMetaRecordType(row) !== 'wordFavorite') {
+      continue;
+    }
+    var favorite = buildWordFavoriteResponse({ data: row });
+    if (!favorite || favorite.error) {
+      continue;
+    }
+    favorites.push(favorite);
+  }
+  favorites.sort(function(a, b) {
+    var nameA = (a && a.name ? String(a.name) : '').toLowerCase();
+    var nameB = (b && b.name ? String(b.name) : '').toLowerCase();
+    if (nameA < nameB) {
+      return -1;
+    }
+    if (nameA > nameB) {
+      return 1;
+    }
+    return 0;
+  });
+  return favorites;
+}
+
+function getWordFavoriteDetails(favoriteId) {
+  var id = normalizeMetaId(favoriteId);
+  if (!id) {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  var entry = findMetaById(id);
+  if (!entry || !entry.data) {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'wordFavorite') {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  return buildWordFavoriteResponse(entry);
+}
+
+function saveWordFavorite(payload) {
+  var data = payload && typeof payload === 'object' ? payload : {};
+  var name = data.name ? String(data.name).trim() : '';
+  if (!name) {
+    throw new Error('Debe indicar un título para el texto favorito.');
+  }
+  var normalizedId = normalizeMetaId(data.id);
+  var config = normalizeWordFavoriteConfig(data.config);
+  config.name = name;
+  var description = data.description ? String(data.description).trim() : '';
+  if (!description && config.context && config.context.instructions) {
+    description = config.context.instructions.substring(0, 180);
+  }
+  var meta = getMetaSheet();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
+  var createdAt = now;
+  if (normalizedId) {
+    var existing = findMetaById(normalizedId);
+    if (!existing || !existing.data) {
+      throw new Error('No se encontró el texto favorito indicado.');
+    }
+    if (resolveMetaRecordType(existing.data) !== 'wordFavorite') {
+      throw new Error('El elemento indicado no es un texto favorito.');
+    }
+    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: 'wordFavorite' });
+    if (conflict) {
+      throw new Error('Ya existe un texto favorito con ese nombre.');
+    }
+    createdAt = existing.data[META_INDEX.createdAt] || now;
+    meta
+      .getRange(existing.row, 1, 1, META_HEADERS.length)
+      .setValues([[normalizedId, name, '', description, '', '', '', createdAt, now, '', '', 'FALSE', 'wordFavorite', storedConfig]]);
+  } else {
+    var nameConflict = findMetaByName(name, { type: 'wordFavorite' });
+    if (nameConflict) {
+      throw new Error('Ya existe un texto favorito con ese nombre.');
+    }
+    normalizedId = 'wordFavorite:' + Utilities.getUuid();
+    meta.appendRow([normalizedId, name, '', description, '', '', '', now, now, '', '', 'FALSE', 'wordFavorite', storedConfig]);
+  }
+  SpreadsheetApp.flush();
+  return { ok: true, id: normalizedId, message: 'Texto favorito guardado.' };
+}
+
+function getFavoriteActionDetails(favoriteId) {
+  var normalizedId = normalizeMetaId(favoriteId);
+  if (!normalizedId) {
+    return { error: 'Favorito no encontrado.' };
+  }
+  var entry = findMetaById(normalizedId);
+  if (!entry || !entry.data) {
+    return { error: 'Favorito no encontrado.' };
+  }
+  var type = resolveMetaRecordType(entry.data);
+  if (type === 'reportFavorite') {
+    return buildReportFavoriteResponse(entry);
+  }
+  if (type === 'wordFavorite') {
+    return buildWordFavoriteResponse(entry);
+  }
+  if (type === 'tableFavorite') {
+    return buildTableFavoriteResponse(entry);
+  }
+  return { error: 'Favorito no encontrado.' };
 }
 
 function getSavedActionDetails(actionId) {
@@ -1465,6 +2066,9 @@ function getSavedActionDetails(actionId) {
   }
   if (type === 'reportFavorite') {
     return getFavoriteActionDetails(id);
+  }
+  if (type === 'wordFavorite') {
+    return getWordFavoriteDetails(id);
   }
   return { error: 'Acción no soportada.' };
 }
@@ -3334,6 +3938,29 @@ function deleteReportFavorite(favoriteId) {
   return { ok: true };
 }
 
+function deleteWordFavorite(favoriteId) {
+  var normalizedId = normalizeMetaId(favoriteId);
+  if (!normalizedId) {
+    return {
+      ok: true,
+      removed: true
+    };
+  }
+  var entry = findMetaById(normalizedId);
+  if (!entry || !entry.data) {
+    return {
+      ok: true,
+      removed: true
+    };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'wordFavorite') {
+    return { error: 'Texto favorito no encontrado.' };
+  }
+  getMetaSheet().deleteRow(entry.row);
+  SpreadsheetApp.flush();
+  return { ok: true };
+}
+
 function deleteSavedAction(actionId) {
   var normalizedId = normalizeMetaId(actionId);
   if (!normalizedId) {
@@ -3349,6 +3976,12 @@ function deleteSavedAction(actionId) {
   }
   if (type === 'reportFavorite') {
     return deleteReportFavorite(normalizedId);
+  }
+  if (type === 'wordFavorite') {
+    return deleteWordFavorite(normalizedId);
+  }
+  if (type === 'tableFavorite') {
+    return deleteTableFavorite(normalizedId);
   }
   return { error: 'Esta acción todavía no se puede borrar desde el panel.' };
 }

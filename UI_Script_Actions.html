@@ -301,36 +301,102 @@ function normalizeFavoriteActionEntry(action) {
   if (!id) {
     return null;
   }
+  const rawType = action.type === null || action.type === undefined ? '' : String(action.type).toLowerCase();
+  let type = 'reportFavorite';
+  if (rawType === 'table') {
+    type = 'table';
+  } else if (rawType === 'wordfavorite' || rawType === 'word_favorite' || rawType === 'word-favorite') {
+    type = 'wordFavorite';
+  } else if (rawType === 'tablefavorite' || rawType === 'table_favorite' || rawType === 'table-favorite') {
+    type = 'tableFavorite';
+  }
   const normalized = {
     id: id,
-    type: 'reportFavorite',
+    type: type,
     name: action.name ? String(action.name) : '',
     description: action.description ? String(action.description) : '',
     createdAt: action.createdAt ? String(action.createdAt) : '',
-    updatedAt: action.updatedAt ? String(action.updatedAt) : '',
-    format: action.format ? String(action.format) : '',
-    fileName: action.fileName ? String(action.fileName) : '',
-    fileExtension: action.fileExtension ? String(action.fileExtension) : '',
-    appendDateToFile: !!action.appendDateToFile,
-    tables: Array.isArray(action.tables) ? action.tables.slice() : [],
-    channels: Array.isArray(action.channels) ? action.channels.slice() : [],
-    descriptionEnabled: !!action.descriptionEnabled,
-    descriptionText: action.descriptionText ? String(action.descriptionText) : '',
-    features: Array.isArray(action.features) ? action.features.slice() : [],
-    featureDetails: Array.isArray(action.featureDetails)
+    updatedAt: action.updatedAt ? String(action.updatedAt) : ''
+  };
+  if (type === 'reportFavorite') {
+    normalized.format = action.format ? String(action.format) : '';
+    normalized.fileName = action.fileName ? String(action.fileName) : '';
+    normalized.fileExtension = action.fileExtension ? String(action.fileExtension) : '';
+    normalized.appendDateToFile = !!action.appendDateToFile;
+    normalized.tables = Array.isArray(action.tables) ? action.tables.slice() : [];
+    normalized.channels = Array.isArray(action.channels) ? action.channels.slice() : [];
+    normalized.descriptionEnabled = !!action.descriptionEnabled;
+    normalized.descriptionText = action.descriptionText ? String(action.descriptionText) : '';
+    normalized.features = Array.isArray(action.features) ? action.features.slice() : [];
+    normalized.featureDetails = Array.isArray(action.featureDetails)
       ? action.featureDetails
           .map(function(detail) {
             return cloneFavoriteFeatureDetail(detail);
           })
           .filter(Boolean)
-      : [],
-    featureOrder: Array.isArray(action.featureOrder) ? action.featureOrder.slice() : [],
-    emails: Array.isArray(action.emails) ? action.emails.slice() : [],
-    phones: Array.isArray(action.phones) ? action.phones.slice() : [],
-    customization: cloneFavoriteCustomization(action.customization)
-  };
-  if (!normalized.descriptionText && action.descriptionEnabled && action.description) {
-    normalized.descriptionText = String(action.description);
+      : [];
+    normalized.featureOrder = Array.isArray(action.featureOrder) ? action.featureOrder.slice() : [];
+    normalized.emails = Array.isArray(action.emails) ? action.emails.slice() : [];
+    normalized.phones = Array.isArray(action.phones) ? action.phones.slice() : [];
+    normalized.customization = cloneFavoriteCustomization(action.customization);
+    if (!normalized.descriptionText && action.descriptionEnabled && action.description) {
+      normalized.descriptionText = String(action.description);
+    }
+  } else if (type === 'table') {
+    normalized.sheetName = action.sheetName ? String(action.sheetName) : '';
+    normalized.rangeA1 = action.rangeA1 ? String(action.rangeA1) : '';
+    normalized.fullRangeA1 = action.fullRangeA1 ? String(action.fullRangeA1) : '';
+    normalized.cols = action.cols === null || action.cols === undefined ? '' : String(action.cols);
+    normalized.rows = action.rows === null || action.rows === undefined ? '' : String(action.rows);
+  } else if (type === 'wordFavorite') {
+    if (action.config && typeof action.config === 'object') {
+      try {
+        normalized.config = JSON.parse(JSON.stringify(action.config));
+      } catch (err) {
+        normalized.config = action.config;
+      }
+    } else {
+      normalized.config = null;
+    }
+  } else if (type === 'tableFavorite') {
+    if (action.config && typeof action.config === 'object') {
+      try {
+        normalized.config = JSON.parse(JSON.stringify(action.config));
+      } catch (err) {
+        normalized.config = action.config;
+      }
+    } else {
+      normalized.config = null;
+    }
+    if (action.style && typeof action.style === 'object') {
+      try {
+        normalized.style = JSON.parse(JSON.stringify(action.style));
+      } catch (err2) {
+        normalized.style = action.style;
+      }
+    } else {
+      normalized.style = null;
+    }
+    if (Array.isArray(action.headers)) {
+      try {
+        normalized.headers = JSON.parse(JSON.stringify(action.headers));
+      } catch (err3) {
+        normalized.headers = action.headers.slice();
+      }
+    } else {
+      normalized.headers = [];
+    }
+    normalized.rangeA1 = action.rangeA1 ? String(action.rangeA1) : '';
+    normalized.fullRangeA1 = action.fullRangeA1 ? String(action.fullRangeA1) : '';
+    normalized.sheetName = action.sheetName ? String(action.sheetName) : '';
+    normalized.cols = action.cols === null || action.cols === undefined ? '' : String(action.cols);
+    normalized.rows = action.rows === null || action.rows === undefined ? '' : String(action.rows);
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'config') || !normalized.config) {
+      normalized.config = {};
+    }
+    normalized.updateFormulaReferences = Object.prototype.hasOwnProperty.call(action, 'updateFormulaReferences')
+      ? !!action.updateFormulaReferences
+      : true;
   }
   return normalized;
 }
@@ -728,6 +794,128 @@ function buildReportFavoriteSummary(action) {
   return parts.join('\n');
 }
 
+function buildWordFavoriteSummary(action) {
+  if (!action) {
+    return '';
+  }
+  const config = action.config && typeof action.config === 'object' ? action.config : null;
+  const parts = [];
+  if (config && config.context && config.context.instructions) {
+    const text = String(config.context.instructions).trim();
+    if (text) {
+      const snippet = text.length > 160 ? text.substring(0, 157) + '…' : text;
+      parts.push('Contexto: ' + snippet);
+    }
+  }
+  if (config && config.structure && typeof config.structure === 'object') {
+    const sectionLabels = [];
+    if (config.structure.intro && config.structure.intro.enabled) {
+      sectionLabels.push('Introducción');
+    }
+    if (config.structure.conclusion && config.structure.conclusion.enabled) {
+      sectionLabels.push('Conclusión');
+    }
+    if (sectionLabels.length) {
+      parts.push('Secciones: ' + sectionLabels.join(', '));
+    }
+  }
+  if (config && config.personalization && typeof config.personalization === 'object') {
+    const personalization = [];
+    if (config.personalization.length) {
+      personalization.push('Extensión: ' + String(config.personalization.length));
+    }
+    if (config.personalization.language) {
+      personalization.push('Idioma: ' + String(config.personalization.language));
+    }
+    if (config.personalization.tone) {
+      personalization.push('Tono: ' + String(config.personalization.tone));
+    }
+    if (config.personalization.profile) {
+      personalization.push('Perfil: ' + String(config.personalization.profile));
+    }
+    if (personalization.length) {
+      parts.push(personalization.join(' • '));
+    }
+  }
+  if (config && config.web && typeof config.web === 'object') {
+    const webDetails = [];
+    if (config.web.externalEnabled && Array.isArray(config.web.sources)) {
+      webDetails.push('Fuentes web: ' + config.web.sources.length);
+    }
+    if (config.web.savedEnabled) {
+      const tablesCount = Array.isArray(config.web.savedTables) ? config.web.savedTables.length : 0;
+      const textsCount = Array.isArray(config.web.savedTexts) ? config.web.savedTexts.length : 0;
+      webDetails.push('Referencias guardadas: ' + (tablesCount + textsCount));
+    }
+    if (webDetails.length) {
+      parts.push(webDetails.join(' • '));
+    }
+  }
+  if (parts.length === 0 && action.description) {
+    return String(action.description);
+  }
+  return parts.join('\n');
+}
+
+function buildTableFavoriteSummary(action) {
+  if (!action) {
+    return '';
+  }
+  const parts = [];
+  const rangePieces = [];
+  const sheetName = action.sheetName ? String(action.sheetName) : '';
+  const fullRange = action.fullRangeA1
+    ? String(action.fullRangeA1)
+    : sheetName && action.rangeA1
+    ? sheetName + '!' + String(action.rangeA1)
+    : action.rangeA1
+    ? String(action.rangeA1)
+    : '';
+  if (sheetName) {
+    rangePieces.push('Hoja: ' + sheetName);
+  }
+  if (fullRange) {
+    rangePieces.push('Rango: ' + fullRange);
+  }
+  if (rangePieces.length) {
+    parts.push(rangePieces.join(' • '));
+  }
+  const cols = parseInt(action.cols, 10);
+  const rows = parseInt(action.rows, 10);
+  if (!isNaN(cols) && cols > 0 && !isNaN(rows) && rows > 0) {
+    parts.push('Dimensiones: ' + cols + '×' + rows);
+  } else if (!isNaN(cols) && cols > 0) {
+    parts.push('Columnas: ' + cols);
+  }
+  let headersCount = 0;
+  if (Array.isArray(action.headers)) {
+    headersCount = action.headers.length;
+  } else if (action.config && action.config.headers && Array.isArray(action.config.headers)) {
+    headersCount = action.config.headers.length;
+  }
+  if (headersCount > 0) {
+    parts.push('Encabezados: ' + headersCount);
+  }
+  const style = action.style && typeof action.style === 'object'
+    ? action.style
+    : action.config && action.config.style && typeof action.config.style === 'object'
+    ? action.config.style
+    : null;
+  if (style) {
+    const styleParts = [];
+    if (Object.prototype.hasOwnProperty.call(style, 'border')) {
+      styleParts.push(style.border ? 'Con bordes' : 'Sin bordes');
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'bold')) {
+      styleParts.push(style.bold ? 'Encabezado en negrita' : 'Encabezado regular');
+    }
+    if (styleParts.length) {
+      parts.push(styleParts.join(' • '));
+    }
+  }
+  return parts.join('\n');
+}
+
 function buildActionDetailCard(action, options) {
   const opts = options || {};
   const card = document.createElement('div');
@@ -796,6 +984,22 @@ function buildActionDetailCard(action, options) {
         'No se pudo mostrar el editor interactivo. Abrí el reporte en el panel IA para modificarlo.';
       card.appendChild(notice);
     }
+  } else if (action && action.type === 'wordFavorite') {
+    const summaryText = buildWordFavoriteSummary(action);
+    if (summaryText) {
+      const summary = document.createElement('p');
+      summary.className = 'ai-action-summary';
+      summary.textContent = summaryText;
+      card.appendChild(summary);
+    }
+  } else if (action && action.type === 'tableFavorite') {
+    const summaryText = buildTableFavoriteSummary(action);
+    if (summaryText) {
+      const summary = document.createElement('p');
+      summary.className = 'ai-action-summary';
+      summary.textContent = summaryText;
+      card.appendChild(summary);
+    }
   }
   if (opts.includeActions !== false) {
     const buttons = document.createElement('div');
@@ -805,6 +1009,10 @@ function buildActionDetailCard(action, options) {
     editBtn.className = 'btn-secondary';
     if (action && action.type === 'table') {
       editBtn.textContent = 'Editar tabla';
+    } else if (action && action.type === 'wordFavorite') {
+      editBtn.textContent = 'Editar texto';
+    } else if (action && action.type === 'tableFavorite') {
+      editBtn.textContent = 'Aplicar favorito';
     } else {
       editBtn.textContent = 'Editar en panel IA';
     }
@@ -842,6 +1050,16 @@ function buildSavedActionTooltip(action) {
   }
   if (action.type === 'reportFavorite') {
     const summary = buildReportFavoriteSummary(action);
+    if (summary) {
+      parts.push(summary);
+    }
+  } else if (action.type === 'wordFavorite') {
+    const summary = buildWordFavoriteSummary(action);
+    if (summary) {
+      parts.push(summary);
+    }
+  } else if (action.type === 'tableFavorite') {
+    const summary = buildTableFavoriteSummary(action);
     if (summary) {
       parts.push(summary);
     }
@@ -989,6 +1207,9 @@ async function handleSavedActionDeleteClick() {
         title: 'Favorito eliminado',
         variant: 'success'
       });
+    }
+    if (action.type === 'wordFavorite' && window.WordFavoriteManager && typeof window.WordFavoriteManager.refreshSavedLists === 'function') {
+      window.WordFavoriteManager.refreshSavedLists({ silent: true, broadcast: false }).catch(function() {});
     }
     currentSavedActionId = '';
     clearSavedActionDetails({ keepFavorite: false });
@@ -1232,6 +1453,26 @@ function initSavedActionsPanel() {
       handleSavedActionDeleteClick();
     });
   }
+  document.addEventListener('tc:wordFavoritesUpdated', function() {
+    const currentId = typeof getCurrentSavedActionId === 'function' ? getCurrentSavedActionId() : '';
+    requestSavedActionsRefresh({
+      selectId: currentId,
+      force: true,
+      autoSelectFirst: false,
+      forceLoad: true,
+      delay: 0
+    });
+  });
+  document.addEventListener('tc:tableFavoritesUpdated', function() {
+    const currentId = typeof getCurrentSavedActionId === 'function' ? getCurrentSavedActionId() : '';
+    requestSavedActionsRefresh({
+      selectId: currentId,
+      force: true,
+      autoSelectFirst: false,
+      forceLoad: true,
+      delay: 0
+    });
+  });
   document.addEventListener('tc:savedActionMutated', handleSavedActionMutationEvent);
   if (pendingSavedActionMutation) {
     handleSavedActionMutationEvent({ detail: pendingSavedActionMutation });

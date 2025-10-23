@@ -6,6 +6,10 @@ let currentHeaders = [];
 let rangeInfo = null;
 let createFormatDirty = false;
 let pendingFormatState = { applied: false, range: null };
+let tableFavoriteEditingId = '';
+let tableFavoritesCache = [];
+let tableFavoritesLoadingPromise = null;
+let tableFavoriteSaving = false;
 
 /* -------------------------------------------------------------------------- */
 /*  Create Tab Range Controls                                                 */
@@ -128,6 +132,7 @@ function resetCreateTabView(options) {
             descInput.value = '';
           }
           setDefaultStyles();
+          setTableFavoriteEditingId('');
         }
         if (!options.preserveHeaders) {
           currentHeaders = [];
@@ -212,6 +217,384 @@ function setDefaultStyles() {
         if (borderToggle) borderToggle.checked = DEFAULT_STYLE.border;
         if (boldToggle) boldToggle.checked = DEFAULT_STYLE.bold;
       }
+
+/* -------------------------------------------------------------------------- */
+/*  Table Favorite Helpers                                                    */
+/* -------------------------------------------------------------------------- */
+function parseTableFavoriteRangeParts(value) {
+        const trimmed = typeof value === 'string' ? value.trim() : '';
+        if (!trimmed) {
+          return { sheet: '', range: '' };
+        }
+        const bangIndex = trimmed.indexOf('!');
+        if (bangIndex === -1) {
+          return { sheet: '', range: trimmed };
+        }
+        const sheetPart = trimmed.substring(0, bangIndex).replace(/^'+|'+$/g, '');
+        const rangePart = trimmed.substring(bangIndex + 1);
+        return { sheet: sheetPart, range: rangePart };
+      }
+
+function getTableFavoriteName() {
+        const nameInput = document.getElementById('tableName');
+        return nameInput ? nameInput.value.trim() : '';
+      }
+
+function getTableFavoriteDescriptionFromConfig(config) {
+        const safe = config && typeof config === 'object' ? config : {};
+        return safe.description ? String(safe.description) : '';
+      }
+
+function updateTableFavoriteButtonState() {
+        const btn = document.getElementById('tableFavoriteBtn');
+        if (!btn) {
+          return;
+        }
+        const label = btn.querySelector('.ai-favorite-label');
+        const editing = !!tableFavoriteEditingId;
+        btn.dataset.tableFavoriteMode = editing ? 'edit' : 'create';
+        if (tableFavoriteSaving) {
+          btn.disabled = true;
+          btn.setAttribute('aria-disabled', 'true');
+        } else {
+          btn.disabled = false;
+          btn.removeAttribute('aria-disabled');
+        }
+        if (label) {
+          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+        }
+      }
+
+function setTableFavoriteEditingId(id) {
+        tableFavoriteEditingId = id ? String(id) : '';
+        updateTableFavoriteButtonState();
+      }
+
+function collectTableFavoriteConfig(validation) {
+        const base = validation && validation.values ? validation : validateTableDetails();
+        const values = base && base.values ? base.values : { name: '', description: '', headers: [] };
+        const headers = cloneHeaderModels(values.headers || []);
+        const rangeValue = getRangeInputValue();
+        const info = rangeInfo && typeof rangeInfo === 'object' ? rangeInfo : {};
+        const fallbackParts = parseTableFavoriteRangeParts(rangeValue);
+        const sheetName = info.sheetName || fallbackParts.sheet;
+        const a1Notation = info.a1Notation || fallbackParts.range;
+        const rowsRaw = info.rows !== undefined ? info.rows : 0;
+        const colsRaw = info.cols !== undefined ? info.cols : headers.length;
+        const rows = typeof rowsRaw === 'number' ? rowsRaw : parseInt(rowsRaw, 10) || 0;
+        const cols = typeof colsRaw === 'number' ? colsRaw : parseInt(colsRaw, 10) || headers.length;
+        const headerColorInput = document.getElementById('colorHeader');
+        const alt1Input = document.getElementById('colorAlt1');
+        const alt2Input = document.getElementById('colorAlt2');
+        const borderToggle = document.getElementById('toggleBorder');
+        const boldToggle = document.getElementById('toggleBold');
+        const fullRange = sheetName && a1Notation ? sheetName + '!' + a1Notation : rangeValue || '';
+        return {
+          version: 1,
+          name: values.name || '',
+          description: values.description || '',
+          range: {
+            value: rangeValue || '',
+            sheetName: sheetName || '',
+            a1Notation: a1Notation || '',
+            rows: rows,
+            cols: cols,
+            fullA1: fullRange
+          },
+          headers: headers,
+          style: {
+            headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
+            altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
+            altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
+            border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
+            bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+          },
+          updateFormulaReferences: true
+        };
+      }
+
+function refreshTableFavorites(options) {
+        const opts = options || {};
+        if (tableFavoritesLoadingPromise) {
+          return tableFavoritesLoadingPromise.then(function(list) {
+            return Array.isArray(list) ? list.slice() : [];
+          });
+        }
+        tableFavoritesLoadingPromise = callServerFunction('listTableFavorites')
+          .then(function(result) {
+            const favorites = Array.isArray(result) ? result : [];
+            tableFavoritesCache = favorites.slice();
+            if (opts.broadcast !== false) {
+              document.dispatchEvent(
+                new CustomEvent('tc:tableFavoritesUpdated', {
+                  detail: { list: favorites.slice() }
+                })
+              );
+            }
+            return favorites.slice();
+          })
+          .catch(function(err) {
+            if (!opts.silent) {
+              showMessageModal('No se pudieron obtener las tablas favoritas: ' + (err && err.message ? err.message : err), {
+                title: 'No se pudo cargar',
+                variant: 'error'
+              });
+            }
+            throw err;
+          })
+          .finally(function() {
+            tableFavoritesLoadingPromise = null;
+          });
+        return tableFavoritesLoadingPromise;
+      }
+
+async function handleTableFavoriteSave() {
+        if (tableFavoriteSaving) {
+          return;
+        }
+        if (isWordThemeActiveForCreate()) {
+          await showMessageModal('Cambia a TableCrafter para guardar esta configuración como favorita.', {
+            title: 'Función no disponible',
+            variant: 'warning'
+          });
+          return;
+        }
+        const validation = validateTableDetails();
+        if (validation.missing.length > 0) {
+          const message = buildMissingFieldsMessage(validation.missing);
+          await showMessageModal(message || 'Complete todos los campos obligatorios antes de continuar.', {
+            title: 'Información incompleta',
+            variant: 'error'
+          });
+          return;
+        }
+        const name = getTableFavoriteName();
+        if (!name) {
+          await showMessageModal('Agrega un título a la tabla antes de guardarla como favorita.', {
+            title: 'Título requerido',
+            variant: 'warning'
+          });
+          return;
+        }
+        currentHeaders = cloneHeaderModels(validation.values.headers || []);
+        renderCreateHeaders();
+        const config = collectTableFavoriteConfig(validation);
+        const payload = {
+          id: tableFavoriteEditingId || '',
+          name: name,
+          description: validation.values.description || getTableFavoriteDescriptionFromConfig(config),
+          config: config
+        };
+        tableFavoriteSaving = true;
+        updateTableFavoriteButtonState();
+        try {
+          const response = await callServerFunction('saveTableFavorite', payload);
+          if (!response || response.error) {
+            throw new Error((response && response.error) || 'No se pudo guardar la tabla favorita.');
+          }
+          const savedId = response.id || tableFavoriteEditingId || '';
+          setTableFavoriteEditingId(savedId);
+          await refreshTableFavorites({ selectId: savedId });
+          if (typeof notifySavedActionMutation === 'function') {
+            notifySavedActionMutation({
+              id: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof requestSavedActionsRefresh === 'function') {
+            requestSavedActionsRefresh({
+              selectId: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof refreshSavedActions === 'function') {
+            refreshSavedActions({
+              selectId: savedId,
+              force: true,
+              autoSelectFirst: false,
+              forceLoad: true
+            }).catch(function() {});
+          }
+          await showMessageModal((response && response.message) || 'Tabla favorita guardada.', {
+            title: 'Favorito guardado',
+            variant: 'success'
+          });
+        } catch (err) {
+          await showMessageModal('No se pudo guardar la tabla favorita: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo guardar',
+            variant: 'error'
+          });
+        } finally {
+          tableFavoriteSaving = false;
+          updateTableFavoriteButtonState();
+        }
+      }
+
+function applyTableFavoriteConfig(config) {
+        const safe = config && typeof config === 'object' ? config : {};
+        const headers = cloneHeaderModels(safe.headers || []);
+        currentHeaders = cloneHeaderModels(headers);
+        renderCreateHeaders();
+        const nameInput = document.getElementById('tableName');
+        if (nameInput) {
+          nameInput.value = safe.name ? String(safe.name) : '';
+        }
+        const descInput = document.getElementById('tableDesc');
+        if (descInput) {
+          descInput.value = safe.description ? String(safe.description) : '';
+        }
+        const style = safe.style && typeof safe.style === 'object' ? safe.style : {};
+        const headerColorInput = document.getElementById('colorHeader');
+        if (headerColorInput && style.headerColor) {
+          headerColorInput.value = String(style.headerColor);
+        }
+        const alt1Input = document.getElementById('colorAlt1');
+        if (alt1Input && style.altColor1) {
+          alt1Input.value = String(style.altColor1);
+        }
+        const alt2Input = document.getElementById('colorAlt2');
+        if (alt2Input && style.altColor2) {
+          alt2Input.value = String(style.altColor2);
+        }
+        const borderToggle = document.getElementById('toggleBorder');
+        if (borderToggle && Object.prototype.hasOwnProperty.call(style, 'border')) {
+          borderToggle.checked = !!style.border;
+        }
+        const boldToggle = document.getElementById('toggleBold');
+        if (boldToggle && Object.prototype.hasOwnProperty.call(style, 'bold')) {
+          boldToggle.checked = !!style.bold;
+        }
+        const range = safe.range && typeof safe.range === 'object' ? safe.range : {};
+        const rangeParts = parseTableFavoriteRangeParts(range.value || range.fullA1 || '');
+        const sheetName = range.sheetName || rangeParts.sheet;
+        const a1Notation = range.a1Notation || rangeParts.range;
+        const rows = typeof range.rows === 'number' ? range.rows : parseInt(range.rows, 10) || 0;
+        const cols = typeof range.cols === 'number' ? range.cols : parseInt(range.cols, 10) || headers.length;
+        const rangeValue = range.value || range.fullA1 || (sheetName && a1Notation ? sheetName + '!' + a1Notation : '');
+        if (sheetName && a1Notation) {
+          setRangeUI(
+            {
+              sheetName: sheetName,
+              a1Notation: a1Notation,
+              rows: rows,
+              cols: cols,
+              headers: cloneHeaderModels(currentHeaders)
+            },
+            { force: true }
+          );
+        } else {
+          const label = document.getElementById('rangeLabel');
+          if (label) {
+            label.textContent = rangeValue || '—';
+          }
+          const rangeInput = document.getElementById('rangeInput');
+          if (rangeInput) {
+            rangeInput.value = rangeValue || '';
+            rangeInput.dataset.manual = rangeValue ? 'true' : 'false';
+          }
+          rangeInfo = {
+            sheetName: sheetName || '',
+            a1Notation: a1Notation || '',
+            rows: rows,
+            cols: cols,
+            headers: cloneHeaderModels(currentHeaders),
+            fullA1: rangeValue || ''
+          };
+        }
+        syncCreateRangeModeUI();
+        clearCreateFormatDirty();
+        resetPendingFormatState();
+      }
+
+async function openTableFavoriteForEditing(favoriteId, options) {
+        const id = favoriteId ? String(favoriteId).trim() : '';
+        if (!id) {
+          return;
+        }
+        let details;
+        try {
+          details = await callServerFunction('getTableFavoriteDetails', id);
+        } catch (err) {
+          await showMessageModal('No se pudo cargar la tabla favorita: ' + (err && err.message ? err.message : err), {
+            title: 'No se pudo cargar',
+            variant: 'error'
+          });
+          return;
+        }
+        if (!details || details.error) {
+          await showMessageModal((details && details.error) || 'No se pudo cargar la tabla favorita.', {
+            title: 'No se pudo cargar',
+            variant: 'error'
+          });
+          return;
+        }
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle && themeToggle.checked) {
+          themeToggle.checked = false;
+          themeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await attemptTabChange('createTab', { force: true, preserveForm: true });
+        resetCreateTabView({ preserveRange: false, preserveFields: false, preserveHeaders: false });
+        applyTableFavoriteConfig(details.config || {});
+        setTableFavoriteEditingId(details.id || id);
+        await refreshTableFavorites({ selectId: details.id || id, silent: true }).catch(function() {});
+        updateTableFavoriteButtonState();
+        if (!options || options.focusName !== false) {
+          const nameInput = document.getElementById('tableName');
+          if (nameInput) {
+            nameInput.focus();
+            nameInput.select();
+          }
+        }
+      }
+
+function bindTableFavoriteButton() {
+        const btn = document.getElementById('tableFavoriteBtn');
+        if (btn && btn.dataset.tableFavoriteBound !== 'true') {
+          btn.addEventListener('click', function() {
+            handleTableFavoriteSave();
+          });
+          btn.dataset.tableFavoriteBound = 'true';
+          updateTableFavoriteButtonState();
+        }
+      }
+
+function notifyTableFavoriteThemeChanged(nextTheme) {
+        bindTableFavoriteButton();
+        if (nextTheme === 'table') {
+          updateTableFavoriteButtonState();
+          refreshTableFavorites({ silent: true }).catch(function() {});
+        } else {
+          setTableFavoriteEditingId('');
+        }
+      }
+
+function initializeTableFavorites() {
+        bindTableFavoriteButton();
+        updateTableFavoriteButtonState();
+        refreshTableFavorites({ silent: true }).catch(function() {});
+      }
+
+if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeTableFavorites);
+      } else {
+        initializeTableFavorites();
+      }
+
+const TableFavoriteManager = Object.freeze({
+        save: handleTableFavoriteSave,
+        refreshSavedLists: refreshTableFavorites,
+        openFavorite: openTableFavoriteForEditing,
+        getEditingId: function() {
+          return tableFavoriteEditingId;
+        }
+      });
+
+window.TableFavoriteManager = TableFavoriteManager;
 
 function loadActiveRange(updateHeaders = true) {
         if (isWordThemeActiveForCreate() && !isWordRangeSelectionEnabled()) {
