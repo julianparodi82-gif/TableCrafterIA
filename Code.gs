@@ -2185,6 +2185,600 @@ function getSavedActionDetails(actionId) {
   return { error: 'Acción no soportada.' };
 }
 
+function buildWordRowPreview(row, maxCols, maxLength) {
+  if (!Array.isArray(row)) {
+    return '';
+  }
+  var limitCols = typeof maxCols === 'number' && maxCols > 0 ? maxCols : 10;
+  var limitLength = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 220;
+  var selected = row.slice(0, limitCols);
+  var parts = [];
+  for (var i = 0; i < selected.length; i++) {
+    var cell = selected[i];
+    var text = cell === null || cell === undefined ? '' : String(cell);
+    text = text.replace(/\s+/g, ' ').trim();
+    if (text.length > 80) {
+      text = text.substring(0, 77) + '…';
+    }
+    parts.push(text);
+  }
+  var joined = parts.join(' | ');
+  if (joined.length > limitLength) {
+    joined = joined.substring(0, limitLength - 1) + '…';
+  }
+  return joined;
+}
+
+function buildWordSampleRows(rows, maxRows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+  var limitRows = typeof maxRows === 'number' && maxRows > 0 ? maxRows : 8;
+  var samples = [];
+  for (var i = 0; i < rows.length && samples.length < limitRows; i++) {
+    var preview = buildWordRowPreview(rows[i], 10, 240);
+    if (preview) {
+      samples.push(preview);
+    }
+  }
+  return samples;
+}
+
+function countNonEmptyWordRows(rows) {
+  if (!Array.isArray(rows)) {
+    return 0;
+  }
+  var count = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (!Array.isArray(row)) {
+      continue;
+    }
+    for (var j = 0; j < row.length; j++) {
+      var cell = row[j];
+      if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
+        count++;
+        break;
+      }
+    }
+  }
+  return count;
+}
+
+function buildWordRangeContextSnippet(rangeValue) {
+  if (!rangeValue) {
+    return '';
+  }
+  var parts = splitRangeNotation(rangeValue);
+  var sheetName = parts.sheet;
+  var rangeA1 = parts.range;
+  if (!sheetName || !rangeA1) {
+    return '';
+  }
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) {
+    return '';
+  }
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return '';
+  }
+  var range;
+  try {
+    range = getRangeWithinSheet(sheet, rangeA1);
+  } catch (err) {
+    return '';
+  }
+  if (!range) {
+    return '';
+  }
+  var values = range.getDisplayValues();
+  if (!values || values.length === 0) {
+    return '';
+  }
+  var headers = values[0] || [];
+  var dataRows = values.length > 1 ? values.slice(1) : [];
+  var nonEmptyRows = countNonEmptyWordRows(dataRows);
+  var samples = buildWordSampleRows(dataRows, 8);
+  var snippet =
+    'Rango ' +
+    sheetName +
+    '!' +
+    rangeA1 +
+    ' (' +
+    nonEmptyRows +
+    ' filas con información).';
+  if (headers.length) {
+    snippet += '\nEncabezados: ' + headers.join(', ');
+  }
+  if (samples.length) {
+    snippet += '\nFilas de muestra:\n- ' + samples.join('\n- ');
+  }
+  return snippet;
+}
+
+function buildWordTableReferenceSnippet(tableId) {
+  if (!tableId) {
+    return '';
+  }
+  var entry = findMetaById(tableId);
+  if (!entry || !entry.data) {
+    return '';
+  }
+  if (resolveMetaRecordType(entry.data) !== 'table') {
+    return '';
+  }
+  var rowData = entry.data;
+  var rangeParts = splitRangeNotation(rowData[META_INDEX.rangeA1]);
+  var sheetName = rowData[META_INDEX.sheet] || rangeParts.sheet;
+  var rangeA1 = rangeParts.range;
+  if (!sheetName || !rangeA1) {
+    return '';
+  }
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) {
+    return '';
+  }
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return '';
+  }
+  var range;
+  try {
+    range = getRangeWithinSheet(sheet, rowData[META_INDEX.rangeA1] || rangeA1);
+  } catch (err) {
+    return '';
+  }
+  if (!range) {
+    return '';
+  }
+  var values = range.getDisplayValues();
+  if (!values || values.length === 0) {
+    return '';
+  }
+  var headers = values[0] || [];
+  var dataRows = values.length > 1 ? values.slice(1) : [];
+  var samples = buildWordSampleRows(dataRows, 6).map(function(sample, index) {
+    return 'Fila ' + (index + 1) + ': ' + sample;
+  });
+  var snippet = buildTableContextSnippet(rowData, headers, samples, sheetName, rangeA1);
+  var description = rowData[META_INDEX.description] ? String(rowData[META_INDEX.description]).trim() : '';
+  if (description) {
+    snippet += '\nDescripción: ' + description;
+  }
+  return snippet;
+}
+
+function summarizeWordSavedTextReference(textId) {
+  if (!textId) {
+    return '';
+  }
+  var details;
+  try {
+    details = getFavoriteActionDetails(textId);
+  } catch (err) {
+    return '';
+  }
+  if (!details || details.error) {
+    return '';
+  }
+  var parts = [];
+  var title = details.name ? String(details.name).trim() : '';
+  if (details.type === 'wordFavorite') {
+    if (title) {
+      parts.push('Texto favorito "' + title + '".');
+    } else {
+      parts.push('Texto favorito sin título.');
+    }
+    if (details.description) {
+      parts.push('Descripción: ' + details.description);
+    }
+    var config = normalizeWordFavoriteConfig(details.config);
+    if (config.context && config.context.instructions) {
+      parts.push('Instrucciones clave: ' + config.context.instructions);
+    }
+    var personalization = config.personalization || {};
+    var personalizationParts = [];
+    var lengthDesc = describeWordLength(personalization.length);
+    if (lengthDesc) {
+      personalizationParts.push('longitud ' + lengthDesc);
+    }
+    if (personalization.language) {
+      personalizationParts.push('idioma ' + personalization.language);
+    }
+    var toneDesc = describeWordTone(personalization.tone);
+    if (toneDesc) {
+      personalizationParts.push('tono ' + toneDesc);
+    }
+    if (personalization.profile) {
+      personalizationParts.push('perfil ' + personalization.profile);
+    }
+    if (personalizationParts.length) {
+      parts.push('Preferencias: ' + personalizationParts.join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+  if (details.type === 'reportFavorite') {
+    if (title) {
+      parts.push('Reporte favorito "' + title + '".');
+    } else {
+      parts.push('Reporte favorito.');
+    }
+    if (details.description) {
+      parts.push('Descripción: ' + details.description);
+    }
+    if (Array.isArray(details.featureOrder) && details.featureOrder.length) {
+      parts.push('Orden de secciones: ' + details.featureOrder.join(', ') + '.');
+    } else if (Array.isArray(details.features) && details.features.length) {
+      parts.push('Secciones incluidas: ' + details.features.join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+  return '';
+}
+
+function describeWordLength(value) {
+  switch (value) {
+    case 'breve':
+      return 'breve (hasta 150 palabras)';
+    case 'media':
+      return 'media (150 a 400 palabras)';
+    case 'detallada':
+      return 'detallada (400 a 800 palabras)';
+    case 'extensa':
+      return 'extensa (más de 800 palabras)';
+    case 'personalizada':
+      return 'personalizada (detallada en las instrucciones)';
+    default:
+      return '';
+  }
+}
+
+function describeWordTone(value) {
+  switch (value) {
+    case 'profesional':
+      return 'profesional';
+    case 'formal':
+      return 'formal y sobrio';
+    case 'informal':
+      return 'conversacional';
+    case 'persuasivo':
+      return 'persuasivo';
+    case 'didactico':
+      return 'didáctico';
+    case 'inspirador':
+      return 'inspirador';
+    case 'analitico':
+      return 'analítico';
+    case 'otro':
+      return 'personalizado (descrito por el usuario)';
+    default:
+      return '';
+  }
+}
+
+function describeWordAlignment(value) {
+  switch (value) {
+    case 'left':
+      return 'alineado a la izquierda';
+    case 'center':
+      return 'alineado al centro';
+    case 'right':
+      return 'alineado a la derecha';
+    case 'justify':
+      return 'alineado de forma justificada';
+    default:
+      return '';
+  }
+}
+
+function buildWordFormatSummary(format, kind) {
+  var info = format && typeof format === 'object' ? format : {};
+  var parts = [];
+  if (info.fontFamily) {
+    parts.push('fuente sugerida ' + info.fontFamily);
+  }
+  if (info.fontSize) {
+    parts.push('tamaño aproximado ' + info.fontSize + ' pt');
+  }
+  if (info.color) {
+    parts.push('color preferido ' + info.color);
+  }
+  if (info.alignment) {
+    var alignment = describeWordAlignment(info.alignment);
+    if (alignment) {
+      parts.push(alignment);
+    }
+  }
+  if (info.bold) {
+    parts.push('usar negritas');
+  }
+  if (info.underline) {
+    parts.push('subrayado');
+  }
+  if (info.italics) {
+    parts.push('cursiva');
+  }
+  if (kind === 'title' && info.uppercase) {
+    parts.push('usar mayúsculas');
+  }
+  if (kind === 'body' && info.lineSpacing) {
+    parts.push('interlineado de referencia ' + info.lineSpacing);
+  }
+  if (kind === 'body' && info.highlight) {
+    parts.push('resaltar palabras clave');
+  }
+  return parts.join(', ');
+}
+
+function generateWordcrafterText(request) {
+  var apiKey = PropertiesService.getUserProperties().getProperty('TC_API_KEY');
+  if (!apiKey) {
+    return { error: 'No hay API Key configurada. Configure su clave en la sección de configuración.' };
+  }
+
+  var payload = request && typeof request === 'object' ? request : {};
+  var rawTitle = payload.title ? String(payload.title).trim() : '';
+  var description = payload.description ? String(payload.description).trim() : '';
+  var config = normalizeWordFavoriteConfig(payload.config);
+
+  var sections = [];
+  var baseInfo = [];
+  if (rawTitle) {
+    baseInfo.push('Título proporcionado: ' + rawTitle);
+  }
+  if (description) {
+    baseInfo.push('Descripción general: ' + description);
+  }
+  if (config.context && config.context.instructions) {
+    baseInfo.push('Instrucciones específicas: ' + config.context.instructions);
+  }
+  if (baseInfo.length) {
+    sections.push('Contexto principal:\n- ' + baseInfo.join('\n- '));
+  }
+
+  var personalization = config.personalization || {};
+  var personalizationParts = [];
+  var lengthDesc = describeWordLength(personalization.length);
+  if (lengthDesc) {
+    personalizationParts.push('Extensión deseada: ' + lengthDesc);
+  }
+  if (personalization.language) {
+    personalizationParts.push('Idioma de salida: ' + personalization.language);
+  }
+  var toneDesc = describeWordTone(personalization.tone);
+  if (toneDesc) {
+    personalizationParts.push('Tono preferido: ' + toneDesc);
+  }
+  if (personalization.profile) {
+    personalizationParts.push('Perfil profesional de referencia: ' + personalization.profile);
+  }
+  if (personalizationParts.length) {
+    sections.push('Preferencias de estilo:\n- ' + personalizationParts.join('\n- '));
+  }
+
+  var formatNotes = [];
+  if (config.manualTitleFormat) {
+    var titleSummary = buildWordFormatSummary(config.titleFormat, 'title');
+    if (titleSummary) {
+      formatNotes.push('Título: ' + titleSummary + '.');
+    }
+  }
+  if (config.manualBodyFormat) {
+    var bodySummary = buildWordFormatSummary(config.bodyFormat, 'body');
+    if (bodySummary) {
+      formatNotes.push('Cuerpo del texto: ' + bodySummary + '.');
+    }
+  }
+  if (formatNotes.length) {
+    sections.push('Formato deseado:\n- ' + formatNotes.join('\n- '));
+  }
+
+  var structureNotes = [];
+  var intro = config.structure && config.structure.intro ? config.structure.intro : {};
+  var conclusion = config.structure && config.structure.conclusion ? config.structure.conclusion : {};
+  if (intro.enabled) {
+    var introLine = 'Incluir una introducción clara';
+    if (intro.focus) {
+      introLine += ' enfocada en: ' + intro.focus;
+    }
+    if (intro.webEnabled && Array.isArray(intro.links) && intro.links.length) {
+      var introLinks = [];
+      intro.links.forEach(function(link) {
+        if (!link || !link.url) {
+          return;
+        }
+        var linkText = link.url;
+        if (link.hasDescription && link.description) {
+          linkText += ' — ' + link.description;
+        }
+        introLinks.push(linkText);
+      });
+      if (introLinks.length) {
+        introLine += '. Referencias para la introducción: ' + introLinks.join('; ');
+      }
+    }
+    structureNotes.push(introLine + '.');
+  }
+  if (conclusion.enabled) {
+    var conclusionLine = 'Cerrar con una conclusión sólida';
+    if (conclusion.focus) {
+      conclusionLine += ' destacando: ' + conclusion.focus;
+    }
+    if (conclusion.webEnabled && Array.isArray(conclusion.links) && conclusion.links.length) {
+      var conclusionLinks = [];
+      conclusion.links.forEach(function(link) {
+        if (!link || !link.url) {
+          return;
+        }
+        var linkText = link.url;
+        if (link.hasDescription && link.description) {
+          linkText += ' — ' + link.description;
+        }
+        conclusionLinks.push(linkText);
+      });
+      if (conclusionLinks.length) {
+        conclusionLine += '. Referencias para la conclusión: ' + conclusionLinks.join('; ');
+      }
+    }
+    structureNotes.push(conclusionLine + '.');
+  }
+  if (structureNotes.length) {
+    sections.push('Estructura sugerida:\n- ' + structureNotes.join('\n- '));
+  }
+
+  if (config.range && config.range.useRange && config.range.value) {
+    var rangeSnippet = buildWordRangeContextSnippet(config.range.value);
+    if (rangeSnippet) {
+      sections.push('Datos seleccionados:\n' + rangeSnippet);
+    }
+  }
+
+  if (
+    config.web &&
+    config.web.savedEnabled &&
+    Array.isArray(config.web.savedTables) &&
+    config.web.savedTables.length
+  ) {
+    var tableSnippets = [];
+    var seenTables = {};
+    for (var t = 0; t < config.web.savedTables.length && tableSnippets.length < 5; t++) {
+      var tableId = config.web.savedTables[t];
+      if (!tableId || seenTables[tableId]) {
+        continue;
+      }
+      seenTables[tableId] = true;
+      var tableSnippet = buildWordTableReferenceSnippet(tableId);
+      if (tableSnippet) {
+        tableSnippets.push(tableSnippet);
+      }
+    }
+    if (tableSnippets.length) {
+      sections.push('Referencias de tablas guardadas:\n- ' + tableSnippets.join('\n- '));
+    }
+  }
+
+  if (
+    config.web &&
+    config.web.savedEnabled &&
+    Array.isArray(config.web.savedTexts) &&
+    config.web.savedTexts.length
+  ) {
+    var textSummaries = [];
+    var seenTexts = {};
+    for (var x = 0; x < config.web.savedTexts.length && textSummaries.length < 5; x++) {
+      var textId = config.web.savedTexts[x];
+      if (!textId || seenTexts[textId]) {
+        continue;
+      }
+      seenTexts[textId] = true;
+      var summary = summarizeWordSavedTextReference(textId);
+      if (summary) {
+        textSummaries.push(summary);
+      }
+    }
+    if (textSummaries.length) {
+      sections.push('Textos relacionados para mantener coherencia:\n- ' + textSummaries.join('\n- '));
+    }
+  }
+
+  if (config.web && config.web.externalEnabled && Array.isArray(config.web.sources)) {
+    var sources = [];
+    config.web.sources.forEach(function(source) {
+      if (!source || !source.url) {
+        return;
+      }
+      var entry = source.url;
+      if (source.hasDescription && source.description) {
+        entry += ' — ' + source.description;
+      }
+      sources.push(entry);
+    });
+    if (sources.length) {
+      sections.push('Páginas web aportadas por el usuario:\n- ' + sources.join('\n- '));
+    }
+  }
+
+  var guidelines = [];
+  if (config.autoTitle) {
+    guidelines.push('Genera un título atractivo y coherente con el contenido.');
+  } else if (rawTitle) {
+    guidelines.push('Usa el título proporcionado exactamente como está escrito.');
+  }
+  if (config.bodyFormat && config.bodyFormat.highlight) {
+    guidelines.push('Resalta entre 3 y 5 palabras clave importantes usando mayúsculas o rodeándolas con **asteriscos**.');
+  }
+  if (config.bodyFormat && config.bodyFormat.lineSpacing) {
+    guidelines.push(
+      'Redacta párrafos fluidos que mantengan legibilidad con un interlineado aproximado de ' + config.bodyFormat.lineSpacing + '.'
+    );
+  }
+  guidelines.push('Organiza el texto en párrafos claros separados por una línea en blanco cuando corresponda.');
+  guidelines.push('Usa únicamente la información proporcionada y evita suposiciones sin respaldo.');
+  guidelines.push('Devuelve solo el texto final listo para pegar, sin comentarios adicionales ni etiquetas.');
+  sections.push('Indicaciones finales:\n- ' + guidelines.join('\n- '));
+
+  var systemParts = [
+    'Eres WordCrafter, un asistente experto en redacción profesional para Google Workspace.',
+    'Produce contenidos originales y consistentes con los datos proporcionados.'
+  ];
+  if (personalization.language) {
+    systemParts.push('Redacta estrictamente en ' + personalization.language + '.');
+  } else {
+    systemParts.push('Redacta todo el contenido en español neutro.');
+  }
+  if (toneDesc) {
+    systemParts.push('Mantén un tono ' + toneDesc + ' a lo largo del texto.');
+  }
+
+  var systemContent = systemParts.join(' ');
+  var userContent = sections.join('\n\n');
+
+  var messages = [
+    {
+      role: 'system',
+      content: systemContent
+    },
+    {
+      role: 'user',
+      content: userContent
+    }
+  ];
+
+  var requestBody = {
+    model: 'gpt-4o-mini',
+    messages: messages,
+    max_tokens: 900,
+    temperature: 0.65,
+    n: 1
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      Authorization: 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify(requestBody),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
+    var result = JSON.parse(response.getContentText());
+    if (result.error) {
+      return { error: result.error.message || 'Error al procesar la solicitud.' };
+    }
+    if (result.choices && result.choices.length > 0) {
+      var text = result.choices[0].message && result.choices[0].message.content;
+      return { text: text || '' };
+    }
+    return { error: 'No se obtuvo respuesta del modelo.' };
+  } catch (err) {
+    return { error: 'Error al conectar con OpenAI: ' + err.message };
+  }
+}
+
 function focusSavedTableRange(tableId) {
   var id = normalizeMetaId(tableId);
   if (!id) {

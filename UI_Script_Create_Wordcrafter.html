@@ -76,6 +76,7 @@ let wordFavoriteEditingId = '';
 let wordFavoritesCache = [];
 let wordFavoritesLoadingPromise = null;
 let wordFavoriteSaving = false;
+let wordGenerateInProgress = false;
 
 function normalizeWordWebSourceEntry(entry) {
         if (!entry || typeof entry !== 'object') {
@@ -257,6 +258,143 @@ function resetWordTextOptions() {
         syncWordWebSourcesCard();
         syncWordStructureCard();
         setWordFavoriteEditingId('');
+      }
+
+async function attemptWordClipboardCopy(text) {
+        const normalized = text ? String(text) : '';
+        if (!normalized) {
+          return false;
+        }
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          try {
+            await navigator.clipboard.writeText(normalized);
+            return true;
+          } catch (err) {}
+        }
+        const textarea = document.createElement('textarea');
+        textarea.value = normalized;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        textarea.style.top = '-1000px';
+        document.body.appendChild(textarea);
+        textarea.focus({ preventScroll: true });
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        let success = false;
+        try {
+          success = document.execCommand('copy');
+        } catch (err) {
+          success = false;
+        }
+        document.body.removeChild(textarea);
+        return success;
+      }
+
+function setWordGenerateLoading(isLoading) {
+        const btn = document.getElementById('wordGenerateBtn');
+        if (!btn) {
+          return;
+        }
+        if (isLoading) {
+          if (!btn.dataset.wordGenerateIdleLabel) {
+            btn.dataset.wordGenerateIdleLabel = btn.textContent || 'Generar Texto';
+          }
+          btn.disabled = true;
+          btn.classList.add('is-loading');
+          btn.textContent = 'Generando…';
+          btn.setAttribute('aria-busy', 'true');
+        } else {
+          const idle = btn.dataset.wordGenerateIdleLabel || 'Generar Texto';
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+          btn.textContent = idle;
+          btn.removeAttribute('aria-busy');
+        }
+      }
+
+async function handleWordGenerate() {
+        if (wordGenerateInProgress) {
+          return;
+        }
+        const btn = document.getElementById('wordGenerateBtn');
+        if (!btn) {
+          return;
+        }
+        const nameInput = document.getElementById('tableName');
+        const descInput = document.getElementById('tableDesc');
+        const rawTitle = nameInput ? nameInput.value.trim() : '';
+        const isAutoTitle = Boolean(
+          nameInput &&
+            nameInput.dataset &&
+            nameInput.dataset.autoFilled === 'true'
+        );
+        const effectiveTitle = isAutoTitle || rawTitle === WORD_TITLE_AUTO_PLACEHOLDER ? '' : rawTitle;
+        const description = descInput ? descInput.value.trim() : '';
+        const config = collectWordFavoriteConfig();
+        wordGenerateInProgress = true;
+        setWordGenerateLoading(true);
+        try {
+          const response = await callServerFunction('generateWordcrafterText', {
+            title: effectiveTitle,
+            description: description,
+            config: config
+          });
+          if (!response || response.error) {
+            await showMessageModal((response && response.error) || 'No se pudo generar el texto.', {
+              title: 'Error al generar',
+              variant: 'error'
+            });
+            return;
+          }
+          const generated = response.text ? String(response.text).trim() : '';
+          if (!generated) {
+            await showMessageModal('No se recibió ningún texto de la IA.', {
+              title: 'Sin contenido',
+              variant: 'warning'
+            });
+            return;
+          }
+          let copied = false;
+          try {
+            copied = await attemptWordClipboardCopy(generated);
+          } catch (err) {
+            copied = false;
+          }
+          let message = generated;
+          let variant = 'info';
+          if (copied) {
+            message =
+              'El texto generado se copió al portapapeles. Revísalo a continuación y ajústalo si es necesario:\n\n' +
+              generated;
+            variant = 'success';
+          }
+          await showMessageModal(message, {
+            title: 'Texto generado',
+            variant: variant,
+            primaryText: 'Cerrar'
+          });
+        } catch (err) {
+          const errorMessage = err && err.message ? err.message : err;
+          await showMessageModal('No se pudo generar el texto: ' + errorMessage, {
+            title: 'Error al generar',
+            variant: 'error'
+          });
+        } finally {
+          wordGenerateInProgress = false;
+          setWordGenerateLoading(false);
+        }
+      }
+
+function bindWordGenerateButton() {
+        const btn = document.getElementById('wordGenerateBtn');
+        if (btn && btn.dataset.wordGenerateBound !== 'true') {
+          btn.addEventListener('click', function() {
+            handleWordGenerate();
+          });
+          btn.dataset.wordGenerateBound = 'true';
+        }
       }
 
 function updateWordFormatFlagClasses(container) {
@@ -2354,6 +2492,7 @@ function initializeWordRangeMode() {
         bindWordStructureControls();
         bindWordWebSourcesControls();
         bindWordFavoriteButton();
+        bindWordGenerateButton();
         bindWordCollapsibleSections();
         renderWordWebSourcesList();
         renderWordStructureLinksList();
@@ -2376,6 +2515,7 @@ function notifyCreateThemeChanged(nextTheme) {
         bindWordStructureControls();
         bindWordWebSourcesControls();
         bindWordFavoriteButton();
+        bindWordGenerateButton();
         renderWordWebSourcesList();
         renderWordStructureLinksList();
         syncCreateRangeModeUI();
