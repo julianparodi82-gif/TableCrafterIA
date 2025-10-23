@@ -402,6 +402,16 @@ function normalizeMetaRecordType(value) {
   ) {
     return 'wordFavorite';
   }
+  if (
+    text === 'tablefavorite' ||
+    text === 'table_favorite' ||
+    text === 'table-favorite' ||
+    text === 'favoritotabla' ||
+    text === 'tabla_favorita' ||
+    text === 'tabla-favorita'
+  ) {
+    return 'tableFavorite';
+  }
   if (text === 'table') {
     return 'table';
   }
@@ -460,6 +470,9 @@ function resolveMetaRecordType(row) {
   }
   if (!hasReportSignals && parsedConfig.kind === 'wordFavorite') {
     return 'wordFavorite';
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'tableFavorite') {
+    return 'tableFavorite';
   }
   return hasReportSignals ? 'reportFavorite' : normalized;
 }
@@ -1154,7 +1167,7 @@ function listFavoriteActions() {
       continue;
     }
     var type = resolveMetaRecordType(row);
-    if (type !== 'reportFavorite' && type !== 'wordFavorite') {
+    if (type !== 'reportFavorite' && type !== 'wordFavorite' && type !== 'tableFavorite') {
       continue;
     }
     if (seenIds[entryId]) {
@@ -1262,6 +1275,57 @@ function listFavoriteActions() {
         description: wordFavorite.description || '',
         createdAt: wordFavorite.createdAt || '',
         updatedAt: wordFavorite.updatedAt || ''
+      });
+      seenIds[entryId] = true;
+      continue;
+    }
+    if (type === 'tableFavorite') {
+      var tableFavorite = buildTableFavoriteResponse({ data: row });
+      if (!tableFavorite || tableFavorite.error) {
+        continue;
+      }
+      var tableConfig = tableFavorite.config || {};
+      var clonedConfig = {};
+      try {
+        clonedConfig = JSON.parse(JSON.stringify(tableConfig));
+      } catch (err) {
+        clonedConfig = tableConfig;
+      }
+      var rangeInfo = tableFavorite.range || {};
+      var clonedHeaders = [];
+      if (Array.isArray(tableFavorite.headers)) {
+        try {
+          clonedHeaders = JSON.parse(JSON.stringify(tableFavorite.headers));
+        } catch (err2) {
+          clonedHeaders = tableFavorite.headers.slice();
+        }
+      }
+      var clonedStyle = {};
+      if (tableFavorite.style && typeof tableFavorite.style === 'object') {
+        try {
+          clonedStyle = JSON.parse(JSON.stringify(tableFavorite.style));
+        } catch (err3) {
+          clonedStyle = tableFavorite.style;
+        }
+      }
+      favorites.push({
+        id: tableFavorite.id || entryId,
+        type: 'tableFavorite',
+        name: tableFavorite.name || '',
+        description: tableFavorite.description || '',
+        createdAt: tableFavorite.createdAt || '',
+        updatedAt: tableFavorite.updatedAt || '',
+        config: clonedConfig,
+        rangeA1: rangeInfo.a1Notation || '',
+        fullRangeA1: rangeInfo.fullA1 || '',
+        sheetName: rangeInfo.sheetName || '',
+        rows: rangeInfo.rows || '',
+        cols: rangeInfo.cols || '',
+        style: clonedStyle,
+        headers: clonedHeaders,
+        updateFormulaReferences: Object.prototype.hasOwnProperty.call(tableConfig, 'updateFormulaReferences')
+          ? !!tableConfig.updateFormulaReferences
+          : true
       });
       seenIds[entryId] = true;
     }
@@ -1454,6 +1518,268 @@ function buildReportFavoriteResponse(entry) {
     phones: Array.isArray(config.phones) ? config.phones : [],
     customization: normalizeReportCustomization(config.customization)
   };
+}
+
+function normalizeTableFavoriteStyle(style) {
+  var normalized = {
+    headerColor: '#66D68E',
+    altColor1: '#FFFFFF',
+    altColor2: '#DCDFE5',
+    border: true,
+    bold: true
+  };
+  if (style && typeof style === 'object') {
+    if (style.headerColor !== undefined && style.headerColor !== null) {
+      normalized.headerColor = String(style.headerColor);
+    }
+    if (style.altColor1 !== undefined && style.altColor1 !== null) {
+      normalized.altColor1 = String(style.altColor1);
+    }
+    if (style.altColor2 !== undefined && style.altColor2 !== null) {
+      normalized.altColor2 = String(style.altColor2);
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'border')) {
+      normalized.border = !!style.border;
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'bold')) {
+      normalized.bold = !!style.bold;
+    }
+  }
+  return normalized;
+}
+
+function normalizeTableFavoriteRange(source) {
+  var range = source && typeof source === 'object' ? source : {};
+  var value = range.value === null || range.value === undefined ? '' : String(range.value).trim();
+  var sheetName = range.sheetName === null || range.sheetName === undefined ? '' : String(range.sheetName).trim();
+  var a1Notation = range.a1Notation === null || range.a1Notation === undefined ? '' : String(range.a1Notation).trim();
+  var rows = parseInt(range.rows, 10);
+  if (isNaN(rows) || rows < 0) {
+    rows = 0;
+  }
+  var cols = parseInt(range.cols, 10);
+  if (isNaN(cols) || cols < 0) {
+    cols = 0;
+  }
+  if (!a1Notation) {
+    a1Notation = stripSheetFromRange(value);
+  }
+  if (!sheetName) {
+    sheetName = extractSheetNameFromRange(value);
+  }
+  if (!value && sheetName && a1Notation) {
+    value = buildFullRangeNotation(sheetName, a1Notation);
+  }
+  var fullRange = '';
+  if (a1Notation) {
+    fullRange = buildFullRangeNotation(sheetName, a1Notation);
+  } else if (value) {
+    fullRange = value;
+  }
+  return {
+    value: value || '',
+    sheetName: sheetName || '',
+    a1Notation: a1Notation || '',
+    rows: rows,
+    cols: cols,
+    fullA1: fullRange || ''
+  };
+}
+
+function normalizeTableFavoriteConfig(source) {
+  var config = source && typeof source === 'object' ? source : {};
+  var versionValue = parseInt(config.version, 10);
+  if (isNaN(versionValue) || versionValue < 1) {
+    versionValue = 1;
+  }
+  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(config.headers));
+  return {
+    version: versionValue,
+    name: config.name ? String(config.name).trim() : '',
+    description: config.description ? String(config.description).trim() : '',
+    range: normalizeTableFavoriteRange(config.range),
+    headers: normalizedHeaders,
+    style: normalizeTableFavoriteStyle(config.style),
+    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true)
+  };
+}
+
+function buildTableFavoriteResponse(entry) {
+  var data = entry && entry.data ? entry.data : null;
+  if (!data) {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  var storedConfig = parseJsonValue(data[META_INDEX.reportConfig], {});
+  var rawConfig = storedConfig && typeof storedConfig === 'object' && Object.prototype.hasOwnProperty.call(storedConfig, 'config')
+    ? storedConfig.config
+    : storedConfig;
+  var config = normalizeTableFavoriteConfig(rawConfig);
+  var id = normalizeMetaId(data[META_INDEX.id]);
+  var name = data[META_INDEX.name] || config.name || '';
+  var description = data[META_INDEX.description] || config.description || '';
+  if (!config.name) {
+    config.name = name;
+  }
+  if (!config.description) {
+    config.description = description;
+  }
+  return {
+    id: id,
+    type: 'tableFavorite',
+    name: name,
+    description: description,
+    createdAt: data[META_INDEX.createdAt] || '',
+    updatedAt: data[META_INDEX.updatedAt] || '',
+    config: config,
+    range: config.range,
+    style: config.style,
+    headers: config.headers
+  };
+}
+
+function listTableFavorites() {
+  SpreadsheetApp.flush();
+  var meta = getMetaSheet();
+  var data = meta.getDataRange().getValues();
+  var favorites = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (resolveMetaRecordType(row) !== 'tableFavorite') {
+      continue;
+    }
+    var favorite = buildTableFavoriteResponse({ data: row });
+    if (!favorite || favorite.error) {
+      continue;
+    }
+    favorites.push(favorite);
+  }
+  return favorites;
+}
+
+function getTableFavoriteDetails(favoriteId) {
+  var normalizedId = normalizeMetaId(favoriteId);
+  if (!normalizedId) {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  var entry = findMetaById(normalizedId);
+  if (!entry || !entry.data) {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+    return { error: 'La entrada indicada no es una tabla favorita.' };
+  }
+  return buildTableFavoriteResponse(entry);
+}
+
+function saveTableFavorite(payload) {
+  var data = payload && typeof payload === 'object' ? payload : {};
+  var name = data.name ? String(data.name).trim() : '';
+  if (!name) {
+    throw new Error('Debe indicar un nombre para la tabla favorita.');
+  }
+  var normalizedId = normalizeMetaId(data.id);
+  var config = normalizeTableFavoriteConfig(data.config);
+  config.name = name;
+  config.description = data.description ? String(data.description).trim() : config.description;
+  var meta = getMetaSheet();
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var normalizedHeaders = ensureHeaderKeys(config.headers);
+  config.headers = normalizedHeaders;
+  var storedHeaders = stringifyJsonValue(normalizedHeaders);
+  var storedStyle = stringifyJsonValue(config.style);
+  var range = config.range || normalizeTableFavoriteRange({});
+  var fullRange = range.fullA1 || range.value || '';
+  var sheetName = range.sheetName || extractSheetNameFromRange(fullRange);
+  var cols = parseInt(range.cols, 10);
+  if (isNaN(cols) || cols < 0) {
+    cols = normalizedHeaders.length;
+  }
+  var rows = parseInt(range.rows, 10);
+  if (isNaN(rows) || rows < 0) {
+    rows = 0;
+  }
+  var formulaPreferenceValue = config.updateFormulaReferences ? 'TRUE' : 'FALSE';
+  var storedConfig = stringifyJsonValue({
+    kind: 'tableFavorite',
+    version: config.version || 1,
+    config: config
+  });
+  var createdAt = now;
+  if (normalizedId) {
+    var existing = findMetaById(normalizedId);
+    if (!existing || !existing.data) {
+      throw new Error('No se encontró la tabla favorita indicada.');
+    }
+    if (resolveMetaRecordType(existing.data) !== 'tableFavorite') {
+      throw new Error('El elemento indicado no es una tabla favorita.');
+    }
+    var conflict = findMetaByName(name, { ignoreId: normalizedId, type: 'tableFavorite' });
+    if (conflict) {
+      throw new Error('Ya existe una tabla favorita con ese nombre.');
+    }
+    createdAt = existing.data[META_INDEX.createdAt] || now;
+    meta
+      .getRange(existing.row, 1, 1, META_HEADERS.length)
+      .setValues([
+        [
+          normalizedId,
+          name,
+          fullRange,
+          config.description || '',
+          sheetName || '',
+          cols,
+          rows,
+          createdAt,
+          now,
+          storedStyle,
+          storedHeaders,
+          formulaPreferenceValue,
+          'tableFavorite',
+          storedConfig
+        ]
+      ]);
+  } else {
+    var nameConflict = findMetaByName(name, { type: 'tableFavorite' });
+    if (nameConflict) {
+      throw new Error('Ya existe una tabla favorita con ese nombre.');
+    }
+    normalizedId = 'tableFavorite:' + Utilities.getUuid();
+    meta.appendRow([
+      normalizedId,
+      name,
+      fullRange,
+      config.description || '',
+      sheetName || '',
+      cols,
+      rows,
+      now,
+      now,
+      storedStyle,
+      storedHeaders,
+      formulaPreferenceValue,
+      'tableFavorite',
+      storedConfig
+    ]);
+  }
+  SpreadsheetApp.flush();
+  return { ok: true, id: normalizedId, message: 'Tabla favorita guardada.' };
+}
+
+function deleteTableFavorite(favoriteId) {
+  var normalizedId = normalizeMetaId(favoriteId);
+  if (!normalizedId) {
+    return { ok: true, removed: true };
+  }
+  var entry = findMetaById(normalizedId);
+  if (!entry || !entry.data) {
+    return { ok: true, removed: true };
+  }
+  if (resolveMetaRecordType(entry.data) !== 'tableFavorite') {
+    return { error: 'Tabla favorita no encontrada.' };
+  }
+  getMetaSheet().deleteRow(entry.row);
+  SpreadsheetApp.flush();
+  return { ok: true };
 }
 
 function normalizeWordFavoriteIdArray(source) {
@@ -1702,6 +2028,9 @@ function getFavoriteActionDetails(favoriteId) {
   }
   if (type === 'wordFavorite') {
     return buildWordFavoriteResponse(entry);
+  }
+  if (type === 'tableFavorite') {
+    return buildTableFavoriteResponse(entry);
   }
   return { error: 'Favorito no encontrado.' };
 }
@@ -3650,6 +3979,9 @@ function deleteSavedAction(actionId) {
   }
   if (type === 'wordFavorite') {
     return deleteWordFavorite(normalizedId);
+  }
+  if (type === 'tableFavorite') {
+    return deleteTableFavorite(normalizedId);
   }
   return { error: 'Esta acción todavía no se puede borrar desde el panel.' };
 }

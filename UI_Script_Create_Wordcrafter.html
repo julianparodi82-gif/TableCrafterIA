@@ -2323,6 +2323,13 @@ function notifyCreateThemeChanged(nextTheme) {
         syncCreateRangeModeUI();
         syncWordCreateOptions();
         refreshWordPreviews();
+        if (typeof notifyTableFavoriteThemeChanged === 'function') {
+          try {
+            notifyTableFavoriteThemeChanged(nextTheme);
+          } catch (err) {
+            console.log('No se pudo sincronizar los favoritos de tabla.', err);
+          }
+        }
       }
 
 window.notifyCreateThemeChanged = notifyCreateThemeChanged;

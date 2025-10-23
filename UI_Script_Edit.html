@@ -981,6 +981,15 @@ async function openActionForEditing(action) {
         return;
       }
       await window.WordFavoriteManager.openFavorite(action.id, { focusTitle: false });
+    } else if (action.type === 'tableFavorite') {
+      if (!window.TableFavoriteManager || typeof window.TableFavoriteManager.openFavorite !== 'function') {
+        await showMessageModal('No se pudo abrir la tabla favorita automáticamente.', {
+          title: 'Función no disponible',
+          variant: 'warning'
+        });
+        return;
+      }
+      await window.TableFavoriteManager.openFavorite(action.id, { focusName: false });
     } else {
       await showMessageModal('Esta acción todavía no se puede editar desde el panel.', {
         title: 'Acción no soportada',

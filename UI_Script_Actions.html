@@ -307,6 +307,8 @@ function normalizeFavoriteActionEntry(action) {
     type = 'table';
   } else if (rawType === 'wordfavorite' || rawType === 'word_favorite' || rawType === 'word-favorite') {
     type = 'wordFavorite';
+  } else if (rawType === 'tablefavorite' || rawType === 'table_favorite' || rawType === 'table-favorite') {
+    type = 'tableFavorite';
   }
   const normalized = {
     id: id,
@@ -356,6 +358,45 @@ function normalizeFavoriteActionEntry(action) {
     } else {
       normalized.config = null;
     }
+  } else if (type === 'tableFavorite') {
+    if (action.config && typeof action.config === 'object') {
+      try {
+        normalized.config = JSON.parse(JSON.stringify(action.config));
+      } catch (err) {
+        normalized.config = action.config;
+      }
+    } else {
+      normalized.config = null;
+    }
+    if (action.style && typeof action.style === 'object') {
+      try {
+        normalized.style = JSON.parse(JSON.stringify(action.style));
+      } catch (err2) {
+        normalized.style = action.style;
+      }
+    } else {
+      normalized.style = null;
+    }
+    if (Array.isArray(action.headers)) {
+      try {
+        normalized.headers = JSON.parse(JSON.stringify(action.headers));
+      } catch (err3) {
+        normalized.headers = action.headers.slice();
+      }
+    } else {
+      normalized.headers = [];
+    }
+    normalized.rangeA1 = action.rangeA1 ? String(action.rangeA1) : '';
+    normalized.fullRangeA1 = action.fullRangeA1 ? String(action.fullRangeA1) : '';
+    normalized.sheetName = action.sheetName ? String(action.sheetName) : '';
+    normalized.cols = action.cols === null || action.cols === undefined ? '' : String(action.cols);
+    normalized.rows = action.rows === null || action.rows === undefined ? '' : String(action.rows);
+    if (!Object.prototype.hasOwnProperty.call(normalized, 'config') || !normalized.config) {
+      normalized.config = {};
+    }
+    normalized.updateFormulaReferences = Object.prototype.hasOwnProperty.call(action, 'updateFormulaReferences')
+      ? !!action.updateFormulaReferences
+      : true;
   }
   return normalized;
 }
@@ -816,6 +857,65 @@ function buildWordFavoriteSummary(action) {
   return parts.join('\n');
 }
 
+function buildTableFavoriteSummary(action) {
+  if (!action) {
+    return '';
+  }
+  const parts = [];
+  const rangePieces = [];
+  const sheetName = action.sheetName ? String(action.sheetName) : '';
+  const fullRange = action.fullRangeA1
+    ? String(action.fullRangeA1)
+    : sheetName && action.rangeA1
+    ? sheetName + '!' + String(action.rangeA1)
+    : action.rangeA1
+    ? String(action.rangeA1)
+    : '';
+  if (sheetName) {
+    rangePieces.push('Hoja: ' + sheetName);
+  }
+  if (fullRange) {
+    rangePieces.push('Rango: ' + fullRange);
+  }
+  if (rangePieces.length) {
+    parts.push(rangePieces.join(' • '));
+  }
+  const cols = parseInt(action.cols, 10);
+  const rows = parseInt(action.rows, 10);
+  if (!isNaN(cols) && cols > 0 && !isNaN(rows) && rows > 0) {
+    parts.push('Dimensiones: ' + cols + '×' + rows);
+  } else if (!isNaN(cols) && cols > 0) {
+    parts.push('Columnas: ' + cols);
+  }
+  let headersCount = 0;
+  if (Array.isArray(action.headers)) {
+    headersCount = action.headers.length;
+  } else if (action.config && action.config.headers && Array.isArray(action.config.headers)) {
+    headersCount = action.config.headers.length;
+  }
+  if (headersCount > 0) {
+    parts.push('Encabezados: ' + headersCount);
+  }
+  const style = action.style && typeof action.style === 'object'
+    ? action.style
+    : action.config && action.config.style && typeof action.config.style === 'object'
+    ? action.config.style
+    : null;
+  if (style) {
+    const styleParts = [];
+    if (Object.prototype.hasOwnProperty.call(style, 'border')) {
+      styleParts.push(style.border ? 'Con bordes' : 'Sin bordes');
+    }
+    if (Object.prototype.hasOwnProperty.call(style, 'bold')) {
+      styleParts.push(style.bold ? 'Encabezado en negrita' : 'Encabezado regular');
+    }
+    if (styleParts.length) {
+      parts.push(styleParts.join(' • '));
+    }
+  }
+  return parts.join('\n');
+}
+
 function buildActionDetailCard(action, options) {
   const opts = options || {};
   const card = document.createElement('div');
@@ -892,6 +992,14 @@ function buildActionDetailCard(action, options) {
       summary.textContent = summaryText;
       card.appendChild(summary);
     }
+  } else if (action && action.type === 'tableFavorite') {
+    const summaryText = buildTableFavoriteSummary(action);
+    if (summaryText) {
+      const summary = document.createElement('p');
+      summary.className = 'ai-action-summary';
+      summary.textContent = summaryText;
+      card.appendChild(summary);
+    }
   }
   if (opts.includeActions !== false) {
     const buttons = document.createElement('div');
@@ -903,6 +1011,8 @@ function buildActionDetailCard(action, options) {
       editBtn.textContent = 'Editar tabla';
     } else if (action && action.type === 'wordFavorite') {
       editBtn.textContent = 'Editar texto';
+    } else if (action && action.type === 'tableFavorite') {
+      editBtn.textContent = 'Aplicar favorito';
     } else {
       editBtn.textContent = 'Editar en panel IA';
     }
@@ -945,6 +1055,11 @@ function buildSavedActionTooltip(action) {
     }
   } else if (action.type === 'wordFavorite') {
     const summary = buildWordFavoriteSummary(action);
+    if (summary) {
+      parts.push(summary);
+    }
+  } else if (action.type === 'tableFavorite') {
+    const summary = buildTableFavoriteSummary(action);
     if (summary) {
       parts.push(summary);
     }
@@ -1339,6 +1454,16 @@ function initSavedActionsPanel() {
     });
   }
   document.addEventListener('tc:wordFavoritesUpdated', function() {
+    const currentId = typeof getCurrentSavedActionId === 'function' ? getCurrentSavedActionId() : '';
+    requestSavedActionsRefresh({
+      selectId: currentId,
+      force: true,
+      autoSelectFirst: false,
+      forceLoad: true,
+      delay: 0
+    });
+  });
+  document.addEventListener('tc:tableFavoritesUpdated', function() {
     const currentId = typeof getCurrentSavedActionId === 'function' ? getCurrentSavedActionId() : '';
     requestSavedActionsRefresh({
       selectId: currentId,
