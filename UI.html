@@ -176,32 +176,39 @@
       .tab-nav-primary {
         margin-bottom: 20px;
       }
-      body.theme-wordcrafter .tab-nav-primary {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+      body.theme-wordcrafter .tab-nav-primary,
+      body.theme-tablecrafter .tab-nav-primary {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         grid-template-areas:
-          'tab-ai tab-ai tab-edit tab-edit tab-create tab-create'
-          '. tab-triggers tab-triggers tab-actions tab-actions .';
+          'tab-ai tab-ai tab-edit tab-edit tab-create'
+          '. tab-triggers tab-triggers tab-actions tab-actions';
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='aiTab'] {
+      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='aiTab'],
+      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='aiTab'] {
         grid-area: tab-ai;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='editTab'] {
+      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='editTab'],
+      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='editTab'] {
         grid-area: tab-edit;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='createTab'] {
+      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='createTab'],
+      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='createTab'] {
         grid-area: tab-create;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
+      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'],
+      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
         grid-area: tab-triggers;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
+      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'],
+      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
         grid-area: tab-actions;
       }
       @media (min-width: 641px) {
         .tab-nav-primary {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           grid-template-areas:
-            'tab-ai tab-edit tab-create'
-            'tab-triggers tab-templates tab-actions';
+            'tab-ai tab-edit tab-create tab-create'
+            'tab-triggers tab-triggers tab-actions tab-actions';
         }
         .tab-nav-primary .tab-btn[data-tab='aiTab'] {
           grid-area: tab-ai;
@@ -214,9 +221,6 @@
         }
         .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
           grid-area: tab-triggers;
-        }
-        .tab-nav-primary .tab-btn[data-tab='templatesTab'] {
-          grid-area: tab-templates;
         }
         .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
           grid-area: tab-actions;
@@ -629,6 +633,8 @@
       .tc-card-icon {
         width: 36px;
         height: 36px;
+        min-width: 36px;
+        aspect-ratio: 1 / 1;
         border-radius: 10px;
         background: var(--tc-primary-light);
         color: #000000;
@@ -4152,14 +4158,6 @@
           data-tooltip="Configura automatizaciones que mantengan tus datos al día."
         >
           Triggers
-        </button>
-        <button
-          class="tab-btn"
-          data-tab="templatesTab"
-          data-themes="table"
-          data-tooltip="Organiza y reutiliza tus plantillas y recursos destacados."
-        >
-          Plantillas
         </button>
         <button
           class="tab-btn"
@@ -7706,37 +7704,6 @@
           </div>
         </div>
       </div>
-      <div id="templatesTab" class="tab-content" data-themes="table">
-        <div class="section">
-          <div class="tc-card">
-            <div class="tc-card-header">
-              <div class="tc-card-title">
-                <span class="tc-card-icon" aria-hidden="true">📁</span>
-                <div>
-                  <h3 class="tc-card-heading">Biblioteca de plantillas</h3>
-                  <p class="tc-card-subtitle">Guarda estructuras listas para reutilizar en nuevos reportes.</p>
-                </div>
-              </div>
-            </div>
-            <div id="templateGridEmpty" class="tc-card-empty">Aún no guardaste plantillas.</div>
-            <div id="templateGrid" class="tc-template-grid" role="list"></div>
-            <div class="tc-card-footer tc-card-footer--right">
-              <button type="button" id="templateRefreshBtn" class="btn-secondary">Actualizar</button>
-            </div>
-          </div>
-          <div class="tc-card">
-            <h3 class="tc-card-heading">Detalles de la plantilla</h3>
-            <p class="tc-card-subtitle">Selecciona una plantilla para revisar su contenido.</p>
-            <div id="templateDetails" class="tc-template-details tc-card-muted" aria-live="polite">
-              Selecciona una plantilla para ver más información.
-            </div>
-            <div class="tc-card-actions">
-              <button type="button" id="templateDuplicateBtn" class="btn-secondary" disabled>Duplicar</button>
-              <button type="button" id="templateApplyBtn" class="btn-primary" disabled>Usar plantilla</button>
-            </div>
-          </div>
-        </div>
-      </div>
       <div id="actionsTab" class="tab-content" data-themes="table word">
         <div class="section">
           <div class="tc-card">
@@ -7871,7 +7838,6 @@
     <?!= include('UI_Script_AI'); ?>
     <?!= include('UI_Script_Actions'); ?>
     <?!= include('UI_Script_Triggers'); ?>
-    <?!= include('UI_Script_Templates'); ?>
 
   </body>
 </html>
