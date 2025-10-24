@@ -499,7 +499,9 @@ async function handleTableFavoriteSave() {
                   tabId: 'createTab',
                   sourceType: 'table',
                   action: 'tableFavorite',
+                  context: 'crearTabla',
                   sourceId: tableFavoriteEditingId || '',
+                  favoriteId: tableFavoriteEditingId || '',
                   tableName: tableTitle
                 })
               : {

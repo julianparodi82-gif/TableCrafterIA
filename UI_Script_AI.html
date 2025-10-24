@@ -5071,7 +5071,10 @@ async function handleReportFavoriteSave() {
                   tabId: 'aiTab',
                   sourceType: 'report',
                   action: 'reportFavorite',
+                  context: 'panelIaReport',
+                  theme: currentAiTheme,
                   sourceId: editingId || '',
+                  favoriteId: editingId || '',
                   reportName: favoriteName
                 })
               : {

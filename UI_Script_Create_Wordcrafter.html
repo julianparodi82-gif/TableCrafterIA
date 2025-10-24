@@ -1009,7 +1009,7 @@ function collectWordFavoriteConfig() {
               return String(entry);
             })
           : [];
-        return {
+        const config = {
           version: 1,
           name: getWordFavoriteName(),
           range: {
@@ -1055,6 +1055,26 @@ function collectWordFavoriteConfig() {
             splitSentences: !!(splitToggle && splitToggle.checked)
           }
         };
+        if (typeof buildFavoriteMetadata === 'function') {
+          config.metadata = buildFavoriteMetadata('createTab', {
+            tabId: 'createTab',
+            sourceType: 'wordFavorite',
+            action: 'wordFavorite',
+            context: 'crearTexto',
+            theme: 'word',
+            sourceId: wordFavoriteEditingId || '',
+            favoriteId: wordFavoriteEditingId || ''
+          });
+        } else {
+          config.metadata = {
+            type: 'CrearTextoWC',
+            id: 'CrearTextoWC' + String(Date.now()).slice(-6),
+            tabId: 'createTab',
+            tab: 'createTab',
+            context: 'crearTexto'
+          };
+        }
+        return config;
       }
 
 function applyWordFavoriteConfig(config) {
@@ -1175,12 +1195,30 @@ function normalizeWordFavoriteList(entries) {
             if (!entry || !entry.id) {
               return null;
             }
+            let metadata = {};
+            if (entry.metadata && typeof entry.metadata === 'object') {
+              try {
+                metadata = JSON.parse(JSON.stringify(entry.metadata));
+              } catch (err) {
+                metadata = Object.assign({}, entry.metadata);
+              }
+            }
+            let metadataLabel = '';
+            if (typeof formatFavoriteMetadataLabel === 'function') {
+              metadataLabel = formatFavoriteMetadataLabel(metadata);
+            } else if (metadata && typeof metadata === 'object') {
+              const metaId = metadata.id ? String(metadata.id).trim() : '';
+              const metaType = metadata.type ? String(metadata.type).trim() : '';
+              metadataLabel = metaId && metaType && metaId !== metaType ? metaType + ' • ' + metaId : metaId || metaType || '';
+            }
             return {
               id: String(entry.id),
               name: entry.name ? String(entry.name) : String(entry.id),
               description: entry.description ? String(entry.description) : '',
               createdAt: entry.createdAt || '',
-              updatedAt: entry.updatedAt || ''
+              updatedAt: entry.updatedAt || '',
+              metadata: metadata,
+              metadataLabel: metadataLabel
             };
           })
           .filter(function(item) {
@@ -1198,7 +1236,16 @@ function mergeWordFavoritesIntoSavedCache(favorites) {
             })
           : [];
         const mapped = favorites.map(function(entry) {
-          return { id: entry.id, name: entry.name, source: 'wordFavorite' };
+          let metadataLabel = entry && entry.metadataLabel ? String(entry.metadataLabel) : '';
+          if (!metadataLabel && entry && entry.metadata && typeof formatFavoriteMetadataLabel === 'function') {
+            metadataLabel = formatFavoriteMetadataLabel(entry.metadata);
+          }
+          return {
+            id: entry.id,
+            name: entry.name,
+            source: 'wordFavorite',
+            metadataLabel: metadataLabel
+          };
         });
         wordWebSavedCache.texts = existing.concat(mapped);
         pruneWordWebSavedSelections();
@@ -1908,7 +1955,17 @@ function createWordWebSavedItem(entry, options) {
         label.className =
           'word-web-saved-item word-web-saved-item--' + (settings.type || 'tables') +
           (settings.selected ? ' is-selected' : '');
-        label.title = entry.details ? entry.details : entry.name || id;
+        const metaText = settings.meta || '';
+        const titleParts = [];
+        if (entry.name) {
+          titleParts.push(entry.name);
+        }
+        if (metaText) {
+          titleParts.push(metaText);
+        } else if (entry.details) {
+          titleParts.push(entry.details);
+        }
+        label.title = titleParts.length ? titleParts.join(' • ') : entry.name || id;
         if (entry.accentColor) {
           label.style.setProperty('--word-saved-accent', entry.accentColor);
         }
@@ -1919,7 +1976,6 @@ function createWordWebSavedItem(entry, options) {
         name.className = 'word-web-saved-name';
         name.textContent = entry.name || id;
         info.appendChild(name);
-        const metaText = settings.meta || '';
         if (metaText) {
           const meta = document.createElement('span');
           meta.className = 'word-web-saved-meta';
@@ -1982,10 +2038,17 @@ function renderWordWebSavedLists() {
               const isSelected = Array.isArray(wordWebSavedSelections.tables)
                 ? wordWebSavedSelections.tables.includes(id)
                 : false;
+              const metaPieces = [];
+              if (entry.metadataLabel) {
+                metaPieces.push(entry.metadataLabel);
+              }
+              if (entry.details) {
+                metaPieces.push(entry.details);
+              }
               const item = createWordWebSavedItem(entry, {
                 selected: isSelected,
                 type: 'tables',
-                meta: entry.details || ''
+                meta: metaPieces.join(' • ')
               });
               if (item) {
                 tablesList.appendChild(item);
@@ -2008,10 +2071,18 @@ function renderWordWebSavedLists() {
               const isSelected = Array.isArray(wordWebSavedSelections.texts)
                 ? wordWebSavedSelections.texts.includes(id)
                 : false;
+              const metaPieces = [];
+              if (entry.metadataLabel) {
+                metaPieces.push(entry.metadataLabel);
+              }
+              const sourceMeta = getWordWebSavedSourceLabel(entry.source);
+              if (sourceMeta) {
+                metaPieces.push(sourceMeta);
+              }
               const item = createWordWebSavedItem(entry, {
                 selected: isSelected,
                 type: 'texts',
-                meta: getWordWebSavedSourceLabel(entry.source)
+                meta: metaPieces.join(' • ')
               });
               if (item) {
                 textsList.appendChild(item);
@@ -2090,7 +2161,15 @@ function loadWordWebSavedItems() {
                 } else if (entry.sheetName && entry.rangeA1) {
                   detail = String(entry.sheetName) + '!' + String(entry.rangeA1);
                 }
-                return { id: id, name: name, details: detail };
+                let metadataLabel = '';
+                if (entry.metadata && typeof formatFavoriteMetadataLabel === 'function') {
+                  metadataLabel = formatFavoriteMetadataLabel(entry.metadata);
+                } else if (entry.metadata && typeof entry.metadata === 'object') {
+                  const metaId = entry.metadata.id ? String(entry.metadata.id).trim() : '';
+                  const metaType = entry.metadata.type ? String(entry.metadata.type).trim() : '';
+                  metadataLabel = metaId && metaType && metaId !== metaType ? metaType + ' • ' + metaId : metaId || metaType || '';
+                }
+                return { id: id, name: name, details: detail, metadataLabel: metadataLabel };
               })
               .filter(function(item) {
                 return !!item;
@@ -2109,7 +2188,15 @@ function loadWordWebSavedItems() {
                 return;
               }
               const name = entry.name ? String(entry.name) : id;
-              normalizedTexts.push({ id: id, name: name, source: 'reportFavorite' });
+              let metadataLabel = '';
+              if (entry.metadata && typeof formatFavoriteMetadataLabel === 'function') {
+                metadataLabel = formatFavoriteMetadataLabel(entry.metadata);
+              } else if (entry.metadata && typeof entry.metadata === 'object') {
+                const metaId = entry.metadata.id ? String(entry.metadata.id).trim() : '';
+                const metaType = entry.metadata.type ? String(entry.metadata.type).trim() : '';
+                metadataLabel = metaId && metaType && metaId !== metaType ? metaType + ' • ' + metaId : metaId || metaType || '';
+              }
+              normalizedTexts.push({ id: id, name: name, source: 'reportFavorite', metadataLabel: metadataLabel });
               normalizedTextsMap[id] = true;
             });
             favorites.forEach(function(entry) {
@@ -2121,7 +2208,15 @@ function loadWordWebSavedItems() {
                 return;
               }
               const name = entry.name ? String(entry.name) : id;
-              normalizedTexts.push({ id: id, name: name, source: 'wordFavorite' });
+              let metadataLabel = entry && entry.metadataLabel ? String(entry.metadataLabel) : '';
+              if (!metadataLabel && entry && entry.metadata && typeof formatFavoriteMetadataLabel === 'function') {
+                metadataLabel = formatFavoriteMetadataLabel(entry.metadata);
+              } else if (!metadataLabel && entry && entry.metadata && typeof entry.metadata === 'object') {
+                const metaId = entry.metadata.id ? String(entry.metadata.id).trim() : '';
+                const metaType = entry.metadata.type ? String(entry.metadata.type).trim() : '';
+                metadataLabel = metaId && metaType && metaId !== metaType ? metaType + ' • ' + metaId : metaId || metaType || '';
+              }
+              normalizedTexts.push({ id: id, name: name, source: 'wordFavorite', metadataLabel: metadataLabel });
               normalizedTextsMap[id] = true;
             });
             normalizedTexts.sort(function(a, b) {
