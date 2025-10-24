@@ -175,16 +175,37 @@
       }
       .tab-nav-primary {
         margin-bottom: 20px;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+          "panel panel edit edit create create"
+          ". triggers triggers actions actions .";
       }
-      @media (max-width: 720px) {
-        .tab-nav-primary {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
+      .tab-btn--panel {
+        grid-area: panel;
       }
-      @media (max-width: 520px) {
+      .tab-btn--edit {
+        grid-area: edit;
+      }
+      .tab-btn--create {
+        grid-area: create;
+      }
+      .tab-btn--triggers {
+        grid-area: triggers;
+      }
+      .tab-btn--actions {
+        grid-area: actions;
+      }
+      @media (max-width: 640px) {
         .tab-nav-primary {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: repeat(5, minmax(0, 1fr));
+          grid-template-areas:
+            "panel panel"
+            "edit edit"
+            "create create"
+            "triggers triggers"
+            "actions actions";
         }
       }
       .tab-btn {
@@ -4089,7 +4110,7 @@
       </div>
       <div class="tab-nav tab-nav-primary">
         <button
-          class="tab-btn tab-btn--tooltip-below active"
+          class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
           data-tab="aiTab"
           data-themes="table word"
           data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
@@ -4097,7 +4118,7 @@
           Panel IA
         </button>
         <button
-          class="tab-btn tab-btn--tooltip-below"
+          class="tab-btn tab-btn--tooltip-below tab-btn--edit"
           data-tab="editTab"
           data-themes="table word"
           data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
@@ -4105,7 +4126,7 @@
           Editar tabla
         </button>
         <button
-          class="tab-btn tab-btn--tooltip-below"
+          class="tab-btn tab-btn--tooltip-below tab-btn--create"
           data-tab="createTab"
           data-themes="table word"
           data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
@@ -4113,7 +4134,7 @@
           Crear tabla
         </button>
         <button
-          class="tab-btn"
+          class="tab-btn tab-btn--triggers"
           data-tab="triggersTab"
           data-themes="table word"
           data-tooltip="Configura automatizaciones que mantengan tus datos al día."
@@ -4121,7 +4142,7 @@
           Triggers
         </button>
         <button
-          class="tab-btn"
+          class="tab-btn tab-btn--actions"
           data-tab="actionsTab"
           data-themes="table word"
           data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
