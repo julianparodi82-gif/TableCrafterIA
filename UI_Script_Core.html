@@ -3788,8 +3788,8 @@ function playSidebarAnimation() {
           if (tabButtonRefs.create) {
             tabButtonRefs.create.textContent = isWord ? 'Crear Texto' : 'Crear tabla';
             tabButtonRefs.create.dataset.tooltip = isWord
-              ? '(Alt + 3) Genera nuevos textos con apoyo de IA y plantillas personalizadas.'
-              : '(Alt + 3) Crea nuevas tablas con ayuda de IA y formatos personalizados.';
+              ? '(Alt + 3)\nGenera nuevos textos con apoyo de IA y plantillas personalizadas.'
+              : '(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados.';
           }
           if (tabButtonRefs.triggers) {
             tabButtonRefs.triggers.dataset.tooltip = isWord
@@ -3904,6 +3904,21 @@ function playSidebarAnimation() {
           if (targetTab) {
             event.preventDefault();
             attemptTabChange(targetTab);
+            return;
+          }
+
+          if (event.code === 'KeyR') {
+            const bodyEl = document.body;
+            const isTableThemeActive =
+              currentTheme === 'table' ||
+              (!currentTheme && bodyEl && bodyEl.classList.contains('theme-tablecrafter'));
+            if (isTableThemeActive && currentTab === 'createTab') {
+              const refreshBtn = document.getElementById('refreshRangeBtn');
+              if (refreshBtn && !refreshBtn.disabled) {
+                event.preventDefault();
+                refreshBtn.click();
+              }
+            }
             return;
           }
 

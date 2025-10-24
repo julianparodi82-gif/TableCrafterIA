@@ -330,6 +330,24 @@
         opacity: 1;
         transform: translateY(0);
       }
+      .tc-tooltip-target.tc-tooltip-target--below[data-tooltip]::after {
+        bottom: auto;
+        top: calc(100% + 8px);
+      }
+      .tc-tooltip-target.tc-tooltip-target--below[data-tooltip]::before {
+        bottom: auto;
+        top: calc(100% + 4px);
+        border-color: transparent transparent var(--tc-tooltip-bg) transparent;
+      }
+      .tc-tooltip-target.tc-tooltip-target--below.tc-tooltip-target--center[data-tooltip]::after {
+        left: 50%;
+        transform: translate(-50%, 4px);
+        text-align: center;
+      }
+      .tc-tooltip-target.tc-tooltip-target--below.tc-tooltip-target--center[data-tooltip]::before {
+        left: 50%;
+        transform: translateX(-50%);
+      }
       .ai-report-order-label.tc-tooltip-target[data-tooltip]::after {
         bottom: auto;
         top: calc(100% + 8px);
@@ -4078,7 +4096,11 @@
       <div class="container">
       <div class="theme-header">
         <h2 id="appTitle"><?!= __isWordcrafter ? 'WordCrafterAI' : 'TableCrafterAI' ?></h2>
-        <label class="theme-toggle tc-tooltip-target" for="themeToggle" data-tooltip="(Alt + Intro) Alterna entre WordCrafter y TableCrafter.">
+        <label
+          class="theme-toggle tc-tooltip-target tc-tooltip-target--below tc-tooltip-target--center"
+          for="themeToggle"
+          data-tooltip="(Alt + Intro)\nAlterna entre WordCrafter y TableCrafter."
+        >
           <input
             type="checkbox"
             id="themeToggle"
@@ -4144,7 +4166,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--create"
             data-tab="createTab"
             data-themes="table word"
-            data-tooltip="(Alt + 3) Crea nuevas tablas con ayuda de IA y formatos personalizados."
+            data-tooltip="(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados."
           >
             Crear tabla
           </button>
@@ -4187,7 +4209,14 @@
                 <strong>Rango activo:</strong> <span id="rangeLabel">—</span>
               </div>
               <div class="range-actions">
-                <button id="refreshRangeBtn" class="btn-secondary" title="Actualizar rango activo">Actualizar</button>
+                <button
+                  id="refreshRangeBtn"
+                  class="btn-secondary tc-tooltip-target"
+                  title="Actualizar rango activo"
+                  data-tooltip="(Alt + R)\nActualizar rango activo"
+                >
+                  Actualizar
+                </button>
               </div>
             </div>
             <label for="rangeInput" style="margin-top:12px;">Rango a utilizar</label>
