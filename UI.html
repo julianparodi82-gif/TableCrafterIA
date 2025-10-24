@@ -174,53 +174,26 @@
         justify-items: stretch;
       }
       .tab-nav-primary {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
         margin-bottom: 20px;
       }
-      body.theme-wordcrafter .tab-nav-primary {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        grid-template-areas:
-          'tab-ai tab-ai tab-edit tab-edit tab-create tab-create'
-          '. tab-triggers tab-triggers tab-actions tab-actions .';
+      .tab-nav-primary-top {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='aiTab'] {
-        grid-area: tab-ai;
+      .tab-nav-primary-bottom {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='editTab'] {
-        grid-area: tab-edit;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='createTab'] {
-        grid-area: tab-create;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
-        grid-area: tab-triggers;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
-        grid-area: tab-actions;
-      }
-      @media (min-width: 641px) {
-        .tab-nav-primary {
-          grid-template-areas:
-            'tab-ai tab-edit tab-create'
-            'tab-triggers tab-templates tab-actions';
-        }
-        .tab-nav-primary .tab-btn[data-tab='aiTab'] {
-          grid-area: tab-ai;
-        }
-        .tab-nav-primary .tab-btn[data-tab='editTab'] {
-          grid-area: tab-edit;
-        }
-        .tab-nav-primary .tab-btn[data-tab='createTab'] {
-          grid-area: tab-create;
-        }
-        .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
-          grid-area: tab-triggers;
-        }
-        .tab-nav-primary .tab-btn[data-tab='templatesTab'] {
-          grid-area: tab-templates;
-        }
-        .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
-          grid-area: tab-actions;
-        }
+      .tab-nav-primary-bottom .tab-btn {
+        flex: 0 1 calc((100% - 24px) / 3);
+        width: calc((100% - 24px) / 3);
+        max-width: calc((100% - 24px) / 3);
       }
       .tab-btn {
         border: 1px solid var(--tc-border);
@@ -629,6 +602,8 @@
       .tc-card-icon {
         width: 36px;
         height: 36px;
+        min-width: 36px;
+        aspect-ratio: 1 / 1;
         border-radius: 10px;
         background: var(--tc-primary-light);
         color: #000000;
@@ -4121,60 +4096,60 @@
         </div>
       </div>
       <div class="tab-nav tab-nav-primary">
-        <button
-          class="tab-btn tab-btn--tooltip-below active"
-          data-tab="aiTab"
-          data-themes="table word"
-          data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
-        >
-          Panel IA
-        </button>
-        <button
-          class="tab-btn tab-btn--tooltip-below"
-          data-tab="editTab"
-          data-themes="table word"
-          data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
-        >
-          Editar tabla
-        </button>
-        <button
-          class="tab-btn tab-btn--tooltip-below"
-          data-tab="createTab"
-          data-themes="table word"
-          data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
-        >
-          Crear tabla
-        </button>
-        <button
-          class="tab-btn"
-          data-tab="triggersTab"
-          data-themes="table word"
-          data-tooltip="Configura automatizaciones que mantengan tus datos al día."
-        >
-          Triggers
-        </button>
-        <button
-          class="tab-btn"
-          data-tab="templatesTab"
-          data-themes="table"
-          data-tooltip="Organiza y reutiliza tus plantillas y recursos destacados."
-        >
-          Plantillas
-        </button>
-        <button
-          class="tab-btn"
-          data-tab="actionsTab"
-          data-themes="table word"
-          data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
-        >
-          Acciones
-        </button>
+        <div class="tab-nav-primary-top">
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
+            data-tab="aiTab"
+            data-themes="table word"
+            data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
+          >
+            Panel IA
+          </button>
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--edit"
+            data-tab="editTab"
+            data-themes="table word"
+            data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
+          >
+            Editar tabla
+          </button>
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--create"
+            data-tab="createTab"
+            data-themes="table word"
+            data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
+          >
+            Crear tabla
+          </button>
+        </div>
+        <div class="tab-nav-primary-bottom">
+          <button
+            class="tab-btn tab-btn--triggers"
+            data-tab="triggersTab"
+            data-themes="table word"
+            data-tooltip="Configura automatizaciones que mantengan tus datos al día."
+          >
+            Triggers
+          </button>
+          <button
+            class="tab-btn tab-btn--actions"
+            data-tab="actionsTab"
+            data-themes="table word"
+            data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
+          >
+            Acciones
+          </button>
+        </div>
       </div>
 
       <div id="createTab" class="tab-content" data-themes="table word">
         <div class="section">
           <div id="wordRangeToggleRow" class="word-range-toggle" style="display:none;">
-            <label for="wordUseRangeToggle" class="checkbox-subtle">
+            <label
+              for="wordUseRangeToggle"
+              class="checkbox-subtle tc-tooltip-target"
+              data-tooltip="Selecciona un rango específico para combinarlo y pegar allí el texto generado. Si está desactivado, se usará la posición actual del cursor."
+            >
               <input type="checkbox" id="wordUseRangeToggle" />
               Seleccionar rango
             </label>
@@ -4200,12 +4175,23 @@
           <div id="wordCursorNotice" class="word-cursor-notice" style="display:none;">
             El texto se pegará donde esté el cursor actual.
           </div>
+          <div id="wordSplitSentencesRow" class="word-split-sentences" style="display:none;">
+            <label
+              for="wordSplitSentencesToggle"
+              class="checkbox-subtle tc-tooltip-target"
+              data-tooltip="Divide el texto generado en oraciones y las pega en celdas consecutivas de la misma columna. Disponible cuando no se selecciona un rango fijo."
+            >
+              <input type="checkbox" id="wordSplitSentencesToggle" />
+              Pegar una oración por celda (en la misma columna)
+            </label>
+          </div>
         </div>
         <div class="section">
           <label
             for="tableName"
+            id="tableNameLabel"
             class="tc-tooltip-target"
-            data-tooltip="Define el nombre principal del documento. Puedes ajustar el formato incluso si se genera automáticamente."
+            data-tooltip="Define el nombre principal del texto. Puedes ajustar el formato incluso si se genera automáticamente."
           >
             Título del texto
           </label>
@@ -4322,8 +4308,8 @@
             </div>
           </div>
           <div class="js-comment-hint-field is-table-only" data-themes="table">
-            <label for="tableDesc">Descripción del texto</label>
-            <textarea id="tableDesc" placeholder="Descripción del texto..."></textarea>
+            <label for="tableDesc">Descripción de la tabla</label>
+            <textarea id="tableDesc" placeholder="Descripción de la tabla..."></textarea>
           </div>
           <div id="wordStructureCard" class="word-structure-card" style="display:none;">
             <div class="word-context-header">
@@ -4956,7 +4942,7 @@
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
-            <button id="wordGenerateBtn" class="btn-primary" type="button">Generar Texto</button>
+            <button id="wordGenerateBtn" class="btn-primary" type="button">Generar y Guardar Texto</button>
           </div>
           <div class="action-buttons is-table-only" data-themes="table">
             <button id="tableFavoriteBtn" class="ai-report-favorite-btn table-favorite-btn" type="button">
@@ -7691,37 +7677,6 @@
           </div>
         </div>
       </div>
-      <div id="templatesTab" class="tab-content" data-themes="table">
-        <div class="section">
-          <div class="tc-card">
-            <div class="tc-card-header">
-              <div class="tc-card-title">
-                <span class="tc-card-icon" aria-hidden="true">📁</span>
-                <div>
-                  <h3 class="tc-card-heading">Biblioteca de plantillas</h3>
-                  <p class="tc-card-subtitle">Guarda estructuras listas para reutilizar en nuevos reportes.</p>
-                </div>
-              </div>
-            </div>
-            <div id="templateGridEmpty" class="tc-card-empty">Aún no guardaste plantillas.</div>
-            <div id="templateGrid" class="tc-template-grid" role="list"></div>
-            <div class="tc-card-footer tc-card-footer--right">
-              <button type="button" id="templateRefreshBtn" class="btn-secondary">Actualizar</button>
-            </div>
-          </div>
-          <div class="tc-card">
-            <h3 class="tc-card-heading">Detalles de la plantilla</h3>
-            <p class="tc-card-subtitle">Selecciona una plantilla para revisar su contenido.</p>
-            <div id="templateDetails" class="tc-template-details tc-card-muted" aria-live="polite">
-              Selecciona una plantilla para ver más información.
-            </div>
-            <div class="tc-card-actions">
-              <button type="button" id="templateDuplicateBtn" class="btn-secondary" disabled>Duplicar</button>
-              <button type="button" id="templateApplyBtn" class="btn-primary" disabled>Usar plantilla</button>
-            </div>
-          </div>
-        </div>
-      </div>
       <div id="actionsTab" class="tab-content" data-themes="table word">
         <div class="section">
           <div class="tc-card">
@@ -7856,7 +7811,6 @@
     <?!= include('UI_Script_AI'); ?>
     <?!= include('UI_Script_Actions'); ?>
     <?!= include('UI_Script_Triggers'); ?>
-    <?!= include('UI_Script_Templates'); ?>
 
   </body>
 </html>

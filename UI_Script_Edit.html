@@ -9,6 +9,104 @@ let editFormatDirty = false;
 let editSavedListCollapsed = false;
 let editSavedTextsCollapsed = false;
 let editFavoriteSaving = false;
+let editWordFavoritesCache = [];
+let editWordFavoritesLoadingPromise = null;
+
+function getCurrentEditSavedTextSelection() {
+        const select = document.getElementById('editSavedTexts');
+        if (!select || select.disabled) {
+          return '';
+        }
+        return select.value ? String(select.value) : '';
+      }
+
+function normalizeEditWordFavoriteList(entries) {
+        if (typeof normalizeWordFavoriteList === 'function') {
+          return normalizeWordFavoriteList(entries);
+        }
+        if (!Array.isArray(entries)) {
+          return [];
+        }
+        return entries
+          .map(function(entry) {
+            if (!entry || !entry.id) {
+              return null;
+            }
+            return {
+              id: String(entry.id),
+              name: entry.name ? String(entry.name) : String(entry.id),
+              description: entry.description ? String(entry.description) : '',
+              createdAt: entry.createdAt || '',
+              updatedAt: entry.updatedAt || ''
+            };
+          })
+          .filter(function(item) {
+            return !!item;
+          });
+      }
+
+function setEditSavedTexts(entries, options) {
+        const opts = options || {};
+        editWordFavoritesCache = normalizeEditWordFavoriteList(entries);
+        let selectedValue = '';
+        if (Object.prototype.hasOwnProperty.call(opts, 'selectedValue')) {
+          selectedValue = opts.selectedValue ? String(opts.selectedValue) : '';
+        } else if (Object.prototype.hasOwnProperty.call(opts, 'selectId')) {
+          selectedValue = opts.selectId ? String(opts.selectId) : '';
+        } else {
+          selectedValue = getCurrentEditSavedTextSelection();
+        }
+        renderEditSavedTextsList(editWordFavoritesCache, {
+          disabled: !!opts.disabled,
+          selectedValue: selectedValue
+        });
+        return editWordFavoritesCache;
+      }
+
+function refreshEditSavedTextsData(options) {
+        const opts = options || {};
+        if (editWordFavoritesLoadingPromise) {
+          return editWordFavoritesLoadingPromise;
+        }
+        let selectedValue = '';
+        if (Object.prototype.hasOwnProperty.call(opts, 'selectedValue')) {
+          selectedValue = opts.selectedValue ? String(opts.selectedValue) : '';
+        } else if (Object.prototype.hasOwnProperty.call(opts, 'selectId')) {
+          selectedValue = opts.selectId ? String(opts.selectId) : '';
+        } else {
+          selectedValue = getCurrentEditSavedTextSelection();
+        }
+        const disabled = !!opts.disabled;
+        editWordFavoritesLoadingPromise = callServerFunction('listWordFavorites')
+          .then(function(result) {
+            const list = setEditSavedTexts(result, {
+              selectedValue: selectedValue,
+              disabled: disabled
+            });
+            return list.slice();
+          })
+          .catch(function(err) {
+            if (!opts.silent) {
+              showMessageModal('No se pudieron obtener los textos guardados: ' + (err && err.message ? err.message : err), {
+                title: 'No se pudo cargar',
+                variant: 'error'
+              });
+            }
+            if (!editWordFavoritesCache || editWordFavoritesCache.length === 0) {
+              renderEditSavedTextsList([], { disabled: disabled });
+            } else {
+              renderEditSavedTextsList(editWordFavoritesCache, {
+                disabled: disabled,
+                selectedValue: selectedValue
+              });
+            }
+            throw err;
+          })
+          .finally(function() {
+            editWordFavoritesLoadingPromise = null;
+          });
+        return editWordFavoritesLoadingPromise;
+      }
 
 /* -------------------------------------------------------------------------- */
 /*  TableCrafter Edit Tab Saved Tables UI                                     */
@@ -465,6 +563,7 @@ function initializeSavedTextsUi() {
           renderEditSavedTextsList([], {});
           initializeSavedTextsUi._initialized = true;
         }
+        refreshEditSavedTextsData({ silent: true }).catch(function() {});
       }
 
 if (document.readyState === 'loading') {
@@ -472,6 +571,22 @@ if (document.readyState === 'loading') {
       } else {
         initializeSavedTextsUi();
       }
+
+document.addEventListener('tc:wordFavoritesUpdated', function(event) {
+        const detail = event && event.detail ? event.detail : {};
+        if (detail && Array.isArray(detail.list)) {
+          const currentSelection = getCurrentEditSavedTextSelection();
+          setEditSavedTexts(detail.list, { selectedValue: currentSelection });
+          return;
+        }
+        refreshEditSavedTextsData({ silent: true }).catch(function() {});
+      });
+
+document.addEventListener('tc:themeModeChanged', function() {
+        if (typeof currentTheme === 'string' && currentTheme === 'word') {
+          refreshEditSavedTextsData({ silent: true }).catch(function() {});
+        }
+      });
 
 
 
@@ -1615,7 +1730,8 @@ const TableCrafterEditTab = Object.freeze({
         applyFormat: handleEditApplyFormat,
         saveTable: handleEditSaveAction,
         selectSavedText: selectEditSavedText,
-        renderSavedTexts: renderEditSavedTextsList,
+        renderSavedTexts: setEditSavedTexts,
+        refreshSavedTexts: refreshEditSavedTextsData,
         openSavedText: openSavedTextForEditing
       });
 

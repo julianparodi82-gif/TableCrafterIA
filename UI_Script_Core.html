@@ -2790,6 +2790,9 @@ function getActionTypeLabel(type) {
         if (normalized === 'tablefavorite') {
           return 'Tabla favorita';
         }
+        if (normalized === 'tableeditfavorite') {
+          return 'Tabla (edición)';
+        }
         return 'Acción';
       }
 
@@ -3454,6 +3457,15 @@ function playSidebarAnimation() {
           syncMessageVisibility();
           if (themeChanged || settings.forceSync) {
             syncAddonThemeMode(nextTheme);
+          }
+          try {
+            document.dispatchEvent(
+              new CustomEvent('tc:themeModeChanged', {
+                detail: { theme: nextTheme, previousTheme: previousTheme, changed: themeChanged }
+              })
+            );
+          } catch (err) {
+            console.log('No se pudo notificar el cambio de tema.', err);
           }
         }
 

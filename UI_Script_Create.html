@@ -11,6 +11,19 @@ let tableFavoritesCache = [];
 let tableFavoritesLoadingPromise = null;
 let tableFavoriteSaving = false;
 
+const CREATE_TITLE_COPY = {
+        word: {
+          label: 'Título del texto',
+          tooltip:
+            'Define el nombre principal del texto. Puedes ajustar el formato incluso si se genera automáticamente.'
+        },
+        table: {
+          label: 'Título de la tabla',
+          tooltip:
+            'Define el nombre principal de la tabla. Puedes ajustar el formato incluso si se genera automáticamente.'
+        }
+      };
+
 /* -------------------------------------------------------------------------- */
 /*  Create Tab Range Controls                                                 */
 /* -------------------------------------------------------------------------- */
@@ -21,10 +34,23 @@ function syncCreateRangeModeUI() {
         const rangeFields = document.getElementById('wordRangeFields');
         const legend = document.getElementById('wordRangeLegend');
         const cursorNotice = document.getElementById('wordCursorNotice');
+        const splitRow = document.getElementById('wordSplitSentencesRow');
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
+        const splitLabel = document.querySelector('label[for="wordSplitSentencesToggle"]');
+        const titleLabel = document.getElementById('tableNameLabel');
+        const shouldDisableSplit = Boolean(isWordTheme && useRange);
         const refreshBtn = document.getElementById('refreshRangeBtn');
         const rangeInput = document.getElementById('rangeInput');
         const applyBtn = document.getElementById('applyFormatBtn');
         const headerOptions = document.getElementById('tableHeaderOptions');
+        if (titleLabel) {
+          const copy = isWordTheme ? CREATE_TITLE_COPY.word : CREATE_TITLE_COPY.table;
+          titleLabel.textContent = copy.label;
+          titleLabel.setAttribute('data-tooltip', copy.tooltip);
+          if (titleLabel.dataset) {
+            titleLabel.dataset.tooltip = copy.tooltip;
+          }
+        }
         if (toggleRow) {
           toggleRow.style.display = isWordTheme ? 'flex' : 'none';
         }
@@ -36,6 +62,47 @@ function syncCreateRangeModeUI() {
         }
         if (cursorNotice) {
           cursorNotice.style.display = isWordTheme && !useRange ? 'block' : 'none';
+        }
+        if (splitRow) {
+          splitRow.style.display = isWordTheme ? 'block' : 'none';
+          splitRow.classList.toggle('is-disabled', !!shouldDisableSplit);
+        }
+        if (splitToggle) {
+          if (shouldDisableSplit) {
+            if (
+              !splitToggle.dataset ||
+              !Object.prototype.hasOwnProperty.call(splitToggle.dataset, 'wordStoredValue')
+            ) {
+              splitToggle.dataset.wordStoredValue = splitToggle.checked ? 'true' : 'false';
+            }
+            splitToggle.checked = false;
+            splitToggle.disabled = true;
+            splitToggle.setAttribute('aria-disabled', 'true');
+          } else {
+            splitToggle.disabled = false;
+            splitToggle.removeAttribute('aria-disabled');
+            let restoredValue = null;
+            if (
+              splitToggle.dataset &&
+              Object.prototype.hasOwnProperty.call(splitToggle.dataset, 'wordStoredValue')
+            ) {
+              restoredValue = splitToggle.dataset.wordStoredValue === 'true';
+              delete splitToggle.dataset.wordStoredValue;
+            } else if (typeof loadWordSplitSentencesPreference === 'function') {
+              restoredValue = !!loadWordSplitSentencesPreference();
+            }
+            if (restoredValue !== null) {
+              splitToggle.checked = restoredValue;
+            }
+          }
+        }
+        if (splitLabel) {
+          splitLabel.classList.toggle('is-disabled', !!shouldDisableSplit);
+          if (shouldDisableSplit) {
+            splitLabel.setAttribute('aria-disabled', 'true');
+          } else {
+            splitLabel.removeAttribute('aria-disabled');
+          }
         }
         if (refreshBtn) {
           refreshBtn.disabled = Boolean(isWordTheme && !useRange);

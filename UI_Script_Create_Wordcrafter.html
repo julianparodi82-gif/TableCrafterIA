@@ -5,6 +5,7 @@
 const WORD_TITLE_AUTO_PLACEHOLDER = 'Título generado automáticamente';
 const WORD_WEB_SOURCE_LIMIT = 10;
 const WORD_SECTION_WEB_LIMIT = 3;
+const WORD_GENERATE_BUTTON_LABEL = 'Generar y Guardar Texto';
 
 const WORD_CONTEXT_SECTION_CONFIG = [
       {
@@ -76,6 +77,109 @@ let wordFavoriteEditingId = '';
 let wordFavoritesCache = [];
 let wordFavoritesLoadingPromise = null;
 let wordFavoriteSaving = false;
+let wordGenerateInProgress = false;
+
+const WORD_SPLIT_SENTENCES_STORAGE_KEY = 'tc.wordcrafter.create.splitSentences';
+let wordSplitSentencesPreference = null;
+
+function loadWordSplitSentencesPreference() {
+        if (typeof wordSplitSentencesPreference === 'boolean') {
+          return wordSplitSentencesPreference;
+        }
+        let storedValue = false;
+        let hasStoredValue = false;
+        if (typeof getLocalStorage === 'function') {
+          const storage = getLocalStorage();
+          if (storage) {
+            try {
+              const raw = storage.getItem(WORD_SPLIT_SENTENCES_STORAGE_KEY);
+              if (raw === 'true' || raw === 'false') {
+                storedValue = raw === 'true';
+                hasStoredValue = true;
+              }
+            } catch (err) {
+              console.log('No se pudo leer la preferencia de oraciones por celda.', err);
+            }
+          }
+        }
+        if (!hasStoredValue) {
+          try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+              const raw = window.localStorage.getItem(WORD_SPLIT_SENTENCES_STORAGE_KEY);
+              if (raw === 'true' || raw === 'false') {
+                storedValue = raw === 'true';
+                hasStoredValue = true;
+              }
+            }
+          } catch (err) {
+            console.log('No se pudo leer la preferencia de oraciones por celda.', err);
+          }
+        }
+        wordSplitSentencesPreference = hasStoredValue ? storedValue : false;
+        return wordSplitSentencesPreference;
+      }
+
+function saveWordSplitSentencesPreference(value) {
+        const normalized = !!value;
+        wordSplitSentencesPreference = normalized;
+        let handled = false;
+        if (typeof getLocalStorage === 'function') {
+          const storage = getLocalStorage();
+          if (storage) {
+            try {
+              storage.setItem(WORD_SPLIT_SENTENCES_STORAGE_KEY, normalized ? 'true' : 'false');
+              handled = true;
+            } catch (err) {
+              console.log('No se pudo guardar la preferencia de oraciones por celda.', err);
+            }
+          }
+        }
+        if (handled) {
+          return;
+        }
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(WORD_SPLIT_SENTENCES_STORAGE_KEY, normalized ? 'true' : 'false');
+          }
+        } catch (err) {
+          console.log('No se pudo guardar la preferencia de oraciones por celda.', err);
+        }
+      }
+
+function applyWordSplitSentencesPreferenceToToggle() {
+        const toggle = document.getElementById('wordSplitSentencesToggle');
+        if (!toggle) {
+          return;
+        }
+        toggle.checked = !!loadWordSplitSentencesPreference();
+      }
+
+function ensureWordStructurePlacement() {
+        const contextCard = document.getElementById('wordContextCard');
+        const structureCard = document.getElementById('wordStructureCard');
+        if (!contextCard || !structureCard) {
+          return;
+        }
+        const parent = contextCard.parentNode;
+        if (!parent) {
+          return;
+        }
+
+        const webSourcesCard = document.getElementById('wordWebSourcesCard');
+        if (webSourcesCard && webSourcesCard.parentNode === parent) {
+          const desiredNext = contextCard.nextElementSibling;
+          if (desiredNext !== webSourcesCard) {
+            parent.insertBefore(webSourcesCard, contextCard.nextSibling);
+          }
+        }
+
+        const referenceElement = webSourcesCard && webSourcesCard.parentNode === parent ? webSourcesCard : contextCard;
+        const nextSibling = referenceElement.nextElementSibling;
+        if (nextSibling === structureCard) {
+          return;
+        }
+        parent.insertBefore(structureCard, referenceElement.nextSibling);
+      }
 
 function normalizeWordWebSourceEntry(entry) {
         if (!entry || typeof entry !== 'object') {
@@ -133,6 +237,9 @@ function resetWordTextOptions() {
         const autoToggle = document.getElementById('wordAutoTitleToggle');
         const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
         const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
+        const splitLabel = document.querySelector('label[for="wordSplitSentencesToggle"]');
+        const splitRow = document.getElementById('wordSplitSentencesRow');
         const titleInput = document.getElementById('tableName');
         wordStructureSectionLinksState = { intro: [], conclusion: [] };
         if (autoToggle) {
@@ -143,6 +250,21 @@ function resetWordTextOptions() {
         }
         if (manualBodyToggle) {
           manualBodyToggle.checked = false;
+        }
+        if (splitToggle) {
+          splitToggle.checked = !!loadWordSplitSentencesPreference();
+          splitToggle.disabled = false;
+          splitToggle.removeAttribute('aria-disabled');
+          if (splitToggle.dataset) {
+            delete splitToggle.dataset.wordStoredValue;
+          }
+        }
+        if (splitLabel) {
+          splitLabel.classList.remove('is-disabled');
+          splitLabel.removeAttribute('aria-disabled');
+        }
+        if (splitRow) {
+          splitRow.classList.remove('is-disabled');
         }
         if (titleInput) {
           if (titleInput.dataset && titleInput.dataset.autoFilled === 'true') {
@@ -257,6 +379,148 @@ function resetWordTextOptions() {
         syncWordWebSourcesCard();
         syncWordStructureCard();
         setWordFavoriteEditingId('');
+      }
+
+function setWordGenerateLoading(isLoading) {
+        const btn = document.getElementById('wordGenerateBtn');
+        if (!btn) {
+          return;
+        }
+        if (isLoading) {
+          if (!btn.dataset.wordGenerateIdleLabel) {
+            btn.dataset.wordGenerateIdleLabel = btn.textContent || WORD_GENERATE_BUTTON_LABEL;
+          }
+          btn.disabled = true;
+          btn.classList.add('is-loading');
+          btn.textContent = 'Generando…';
+          btn.setAttribute('aria-busy', 'true');
+        } else {
+          const idle = btn.dataset.wordGenerateIdleLabel || WORD_GENERATE_BUTTON_LABEL;
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+          btn.textContent = idle;
+          btn.removeAttribute('aria-busy');
+        }
+      }
+
+async function handleWordGenerate() {
+        if (wordGenerateInProgress) {
+          return;
+        }
+        const btn = document.getElementById('wordGenerateBtn');
+        if (!btn) {
+          return;
+        }
+        const favoriteName = getWordFavoriteName();
+        if (!favoriteName) {
+          await showMessageModal('Agrega un título al texto antes de generar y guardar.', {
+            title: 'Título requerido',
+            variant: 'warning'
+          });
+          return;
+        }
+        const nameInput = document.getElementById('tableName');
+        const descInput = document.getElementById('tableDesc');
+        const rawTitle = nameInput ? nameInput.value.trim() : '';
+        const isAutoTitle = Boolean(
+          nameInput &&
+            nameInput.dataset &&
+            nameInput.dataset.autoFilled === 'true'
+        );
+        const effectiveTitle = isAutoTitle || rawTitle === WORD_TITLE_AUTO_PLACEHOLDER ? '' : rawTitle;
+        const description = descInput ? descInput.value.trim() : '';
+        const config = collectWordFavoriteConfig();
+        if (config.range && config.range.useRange && (!config.range.value || !String(config.range.value).trim())) {
+          await showMessageModal('Selecciona un rango válido antes de generar el texto.', {
+            title: 'Rango requerido',
+            variant: 'warning'
+          });
+          return;
+        }
+        const favoriteDescription = getWordFavoriteDescriptionFromConfig(config);
+        wordGenerateInProgress = true;
+        setWordGenerateLoading(true);
+        try {
+          const response = await callServerFunction('generateWordcrafterText', {
+            favoriteId: wordFavoriteEditingId || '',
+            name: favoriteName,
+            title: effectiveTitle,
+            description: description,
+            favoriteDescription: favoriteDescription,
+            config: config
+          });
+          if (!response || response.error) {
+            throw new Error((response && response.error) || 'No se pudo generar el texto.');
+          }
+          const savedId = response.favoriteId
+            ? String(response.favoriteId)
+            : response.id
+            ? String(response.id)
+            : wordFavoriteEditingId || '';
+          if (savedId) {
+            setWordFavoriteEditingId(savedId);
+          }
+          try {
+            await refreshWordFavorites({ selectId: savedId, silent: true });
+          } catch (refreshErr) {}
+          if (typeof notifySavedActionMutation === 'function') {
+            notifySavedActionMutation({
+              id: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof requestSavedActionsRefresh === 'function') {
+            requestSavedActionsRefresh({
+              selectId: savedId,
+              force: true,
+              delay: 0,
+              autoSelectFirst: false,
+              forceLoad: true
+            });
+          } else if (typeof refreshSavedActions === 'function') {
+            refreshSavedActions({
+              selectId: savedId,
+              force: true,
+              autoSelectFirst: false,
+              forceLoad: true
+            }).catch(function() {});
+          }
+          const rangeInfo = response && response.range ? response.range : {};
+          const rangeLabel = rangeInfo.full || rangeInfo.display || '';
+          let message = response && response.message ? String(response.message) : '';
+          if (!message) {
+            message = 'El texto se generó y pegó correctamente.';
+            if (rangeLabel) {
+              message += '\n\nUbicación: ' + rangeLabel;
+            }
+          }
+          await showMessageModal(message, {
+            title: 'Texto generado',
+            variant: 'success',
+            primaryText: 'Aceptar'
+          });
+        } catch (err) {
+          const errorMessage = err && err.message ? err.message : err;
+          await showMessageModal('No se pudo generar y guardar el texto: ' + errorMessage, {
+            title: 'Error al generar',
+            variant: 'error'
+          });
+        } finally {
+          wordGenerateInProgress = false;
+          setWordGenerateLoading(false);
+        }
+      }
+
+function bindWordGenerateButton() {
+        const btn = document.getElementById('wordGenerateBtn');
+        if (btn && btn.dataset.wordGenerateBound !== 'true') {
+          btn.addEventListener('click', function() {
+            handleWordGenerate();
+          });
+          btn.dataset.wordGenerateBound = 'true';
+        }
       }
 
 function updateWordFormatFlagClasses(container) {
@@ -721,6 +985,7 @@ function collectWordFavoriteConfig() {
         const autoToggle = document.getElementById('wordAutoTitleToggle');
         const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
         const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
         const contextInput = document.getElementById('wordBodyContext');
         const introToggle = document.getElementById('wordIntroToggle');
         const conclusionToggle = document.getElementById('wordConclusionToggle');
@@ -785,6 +1050,9 @@ function collectWordFavoriteConfig() {
             savedEnabled: !!(webSavedToggle && webSavedToggle.checked),
             savedTables: savedTables,
             savedTexts: savedTexts
+          },
+          placement: {
+            splitSentences: !!(splitToggle && splitToggle.checked)
           }
         };
       }
@@ -811,6 +1079,8 @@ function applyWordFavoriteConfig(config) {
         setControlValue(document.getElementById('wordAutoTitleToggle'), safe.autoTitle);
         setControlValue(document.getElementById('wordManualTitleFormatToggle'), safe.manualTitleFormat);
         setControlValue(document.getElementById('wordManualBodyFormatToggle'), safe.manualBodyFormat);
+        const placement = safe.placement && typeof safe.placement === 'object' ? safe.placement : {};
+        setControlValue(document.getElementById('wordSplitSentencesToggle'), placement.splitSentences);
 
         const contextInput = document.getElementById('wordBodyContext');
         if (contextInput) {
@@ -2300,6 +2570,16 @@ function bindWordTextToggles() {
           });
           manualBodyToggle.dataset.toggleBound = 'true';
         }
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
+        if (splitToggle && splitToggle.dataset.toggleBound !== 'true') {
+          splitToggle.addEventListener('change', function() {
+            if (splitToggle.disabled) {
+              return;
+            }
+            saveWordSplitSentencesPreference(!!splitToggle.checked);
+          });
+          splitToggle.dataset.toggleBound = 'true';
+        }
         bindWordContextToggles();
       }
 
@@ -2354,9 +2634,12 @@ function initializeWordRangeMode() {
         bindWordStructureControls();
         bindWordWebSourcesControls();
         bindWordFavoriteButton();
+        bindWordGenerateButton();
         bindWordCollapsibleSections();
         renderWordWebSourcesList();
+        ensureWordStructurePlacement();
         renderWordStructureLinksList();
+        applyWordSplitSentencesPreferenceToToggle();
         syncCreateRangeModeUI();
         syncWordCreateOptions();
         refreshWordPreviews();
@@ -2376,8 +2659,11 @@ function notifyCreateThemeChanged(nextTheme) {
         bindWordStructureControls();
         bindWordWebSourcesControls();
         bindWordFavoriteButton();
+        bindWordGenerateButton();
         renderWordWebSourcesList();
+        ensureWordStructurePlacement();
         renderWordStructureLinksList();
+        applyWordSplitSentencesPreferenceToToggle();
         syncCreateRangeModeUI();
         syncWordCreateOptions();
         refreshWordPreviews();

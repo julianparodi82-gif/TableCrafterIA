@@ -428,6 +428,180 @@ function normalizeMetaRecordType(value) {
   return 'table';
 }
 
+function inferMetaRecordTypeFromId(value) {
+  var id = normalizeMetaId(value);
+  if (!id) {
+    return '';
+  }
+  var delimiterIndex = id.indexOf(':');
+  var prefix = delimiterIndex === -1 ? id : id.substring(0, delimiterIndex);
+  var normalizedPrefix = prefix.toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    normalizedPrefix === 'reportfavorite' ||
+    normalizedPrefix === 'reporte' ||
+    normalizedPrefix === 'favorite' ||
+    normalizedPrefix === 'favorito' ||
+    normalizedPrefix === 'report'
+  ) {
+    return 'reportFavorite';
+  }
+  if (
+    normalizedPrefix === 'wordfavorite' ||
+    normalizedPrefix === 'word' ||
+    normalizedPrefix === 'texto' ||
+    normalizedPrefix === 'textfavorite' ||
+    normalizedPrefix === 'textofavorito' ||
+    normalizedPrefix === 'favoritotexto'
+  ) {
+    return 'wordFavorite';
+  }
+  if (
+    normalizedPrefix === 'tablefavorite' ||
+    normalizedPrefix === 'favoritotabla' ||
+    normalizedPrefix === 'tablafavorita'
+  ) {
+    return 'tableFavorite';
+  }
+  if (
+    normalizedPrefix === 'tableeditfavorite' ||
+    normalizedPrefix === 'tableedit' ||
+    normalizedPrefix === 'favoritoeditar' ||
+    normalizedPrefix === 'tablaeditarfavorita'
+  ) {
+    return 'tableEditFavorite';
+  }
+  if (normalizedPrefix === 'table') {
+    return 'table';
+  }
+  return '';
+}
+
+function hasWordFavoriteConfigSignals(payload, depth) {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  var level = typeof depth === 'number' && depth >= 0 ? depth : 0;
+  if (level > 4) {
+    return false;
+  }
+  if (Array.isArray(payload)) {
+    for (var a = 0; a < payload.length; a++) {
+      if (hasWordFavoriteConfigSignals(payload[a], level + 1)) {
+        return true;
+      }
+    }
+  }
+  var keys;
+  try {
+    keys = Object.keys(payload);
+  } catch (err) {
+    keys = [];
+  }
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!key) {
+      continue;
+    }
+    var lowerKey = String(key).toLowerCase();
+    if (
+      lowerKey.indexOf('wordcrafter') !== -1 ||
+      lowerKey.indexOf('wordfavorite') !== -1 ||
+      lowerKey.indexOf('wordai') !== -1 ||
+      lowerKey.indexOf('texto') !== -1 ||
+      lowerKey.indexOf('textfavorite') !== -1 ||
+      lowerKey.indexOf('panelia') !== -1
+    ) {
+      return true;
+    }
+  }
+  var context = payload.context;
+  if (context) {
+    if (typeof context === 'string' && context.trim()) {
+      return true;
+    }
+    if (typeof context === 'object') {
+      if (
+        (context.instructions && String(context.instructions).trim()) ||
+        (context.focus && String(context.focus).trim()) ||
+        (context.summary && String(context.summary).trim())
+      ) {
+        return true;
+      }
+    }
+  }
+  var structure = payload.structure;
+  if (structure && typeof structure === 'object') {
+    var intro = structure.intro;
+    var conclusion = structure.conclusion;
+    if (
+      (intro && typeof intro === 'object' && (intro.enabled || (intro.focus && String(intro.focus).trim()))) ||
+      (conclusion && typeof conclusion === 'object' && (conclusion.enabled || (conclusion.focus && String(conclusion.focus).trim())))
+    ) {
+      return true;
+    }
+    if (Array.isArray(structure.sections) && structure.sections.length > 0) {
+      return true;
+    }
+  }
+  var personalization = payload.personalization;
+  if (personalization && typeof personalization === 'object') {
+    var personaKeys = ['length', 'language', 'tone', 'profile'];
+    for (var j = 0; j < personaKeys.length; j++) {
+      var personaKey = personaKeys[j];
+      if (
+        Object.prototype.hasOwnProperty.call(personalization, personaKey) &&
+        personalization[personaKey] !== '' &&
+        personalization[personaKey] !== null &&
+        personalization[personaKey] !== undefined
+      ) {
+        return true;
+      }
+    }
+  }
+  var web = payload.web;
+  if (web && typeof web === 'object') {
+    if (
+      Object.prototype.hasOwnProperty.call(web, 'externalEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'sources') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTexts') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTables')
+    ) {
+      return true;
+    }
+  }
+  if (payload.placement && typeof payload.placement === 'object') {
+    return true;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'splitSentences') ||
+    Object.prototype.hasOwnProperty.call(payload, 'splitTextIntoCells')
+  ) {
+    return true;
+  }
+  if (payload.theme && String(payload.theme).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  if (payload.mode && String(payload.mode).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  var nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
+  for (var k = 0; k < nestedKeys.length; k++) {
+    var nestedKey = nestedKeys[k];
+    if (!Object.prototype.hasOwnProperty.call(payload, nestedKey)) {
+      continue;
+    }
+    var nestedValue = payload[nestedKey];
+    if (!nestedValue || nestedValue === payload) {
+      continue;
+    }
+    if (hasWordFavoriteConfigSignals(nestedValue, level + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function resolveMetaRecordType(row) {
   if (!row) {
     return 'table';
@@ -435,6 +609,10 @@ function resolveMetaRecordType(row) {
   var normalized = normalizeMetaRecordType(row[META_INDEX.recordType]);
   if (normalized !== 'table') {
     return normalized;
+  }
+  var inferredFromId = inferMetaRecordTypeFromId(row[META_INDEX.id]);
+  if (inferredFromId) {
+    return inferredFromId;
   }
   var configCell = row.length > META_INDEX.reportConfig ? row[META_INDEX.reportConfig] : '';
   var configText = configCell === null || configCell === undefined ? '' : String(configCell).trim();
@@ -456,14 +634,41 @@ function resolveMetaRecordType(row) {
   var parsedOrigin = '';
   if (Object.prototype.hasOwnProperty.call(parsedConfig, 'origin')) {
     parsedOrigin = parsedConfig.origin;
-  } else if (parsedConfig.config && typeof parsedConfig.config === 'object' && Object.prototype.hasOwnProperty.call(parsedConfig.config, 'origin')) {
+  } else if (
+    parsedConfig.config &&
+    typeof parsedConfig.config === 'object' &&
+    Object.prototype.hasOwnProperty.call(parsedConfig.config, 'origin')
+  ) {
     parsedOrigin = parsedConfig.config.origin;
   }
   if (parsedOrigin !== null && parsedOrigin !== undefined) {
     var originText = String(parsedOrigin).toLowerCase();
-    if (originText.indexOf('edit') !== -1) {
+    if (
+      originText.indexOf('word') !== -1 ||
+      originText.indexOf('texto') !== -1 ||
+      originText.indexOf('wordcrafter') !== -1 ||
+      originText.indexOf('panelia') !== -1
+    ) {
+      return 'wordFavorite';
+    }
+    if (originText.indexOf('edit') !== -1 || originText.indexOf('editar') !== -1) {
       return 'tableEditFavorite';
     }
+    if (originText.indexOf('table') !== -1 || originText.indexOf('tabla') !== -1) {
+      return 'tableFavorite';
+    }
+    if (originText.indexOf('create') !== -1 || originText.indexOf('crear') !== -1) {
+      return 'tableFavorite';
+    }
+  }
+  var configCandidate = parsedConfig;
+  if (configCandidate && typeof configCandidate === 'object' && configCandidate.config && typeof configCandidate.config === 'object') {
+    if (hasWordFavoriteConfigSignals(configCandidate.config)) {
+      return 'wordFavorite';
+    }
+  }
+  if (hasWordFavoriteConfigSignals(parsedConfig)) {
+    return 'wordFavorite';
   }
   var hasReportSignals = false;
   if (!hasReportSignals && Array.isArray(parsedConfig.features) && parsedConfig.features.length > 0) {
@@ -499,6 +704,9 @@ function resolveMetaRecordType(row) {
     hasReportSignals = true;
   }
   if (!hasReportSignals && parsedConfig.kind === 'wordFavorite') {
+    return 'wordFavorite';
+  }
+  if (!hasReportSignals && parsedConfig.kind === 'word') {
     return 'wordFavorite';
   }
   if (!hasReportSignals && parsedConfig.kind === 'tableFavorite') {
@@ -1413,6 +1621,22 @@ function listSavedActions(options) {
           continue;
         }
         actions.push(favorite);
+        continue;
+      }
+      if (type === 'wordFavorite') {
+        var wordFavorite = buildWordFavoriteResponse({ data: row });
+        if (!wordFavorite || wordFavorite.error) {
+          continue;
+        }
+        actions.push({
+          id: wordFavorite.id || entryId,
+          type: 'wordFavorite',
+          name: wordFavorite.name || '',
+          description: wordFavorite.description || '',
+          createdAt: wordFavorite.createdAt || '',
+          updatedAt: wordFavorite.updatedAt || ''
+        });
+        continue;
       }
     }
     actions.sort(function(a, b) {
@@ -1968,6 +2192,7 @@ function normalizeWordFavoriteConfig(config) {
   var personalization =
     source.personalization && typeof source.personalization === 'object' ? source.personalization : {};
   var web = source.web && typeof source.web === 'object' ? source.web : {};
+  var placement = source.placement && typeof source.placement === 'object' ? source.placement : {};
   var normalized = {
     version: 1,
     name: source.name ? String(source.name).trim() : '',
@@ -2012,6 +2237,9 @@ function normalizeWordFavoriteConfig(config) {
       savedEnabled: parseBooleanValue(web.savedEnabled, false),
       savedTables: normalizeWordFavoriteIdArray(web.savedTables),
       savedTexts: normalizeWordFavoriteIdArray(web.savedTexts)
+    },
+    placement: {
+      splitSentences: parseBooleanValue(placement.splitSentences, false)
     }
   };
   return normalized;
@@ -2080,6 +2308,37 @@ function getWordFavoriteDetails(favoriteId) {
   return buildWordFavoriteResponse(entry);
 }
 
+function normalizeWordFavoriteRangeInfo(rangePayload) {
+  var source = rangePayload && typeof rangePayload === 'object' ? rangePayload : {};
+  var value = source.value !== null && source.value !== undefined ? String(source.value).trim() : '';
+  var sheetName = source.sheetName !== null && source.sheetName !== undefined ? String(source.sheetName).trim() : '';
+  var a1Notation = source.a1Notation !== null && source.a1Notation !== undefined ? String(source.a1Notation).trim() : '';
+  var rows = parseInt(source.rows, 10);
+  if (isNaN(rows) || rows < 0) {
+    rows = 0;
+  }
+  var cols = parseInt(source.cols, 10);
+  if (isNaN(cols) || cols < 0) {
+    cols = 0;
+  }
+  if (!value && sheetName && a1Notation) {
+    value = buildFullRangeNotation(sheetName, a1Notation);
+  }
+  if (value && !sheetName) {
+    sheetName = extractSheetNameFromRange(value);
+  }
+  if (value && !a1Notation) {
+    a1Notation = stripSheetFromRange(value);
+  }
+  return {
+    value: value,
+    sheetName: sheetName,
+    a1Notation: a1Notation,
+    rows: rows,
+    cols: cols
+  };
+}
+
 function saveWordFavorite(payload) {
   var data = payload && typeof payload === 'object' ? payload : {};
   var name = data.name ? String(data.name).trim() : '';
@@ -2093,6 +2352,11 @@ function saveWordFavorite(payload) {
   if (!description && config.context && config.context.instructions) {
     description = config.context.instructions.substring(0, 180);
   }
+  var rangeInfo = normalizeWordFavoriteRangeInfo(data.range);
+  var rangeValue = rangeInfo.value || '';
+  var sheetNameValue = rangeInfo.sheetName || '';
+  var colsValue = rangeInfo.cols > 0 ? rangeInfo.cols : '';
+  var rowsValue = rangeInfo.rows > 0 ? rangeInfo.rows : '';
   var meta = getMetaSheet();
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
@@ -2110,16 +2374,37 @@ function saveWordFavorite(payload) {
       throw new Error('Ya existe un texto favorito con ese nombre.');
     }
     createdAt = existing.data[META_INDEX.createdAt] || now;
+    if (!Object.prototype.hasOwnProperty.call(data, 'range')) {
+      rangeValue = existing.data[META_INDEX.rangeA1] || rangeValue;
+      sheetNameValue = existing.data[META_INDEX.sheet] || sheetNameValue;
+      colsValue = existing.data[META_INDEX.cols] || colsValue;
+      rowsValue = existing.data[META_INDEX.rows] || rowsValue;
+    }
     meta
       .getRange(existing.row, 1, 1, META_HEADERS.length)
-      .setValues([[normalizedId, name, '', description, '', '', '', createdAt, now, '', '', 'FALSE', 'wordFavorite', storedConfig]]);
+      .setValues([[normalizedId, name, rangeValue, description, sheetNameValue, colsValue, rowsValue, createdAt, now, '', '', 'FALSE', 'wordFavorite', storedConfig]]);
   } else {
     var nameConflict = findMetaByName(name, { type: 'wordFavorite' });
     if (nameConflict) {
       throw new Error('Ya existe un texto favorito con ese nombre.');
     }
     normalizedId = 'wordFavorite:' + Utilities.getUuid();
-    meta.appendRow([normalizedId, name, '', description, '', '', '', now, now, '', '', 'FALSE', 'wordFavorite', storedConfig]);
+    meta.appendRow([
+      normalizedId,
+      name,
+      rangeValue,
+      description,
+      sheetNameValue,
+      colsValue,
+      rowsValue,
+      now,
+      now,
+      '',
+      '',
+      'FALSE',
+      'wordFavorite',
+      storedConfig
+    ]);
   }
   SpreadsheetApp.flush();
   return { ok: true, id: normalizedId, message: 'Texto favorito guardado.' };
@@ -2183,6 +2468,917 @@ function getSavedActionDetails(actionId) {
     return getWordFavoriteDetails(id);
   }
   return { error: 'Acción no soportada.' };
+}
+
+function buildWordRowPreview(row, maxCols, maxLength) {
+  if (!Array.isArray(row)) {
+    return '';
+  }
+  var limitCols = typeof maxCols === 'number' && maxCols > 0 ? maxCols : 10;
+  var limitLength = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 220;
+  var selected = row.slice(0, limitCols);
+  var parts = [];
+  for (var i = 0; i < selected.length; i++) {
+    var cell = selected[i];
+    var text = cell === null || cell === undefined ? '' : String(cell);
+    text = text.replace(/\s+/g, ' ').trim();
+    if (text.length > 80) {
+      text = text.substring(0, 77) + '…';
+    }
+    parts.push(text);
+  }
+  var joined = parts.join(' | ');
+  if (joined.length > limitLength) {
+    joined = joined.substring(0, limitLength - 1) + '…';
+  }
+  return joined;
+}
+
+function buildWordSampleRows(rows, maxRows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+  var limitRows = typeof maxRows === 'number' && maxRows > 0 ? maxRows : 8;
+  var samples = [];
+  for (var i = 0; i < rows.length && samples.length < limitRows; i++) {
+    var preview = buildWordRowPreview(rows[i], 10, 240);
+    if (preview) {
+      samples.push(preview);
+    }
+  }
+  return samples;
+}
+
+function countNonEmptyWordRows(rows) {
+  if (!Array.isArray(rows)) {
+    return 0;
+  }
+  var count = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (!Array.isArray(row)) {
+      continue;
+    }
+    for (var j = 0; j < row.length; j++) {
+      var cell = row[j];
+      if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
+        count++;
+        break;
+      }
+    }
+  }
+  return count;
+}
+
+function buildWordRangeContextSnippet(rangeValue) {
+  if (!rangeValue) {
+    return '';
+  }
+  var parts = splitRangeNotation(rangeValue);
+  var sheetName = parts.sheet;
+  var rangeA1 = parts.range;
+  if (!sheetName || !rangeA1) {
+    return '';
+  }
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) {
+    return '';
+  }
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return '';
+  }
+  var range;
+  try {
+    range = getRangeWithinSheet(sheet, rangeA1);
+  } catch (err) {
+    return '';
+  }
+  if (!range) {
+    return '';
+  }
+  var values = range.getDisplayValues();
+  if (!values || values.length === 0) {
+    return '';
+  }
+  var headers = values[0] || [];
+  var dataRows = values.length > 1 ? values.slice(1) : [];
+  var nonEmptyRows = countNonEmptyWordRows(dataRows);
+  var samples = buildWordSampleRows(dataRows, 8);
+  var snippet =
+    'Rango ' +
+    sheetName +
+    '!' +
+    rangeA1 +
+    ' (' +
+    nonEmptyRows +
+    ' filas con información).';
+  if (headers.length) {
+    snippet += '\nEncabezados: ' + headers.join(', ');
+  }
+  if (samples.length) {
+    snippet += '\nFilas de muestra:\n- ' + samples.join('\n- ');
+  }
+  return snippet;
+}
+
+function buildWordTableReferenceSnippet(tableId) {
+  if (!tableId) {
+    return '';
+  }
+  var entry = findMetaById(tableId);
+  if (!entry || !entry.data) {
+    return '';
+  }
+  if (resolveMetaRecordType(entry.data) !== 'table') {
+    return '';
+  }
+  var rowData = entry.data;
+  var rangeParts = splitRangeNotation(rowData[META_INDEX.rangeA1]);
+  var sheetName = rowData[META_INDEX.sheet] || rangeParts.sheet;
+  var rangeA1 = rangeParts.range;
+  if (!sheetName || !rangeA1) {
+    return '';
+  }
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) {
+    return '';
+  }
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    return '';
+  }
+  var range;
+  try {
+    range = getRangeWithinSheet(sheet, rowData[META_INDEX.rangeA1] || rangeA1);
+  } catch (err) {
+    return '';
+  }
+  if (!range) {
+    return '';
+  }
+  var values = range.getDisplayValues();
+  if (!values || values.length === 0) {
+    return '';
+  }
+  var headers = values[0] || [];
+  var dataRows = values.length > 1 ? values.slice(1) : [];
+  var samples = buildWordSampleRows(dataRows, 6).map(function(sample, index) {
+    return 'Fila ' + (index + 1) + ': ' + sample;
+  });
+  var snippet = buildTableContextSnippet(rowData, headers, samples, sheetName, rangeA1);
+  var description = rowData[META_INDEX.description] ? String(rowData[META_INDEX.description]).trim() : '';
+  if (description) {
+    snippet += '\nDescripción: ' + description;
+  }
+  return snippet;
+}
+
+function summarizeWordSavedTextReference(textId) {
+  if (!textId) {
+    return '';
+  }
+  var details;
+  try {
+    details = getFavoriteActionDetails(textId);
+  } catch (err) {
+    return '';
+  }
+  if (!details || details.error) {
+    return '';
+  }
+  var parts = [];
+  var title = details.name ? String(details.name).trim() : '';
+  if (details.type === 'wordFavorite') {
+    if (title) {
+      parts.push('Texto favorito "' + title + '".');
+    } else {
+      parts.push('Texto favorito sin título.');
+    }
+    if (details.description) {
+      parts.push('Descripción: ' + details.description);
+    }
+    var config = normalizeWordFavoriteConfig(details.config);
+    if (config.context && config.context.instructions) {
+      parts.push('Instrucciones clave: ' + config.context.instructions);
+    }
+    var personalization = config.personalization || {};
+    var personalizationParts = [];
+    var lengthDesc = describeWordLength(personalization.length);
+    if (lengthDesc) {
+      personalizationParts.push('longitud ' + lengthDesc);
+    }
+    if (personalization.language) {
+      personalizationParts.push('idioma ' + personalization.language);
+    }
+    var toneDesc = describeWordTone(personalization.tone);
+    if (toneDesc) {
+      personalizationParts.push('tono ' + toneDesc);
+    }
+    if (personalization.profile) {
+      personalizationParts.push('perfil ' + personalization.profile);
+    }
+    if (personalizationParts.length) {
+      parts.push('Preferencias: ' + personalizationParts.join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+  if (details.type === 'reportFavorite') {
+    if (title) {
+      parts.push('Reporte favorito "' + title + '".');
+    } else {
+      parts.push('Reporte favorito.');
+    }
+    if (details.description) {
+      parts.push('Descripción: ' + details.description);
+    }
+    if (Array.isArray(details.featureOrder) && details.featureOrder.length) {
+      parts.push('Orden de secciones: ' + details.featureOrder.join(', ') + '.');
+    } else if (Array.isArray(details.features) && details.features.length) {
+      parts.push('Secciones incluidas: ' + details.features.join(', ') + '.');
+    }
+    return parts.join(' ');
+  }
+  return '';
+}
+
+function describeWordLength(value) {
+  switch (value) {
+    case 'breve':
+      return 'breve (hasta 150 palabras)';
+    case 'media':
+      return 'media (150 a 400 palabras)';
+    case 'detallada':
+      return 'detallada (400 a 800 palabras)';
+    case 'extensa':
+      return 'extensa (más de 800 palabras)';
+    case 'personalizada':
+      return 'personalizada (detallada en las instrucciones)';
+    default:
+      return '';
+  }
+}
+
+function describeWordTone(value) {
+  switch (value) {
+    case 'profesional':
+      return 'profesional';
+    case 'formal':
+      return 'formal y sobrio';
+    case 'informal':
+      return 'conversacional';
+    case 'persuasivo':
+      return 'persuasivo';
+    case 'didactico':
+      return 'didáctico';
+    case 'inspirador':
+      return 'inspirador';
+    case 'analitico':
+      return 'analítico';
+    case 'otro':
+      return 'personalizado (descrito por el usuario)';
+    default:
+      return '';
+  }
+}
+
+function describeWordAlignment(value) {
+  switch (value) {
+    case 'left':
+      return 'alineado a la izquierda';
+    case 'center':
+      return 'alineado al centro';
+    case 'right':
+      return 'alineado a la derecha';
+    case 'justify':
+      return 'alineado de forma justificada';
+    default:
+      return '';
+  }
+}
+
+function buildWordFormatSummary(format, kind) {
+  var info = format && typeof format === 'object' ? format : {};
+  var parts = [];
+  if (info.fontFamily) {
+    parts.push('fuente sugerida ' + info.fontFamily);
+  }
+  if (info.fontSize) {
+    parts.push('tamaño aproximado ' + info.fontSize + ' pt');
+  }
+  if (info.color) {
+    parts.push('color preferido ' + info.color);
+  }
+  if (info.alignment) {
+    var alignment = describeWordAlignment(info.alignment);
+    if (alignment) {
+      parts.push(alignment);
+    }
+  }
+  if (info.bold) {
+    parts.push('usar negritas');
+  }
+  if (info.underline) {
+    parts.push('subrayado');
+  }
+  if (info.italics) {
+    parts.push('cursiva');
+  }
+  if (kind === 'title' && info.uppercase) {
+    parts.push('usar mayúsculas');
+  }
+  if (kind === 'body' && info.lineSpacing) {
+    parts.push('interlineado de referencia ' + info.lineSpacing);
+  }
+  if (kind === 'body' && info.highlight) {
+    parts.push('resaltar palabras clave');
+  }
+  return parts.join(', ');
+}
+
+function resolveWordTargetRange(config) {
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) {
+    throw new Error('No se pudo acceder a la hoja activa.');
+  }
+  var normalizedConfig = config && typeof config === 'object' ? config : {};
+  var rangeConfig = normalizedConfig.range && typeof normalizedConfig.range === 'object' ? normalizedConfig.range : {};
+  var requestedRange = rangeConfig.value !== null && rangeConfig.value !== undefined ? String(rangeConfig.value).trim() : '';
+  var useRequestedRange = !!rangeConfig.useRange && requestedRange !== '';
+  var range;
+  if (useRequestedRange) {
+    try {
+      range = resolveRangeFromNotation(requestedRange);
+    } catch (err) {
+      throw new Error('El rango indicado no es válido: ' + (err && err.message ? err.message : requestedRange));
+    }
+  } else {
+    range = ss.getActiveRange();
+    if (!range) {
+      throw new Error('Seleccione una celda o rango en la hoja antes de generar el texto.');
+    }
+  }
+  var sheet = range.getSheet();
+  if (!sheet) {
+    throw new Error('No se pudo determinar la hoja del rango seleccionado.');
+  }
+  var sheetName = sheet.getName();
+  var a1Notation = range.getA1Notation();
+  return {
+    range: range,
+    sheetName: sheetName,
+    pureNotation: a1Notation,
+    fullNotation: buildFullRangeNotation(sheetName, a1Notation)
+  };
+}
+
+function findMetaRangeConflictsForRange(targetRange, options) {
+  var conflicts = [];
+  if (!targetRange) {
+    return conflicts;
+  }
+  var opts = options || {};
+  var ignoreMap = {};
+  if (Array.isArray(opts.ignoreIds)) {
+    opts.ignoreIds.forEach(function(id) {
+      var normalized = normalizeMetaId(id);
+      if (normalized) {
+        ignoreMap[normalized] = true;
+      }
+    });
+  } else if (opts.ignoreId) {
+    var normalized = normalizeMetaId(opts.ignoreId);
+    if (normalized) {
+      ignoreMap[normalized] = true;
+    }
+  }
+
+  var targetSheet = targetRange.getSheet();
+  if (!targetSheet) {
+    return conflicts;
+  }
+  var spreadsheet = targetSheet.getParent();
+  var meta = getMetaSheet();
+  var data = meta.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var entryId = normalizeMetaId(row[META_INDEX.id]);
+    if (!entryId || ignoreMap[entryId]) {
+      continue;
+    }
+    var storedRangeValue = row[META_INDEX.rangeA1];
+    var storedSheetName = row[META_INDEX.sheet];
+    if (!storedRangeValue && !storedSheetName) {
+      continue;
+    }
+    var rangeParts = splitRangeNotation(storedRangeValue);
+    var candidateSheetName = storedSheetName || rangeParts.sheet;
+    var candidateRangeText = storedRangeValue || rangeParts.range;
+    if (!candidateSheetName || !candidateRangeText) {
+      continue;
+    }
+    var sheet = spreadsheet.getSheetByName(candidateSheetName);
+    if (!sheet) {
+      continue;
+    }
+    var candidateRange;
+    try {
+      candidateRange = getRangeWithinSheet(sheet, candidateRangeText);
+    } catch (err) {
+      continue;
+    }
+    if (!candidateRange) {
+      continue;
+    }
+    if (sheet.getSheetId() !== targetSheet.getSheetId()) {
+      continue;
+    }
+    if (!rangesIntersect(candidateRange, targetRange)) {
+      continue;
+    }
+    conflicts.push({
+      id: entryId,
+      type: resolveMetaRecordType(row),
+      name: row[META_INDEX.name] || '',
+      range: buildFullRangeNotation(candidateSheetName, candidateRange.getA1Notation())
+    });
+  }
+  return conflicts;
+}
+
+function buildRangeConflictMessage(rangeLabel, conflicts) {
+  if (!conflicts || conflicts.length === 0) {
+    return '';
+  }
+  var label = rangeLabel || 'seleccionado';
+  var details = [];
+  for (var i = 0; i < conflicts.length && i < 3; i++) {
+    var entry = conflicts[i];
+    var typeName = 'elemento';
+    if (entry.type === 'table') {
+      typeName = 'tabla';
+    } else if (entry.type === 'wordFavorite') {
+      typeName = 'texto';
+    } else if (entry.type === 'tableFavorite') {
+      typeName = 'tabla favorita';
+    } else if (entry.type === 'reportFavorite') {
+      typeName = 'reporte';
+    }
+    var title = typeName.charAt(0).toUpperCase() + typeName.slice(1);
+    var namePart = entry.name ? ' "' + entry.name + '"' : '';
+    var locationPart = entry.range && entry.range !== label ? ' (' + entry.range + ')' : '';
+    details.push('- ' + title + namePart + locationPart);
+  }
+  if (conflicts.length > 3) {
+    details.push('- ... (' + (conflicts.length - 3) + ' elementos adicionales)');
+  }
+  var message = 'El rango ' + label + ' ya está siendo utilizado por otros elementos.';
+  if (details.length > 0) {
+    message += '\n' + details.join('\n');
+  }
+  message += '\nLibera el espacio o elige otro rango antes de generar el texto.';
+  return message;
+}
+
+function splitWordTextIntoSentences(text) {
+  if (!text) {
+    return [];
+  }
+  var normalized = String(text).replace(/\r\n/g, '\n');
+  var lines = normalized.split(/\n+/);
+  var sentences = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i] ? String(lines[i]).trim() : '';
+    if (!line) {
+      continue;
+    }
+    var parts = line.match(/[^.!?]+(?:[.!?]+|$)/g);
+    if (parts && parts.length) {
+      for (var j = 0; j < parts.length; j++) {
+        var sentence = parts[j] ? String(parts[j]).trim() : '';
+        if (sentence) {
+          sentences.push(sentence);
+        }
+      }
+      continue;
+    }
+    sentences.push(line);
+  }
+  return sentences;
+}
+
+function generateWordcrafterText(request) {
+  var apiKey = PropertiesService.getUserProperties().getProperty('TC_API_KEY');
+  if (!apiKey) {
+    return { error: 'No hay API Key configurada. Configure su clave en la sección de configuración.' };
+  }
+
+  var payload = request && typeof request === 'object' ? request : {};
+  var rawTitle = payload.title ? String(payload.title).trim() : '';
+  var description = payload.description ? String(payload.description).trim() : '';
+  var config = normalizeWordFavoriteConfig(payload.config);
+  var favoriteId = normalizeMetaId(payload.favoriteId);
+  var favoriteName = payload.name ? String(payload.name).trim() : '';
+  if (!favoriteName && config.name) {
+    favoriteName = String(config.name).trim();
+  }
+  if (!favoriteName) {
+    return { error: 'Agrega un título al texto antes de generar.' };
+  }
+  config.name = favoriteName;
+  var favoriteDescription = payload.favoriteDescription ? String(payload.favoriteDescription).trim() : '';
+  if (config.range && config.range.useRange) {
+    var providedRange = config.range.value ? String(config.range.value).trim() : '';
+    if (!providedRange) {
+      return { error: 'Seleccione un rango válido antes de generar el texto.' };
+    }
+  }
+  var duplicateFavorite = findMetaByName(favoriteName, { type: 'wordFavorite', ignoreId: favoriteId });
+  if (duplicateFavorite) {
+    return {
+      error: 'Ya existe un texto favorito con ese nombre. Elija un nombre diferente antes de generar.'
+    };
+  }
+  var targetInfo;
+  try {
+    targetInfo = resolveWordTargetRange(config);
+  } catch (rangeError) {
+    return { error: rangeError && rangeError.message ? rangeError.message : rangeError };
+  }
+  var conflicts = findMetaRangeConflictsForRange(targetInfo.range, {
+    ignoreIds: favoriteId ? [favoriteId] : []
+  });
+  if (conflicts.length > 0) {
+    return { error: buildRangeConflictMessage(targetInfo.fullNotation, conflicts) };
+  }
+
+  var sections = [];
+  var baseInfo = [];
+  if (rawTitle) {
+    baseInfo.push('Título proporcionado: ' + rawTitle);
+  }
+  if (description) {
+    baseInfo.push('Descripción general: ' + description);
+  }
+  if (config.context && config.context.instructions) {
+    baseInfo.push('Instrucciones específicas: ' + config.context.instructions);
+  }
+  if (baseInfo.length) {
+    sections.push('Contexto principal:\n- ' + baseInfo.join('\n- '));
+  }
+
+  var personalization = config.personalization || {};
+  var personalizationParts = [];
+  var lengthDesc = describeWordLength(personalization.length);
+  if (lengthDesc) {
+    personalizationParts.push('Extensión deseada: ' + lengthDesc);
+  }
+  if (personalization.language) {
+    personalizationParts.push('Idioma de salida: ' + personalization.language);
+  }
+  var toneDesc = describeWordTone(personalization.tone);
+  if (toneDesc) {
+    personalizationParts.push('Tono preferido: ' + toneDesc);
+  }
+  if (personalization.profile) {
+    personalizationParts.push('Perfil profesional de referencia: ' + personalization.profile);
+  }
+  if (personalizationParts.length) {
+    sections.push('Preferencias de estilo:\n- ' + personalizationParts.join('\n- '));
+  }
+
+  var formatNotes = [];
+  if (config.manualTitleFormat) {
+    var titleSummary = buildWordFormatSummary(config.titleFormat, 'title');
+    if (titleSummary) {
+      formatNotes.push('Título: ' + titleSummary + '.');
+    }
+  }
+  if (config.manualBodyFormat) {
+    var bodySummary = buildWordFormatSummary(config.bodyFormat, 'body');
+    if (bodySummary) {
+      formatNotes.push('Cuerpo del texto: ' + bodySummary + '.');
+    }
+  }
+  if (formatNotes.length) {
+    sections.push('Formato deseado:\n- ' + formatNotes.join('\n- '));
+  }
+
+  var structureNotes = [];
+  var intro = config.structure && config.structure.intro ? config.structure.intro : {};
+  var conclusion = config.structure && config.structure.conclusion ? config.structure.conclusion : {};
+  if (intro.enabled) {
+    var introLine = 'Incluir una introducción clara';
+    if (intro.focus) {
+      introLine += ' enfocada en: ' + intro.focus;
+    }
+    if (intro.webEnabled && Array.isArray(intro.links) && intro.links.length) {
+      var introLinks = [];
+      intro.links.forEach(function(link) {
+        if (!link || !link.url) {
+          return;
+        }
+        var linkText = link.url;
+        if (link.hasDescription && link.description) {
+          linkText += ' — ' + link.description;
+        }
+        introLinks.push(linkText);
+      });
+      if (introLinks.length) {
+        introLine += '. Referencias para la introducción: ' + introLinks.join('; ');
+      }
+    }
+    structureNotes.push(introLine + '.');
+  }
+  if (conclusion.enabled) {
+    var conclusionLine = 'Cerrar con una conclusión sólida';
+    if (conclusion.focus) {
+      conclusionLine += ' destacando: ' + conclusion.focus;
+    }
+    if (conclusion.webEnabled && Array.isArray(conclusion.links) && conclusion.links.length) {
+      var conclusionLinks = [];
+      conclusion.links.forEach(function(link) {
+        if (!link || !link.url) {
+          return;
+        }
+        var linkText = link.url;
+        if (link.hasDescription && link.description) {
+          linkText += ' — ' + link.description;
+        }
+        conclusionLinks.push(linkText);
+      });
+      if (conclusionLinks.length) {
+        conclusionLine += '. Referencias para la conclusión: ' + conclusionLinks.join('; ');
+      }
+    }
+    structureNotes.push(conclusionLine + '.');
+  }
+  if (structureNotes.length) {
+    sections.push('Estructura sugerida:\n- ' + structureNotes.join('\n- '));
+  }
+
+  if (config.range && config.range.useRange && config.range.value) {
+    var rangeSnippet = buildWordRangeContextSnippet(config.range.value);
+    if (rangeSnippet) {
+      sections.push('Datos seleccionados:\n' + rangeSnippet);
+    }
+  }
+
+  if (
+    config.web &&
+    config.web.savedEnabled &&
+    Array.isArray(config.web.savedTables) &&
+    config.web.savedTables.length
+  ) {
+    var tableSnippets = [];
+    var seenTables = {};
+    for (var t = 0; t < config.web.savedTables.length && tableSnippets.length < 5; t++) {
+      var tableId = config.web.savedTables[t];
+      if (!tableId || seenTables[tableId]) {
+        continue;
+      }
+      seenTables[tableId] = true;
+      var tableSnippet = buildWordTableReferenceSnippet(tableId);
+      if (tableSnippet) {
+        tableSnippets.push(tableSnippet);
+      }
+    }
+    if (tableSnippets.length) {
+      sections.push('Referencias de tablas guardadas:\n- ' + tableSnippets.join('\n- '));
+    }
+  }
+
+  if (
+    config.web &&
+    config.web.savedEnabled &&
+    Array.isArray(config.web.savedTexts) &&
+    config.web.savedTexts.length
+  ) {
+    var textSummaries = [];
+    var seenTexts = {};
+    for (var x = 0; x < config.web.savedTexts.length && textSummaries.length < 5; x++) {
+      var textId = config.web.savedTexts[x];
+      if (!textId || seenTexts[textId]) {
+        continue;
+      }
+      seenTexts[textId] = true;
+      var summary = summarizeWordSavedTextReference(textId);
+      if (summary) {
+        textSummaries.push(summary);
+      }
+    }
+    if (textSummaries.length) {
+      sections.push('Textos relacionados para mantener coherencia:\n- ' + textSummaries.join('\n- '));
+    }
+  }
+
+  if (config.web && config.web.externalEnabled && Array.isArray(config.web.sources)) {
+    var sources = [];
+    config.web.sources.forEach(function(source) {
+      if (!source || !source.url) {
+        return;
+      }
+      var entry = source.url;
+      if (source.hasDescription && source.description) {
+        entry += ' — ' + source.description;
+      }
+      sources.push(entry);
+    });
+    if (sources.length) {
+      sections.push('Páginas web aportadas por el usuario:\n- ' + sources.join('\n- '));
+    }
+  }
+
+  var guidelines = [];
+  if (config.autoTitle) {
+    guidelines.push('Genera un título atractivo y coherente con el contenido.');
+  } else if (rawTitle) {
+    guidelines.push('Usa el título proporcionado exactamente como está escrito.');
+  }
+  if (config.bodyFormat && config.bodyFormat.highlight) {
+    guidelines.push('Resalta entre 3 y 5 palabras clave importantes usando mayúsculas o rodeándolas con **asteriscos**.');
+  }
+  if (config.bodyFormat && config.bodyFormat.lineSpacing) {
+    guidelines.push(
+      'Redacta párrafos fluidos que mantengan legibilidad con un interlineado aproximado de ' + config.bodyFormat.lineSpacing + '.'
+    );
+  }
+  guidelines.push('Organiza el texto en párrafos claros separados por una línea en blanco cuando corresponda.');
+  guidelines.push('Usa únicamente la información proporcionada y evita suposiciones sin respaldo.');
+  guidelines.push('Devuelve solo el texto final listo para pegar, sin comentarios adicionales ni etiquetas.');
+  sections.push('Indicaciones finales:\n- ' + guidelines.join('\n- '));
+
+  var systemParts = [
+    'Eres WordCrafter, un asistente experto en redacción profesional para Google Workspace.',
+    'Produce contenidos originales y consistentes con los datos proporcionados.'
+  ];
+  if (personalization.language) {
+    systemParts.push('Redacta estrictamente en ' + personalization.language + '.');
+  } else {
+    systemParts.push('Redacta todo el contenido en español neutro.');
+  }
+  if (toneDesc) {
+    systemParts.push('Mantén un tono ' + toneDesc + ' a lo largo del texto.');
+  }
+
+  var systemContent = systemParts.join(' ');
+  var userContent = sections.join('\n\n');
+
+  var messages = [
+    {
+      role: 'system',
+      content: systemContent
+    },
+    {
+      role: 'user',
+      content: userContent
+    }
+  ];
+
+  var requestBody = {
+    model: 'gpt-4o-mini',
+    messages: messages,
+    max_tokens: 900,
+    temperature: 0.65,
+    n: 1
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      Authorization: 'Bearer ' + apiKey
+    },
+    payload: JSON.stringify(requestBody),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', options);
+    var result = JSON.parse(response.getContentText());
+    if (result.error) {
+      return { error: result.error.message || 'Error al procesar la solicitud.' };
+    }
+    if (result.choices && result.choices.length > 0) {
+      var text = result.choices[0].message && result.choices[0].message.content;
+      var normalizedText = text ? String(text).trim() : '';
+      if (!normalizedText) {
+        return { error: 'No se obtuvo contenido de la IA.' };
+      }
+      var baseRange = targetInfo.range;
+      var targetSheet = baseRange && typeof baseRange.getSheet === 'function' ? baseRange.getSheet() : null;
+      if (!targetSheet) {
+        return { error: 'No se pudo determinar la hoja destino para pegar el texto.' };
+      }
+      var placementConfig = config.placement && typeof config.placement === 'object' ? config.placement : {};
+      var useSentenceSplit = placementConfig.splitSentences === true;
+      var sentences = [];
+      var appliedSentenceSplit = false;
+      var finalRange = baseRange;
+      if (useSentenceSplit) {
+        sentences = splitWordTextIntoSentences(normalizedText);
+        if (sentences.length > 1) {
+          appliedSentenceSplit = true;
+          var anchorCell = baseRange.getCell(1, 1);
+          var startRow = anchorCell.getRow();
+          var startColumn = anchorCell.getColumn();
+          var requiredRows = sentences.length;
+          var lastNeededRow = startRow + requiredRows - 1;
+          var maxRows = targetSheet.getMaxRows();
+          if (lastNeededRow > maxRows) {
+            targetSheet.insertRowsAfter(maxRows, lastNeededRow - maxRows);
+          }
+          finalRange = targetSheet.getRange(startRow, startColumn, requiredRows, 1);
+          var extendedConflicts = findMetaRangeConflictsForRange(finalRange, {
+            ignoreIds: favoriteId ? [favoriteId] : []
+          });
+          if (extendedConflicts.length > 0) {
+            var plannedLabel = buildFullRangeNotation(targetSheet.getName(), finalRange.getA1Notation());
+            return {
+              error: buildRangeConflictMessage(plannedLabel, extendedConflicts)
+            };
+          }
+        }
+      }
+      try {
+        if (appliedSentenceSplit) {
+          try {
+            baseRange.breakApart();
+          } catch (breakErr) {}
+          baseRange.clearContent();
+          finalRange.clearContent();
+          var rowsData = [];
+          for (var idx = 0; idx < sentences.length; idx++) {
+            rowsData.push([sentences[idx]]);
+          }
+          finalRange.setValues(rowsData);
+          finalRange.setWrap(true);
+        } else {
+          if (baseRange.getNumRows() > 1 || baseRange.getNumColumns() > 1) {
+            try {
+              baseRange.breakApart();
+            } catch (mergeErr) {}
+          }
+          baseRange.clearContent();
+          if (baseRange.getNumRows() > 1 || baseRange.getNumColumns() > 1) {
+            baseRange = baseRange.merge();
+          }
+          baseRange.setValue(normalizedText);
+          baseRange.setWrap(true);
+          finalRange = baseRange;
+        }
+      } catch (writeErr) {
+        return {
+          error: 'No se pudo escribir el texto en el rango seleccionado: ' + writeErr.message
+        };
+      }
+      SpreadsheetApp.flush();
+      var finalSheetName = finalRange.getSheet().getName();
+      var finalA1 = finalRange.getA1Notation();
+      var finalFullNotation = buildFullRangeNotation(finalSheetName, finalA1);
+      var finalRows = finalRange.getNumRows();
+      var finalCols = finalRange.getNumColumns();
+      var savePayload = {
+        id: favoriteId,
+        name: favoriteName,
+        description: favoriteDescription,
+        config: config,
+        range: {
+          value: finalFullNotation,
+          sheetName: finalSheetName,
+          a1Notation: finalA1,
+          rows: finalRows,
+          cols: finalCols
+        }
+      };
+      var saveResult;
+      try {
+        saveResult = saveWordFavorite(savePayload);
+      } catch (saveErr) {
+        return { error: saveErr && saveErr.message ? saveErr.message : saveErr };
+      }
+      if (!saveResult || saveResult.error) {
+        return { error: (saveResult && saveResult.error) || 'No se pudo guardar el texto favorito.' };
+      }
+      var storedId = saveResult.id || favoriteId;
+      return {
+        ok: true,
+        favoriteId: storedId,
+        id: storedId,
+        range: {
+          sheetName: finalSheetName,
+          a1Notation: finalA1,
+          full: finalFullNotation,
+          rows: finalRows,
+          cols: finalCols
+        },
+        message: 'Texto generado y guardado como "' + favoriteName + '" en ' + finalFullNotation + '.'
+      };
+    }
+    return { error: 'No se obtuvo respuesta del modelo.' };
+  } catch (err) {
+    return { error: 'Error al conectar con OpenAI: ' + err.message };
+  }
 }
 
 function focusSavedTableRange(tableId) {
