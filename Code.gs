@@ -476,6 +476,132 @@ function inferMetaRecordTypeFromId(value) {
   return '';
 }
 
+function hasWordFavoriteConfigSignals(payload, depth) {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  var level = typeof depth === 'number' && depth >= 0 ? depth : 0;
+  if (level > 4) {
+    return false;
+  }
+  if (Array.isArray(payload)) {
+    for (var a = 0; a < payload.length; a++) {
+      if (hasWordFavoriteConfigSignals(payload[a], level + 1)) {
+        return true;
+      }
+    }
+  }
+  var keys;
+  try {
+    keys = Object.keys(payload);
+  } catch (err) {
+    keys = [];
+  }
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!key) {
+      continue;
+    }
+    var lowerKey = String(key).toLowerCase();
+    if (
+      lowerKey.indexOf('wordcrafter') !== -1 ||
+      lowerKey.indexOf('wordfavorite') !== -1 ||
+      lowerKey.indexOf('wordai') !== -1 ||
+      lowerKey.indexOf('texto') !== -1 ||
+      lowerKey.indexOf('textfavorite') !== -1 ||
+      lowerKey.indexOf('panelia') !== -1
+    ) {
+      return true;
+    }
+  }
+  var context = payload.context;
+  if (context) {
+    if (typeof context === 'string' && context.trim()) {
+      return true;
+    }
+    if (typeof context === 'object') {
+      if (
+        (context.instructions && String(context.instructions).trim()) ||
+        (context.focus && String(context.focus).trim()) ||
+        (context.summary && String(context.summary).trim())
+      ) {
+        return true;
+      }
+    }
+  }
+  var structure = payload.structure;
+  if (structure && typeof structure === 'object') {
+    var intro = structure.intro;
+    var conclusion = structure.conclusion;
+    if (
+      (intro && typeof intro === 'object' && (intro.enabled || (intro.focus && String(intro.focus).trim()))) ||
+      (conclusion && typeof conclusion === 'object' && (conclusion.enabled || (conclusion.focus && String(conclusion.focus).trim())))
+    ) {
+      return true;
+    }
+    if (Array.isArray(structure.sections) && structure.sections.length > 0) {
+      return true;
+    }
+  }
+  var personalization = payload.personalization;
+  if (personalization && typeof personalization === 'object') {
+    var personaKeys = ['length', 'language', 'tone', 'profile'];
+    for (var j = 0; j < personaKeys.length; j++) {
+      var personaKey = personaKeys[j];
+      if (
+        Object.prototype.hasOwnProperty.call(personalization, personaKey) &&
+        personalization[personaKey] !== '' &&
+        personalization[personaKey] !== null &&
+        personalization[personaKey] !== undefined
+      ) {
+        return true;
+      }
+    }
+  }
+  var web = payload.web;
+  if (web && typeof web === 'object') {
+    if (
+      Object.prototype.hasOwnProperty.call(web, 'externalEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'sources') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTexts') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTables')
+    ) {
+      return true;
+    }
+  }
+  if (payload.placement && typeof payload.placement === 'object') {
+    return true;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'splitSentences') ||
+    Object.prototype.hasOwnProperty.call(payload, 'splitTextIntoCells')
+  ) {
+    return true;
+  }
+  if (payload.theme && String(payload.theme).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  if (payload.mode && String(payload.mode).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  var nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
+  for (var k = 0; k < nestedKeys.length; k++) {
+    var nestedKey = nestedKeys[k];
+    if (!Object.prototype.hasOwnProperty.call(payload, nestedKey)) {
+      continue;
+    }
+    var nestedValue = payload[nestedKey];
+    if (!nestedValue || nestedValue === payload) {
+      continue;
+    }
+    if (hasWordFavoriteConfigSignals(nestedValue, level + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function resolveMetaRecordType(row) {
   if (!row) {
     return 'table';
@@ -508,14 +634,41 @@ function resolveMetaRecordType(row) {
   var parsedOrigin = '';
   if (Object.prototype.hasOwnProperty.call(parsedConfig, 'origin')) {
     parsedOrigin = parsedConfig.origin;
-  } else if (parsedConfig.config && typeof parsedConfig.config === 'object' && Object.prototype.hasOwnProperty.call(parsedConfig.config, 'origin')) {
+  } else if (
+    parsedConfig.config &&
+    typeof parsedConfig.config === 'object' &&
+    Object.prototype.hasOwnProperty.call(parsedConfig.config, 'origin')
+  ) {
     parsedOrigin = parsedConfig.config.origin;
   }
   if (parsedOrigin !== null && parsedOrigin !== undefined) {
     var originText = String(parsedOrigin).toLowerCase();
-    if (originText.indexOf('edit') !== -1) {
+    if (
+      originText.indexOf('word') !== -1 ||
+      originText.indexOf('texto') !== -1 ||
+      originText.indexOf('wordcrafter') !== -1 ||
+      originText.indexOf('panelia') !== -1
+    ) {
+      return 'wordFavorite';
+    }
+    if (originText.indexOf('edit') !== -1 || originText.indexOf('editar') !== -1) {
       return 'tableEditFavorite';
     }
+    if (originText.indexOf('table') !== -1 || originText.indexOf('tabla') !== -1) {
+      return 'tableFavorite';
+    }
+    if (originText.indexOf('create') !== -1 || originText.indexOf('crear') !== -1) {
+      return 'tableFavorite';
+    }
+  }
+  var configCandidate = parsedConfig;
+  if (configCandidate && typeof configCandidate === 'object' && configCandidate.config && typeof configCandidate.config === 'object') {
+    if (hasWordFavoriteConfigSignals(configCandidate.config)) {
+      return 'wordFavorite';
+    }
+  }
+  if (hasWordFavoriteConfigSignals(parsedConfig)) {
+    return 'wordFavorite';
   }
   var hasReportSignals = false;
   if (!hasReportSignals && Array.isArray(parsedConfig.features) && parsedConfig.features.length > 0) {

@@ -160,6 +160,132 @@ function normalizeFavoriteTypeCandidate(value) {
   return '';
 }
 
+function hasWordFavoriteConfigSignals(payload, depth) {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+  const level = typeof depth === 'number' && depth >= 0 ? depth : 0;
+  if (level > 4) {
+    return false;
+  }
+  if (Array.isArray(payload)) {
+    for (let a = 0; a < payload.length; a++) {
+      if (hasWordFavoriteConfigSignals(payload[a], level + 1)) {
+        return true;
+      }
+    }
+  }
+  let keys = [];
+  try {
+    keys = Object.keys(payload);
+  } catch (err) {
+    keys = [];
+  }
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (!key) {
+      continue;
+    }
+    const lowerKey = String(key).toLowerCase();
+    if (
+      lowerKey.indexOf('wordcrafter') !== -1 ||
+      lowerKey.indexOf('wordfavorite') !== -1 ||
+      lowerKey.indexOf('wordai') !== -1 ||
+      lowerKey.indexOf('texto') !== -1 ||
+      lowerKey.indexOf('textfavorite') !== -1 ||
+      lowerKey.indexOf('panelia') !== -1
+    ) {
+      return true;
+    }
+  }
+  const context = payload.context;
+  if (context) {
+    if (typeof context === 'string' && context.trim()) {
+      return true;
+    }
+    if (typeof context === 'object') {
+      if (
+        (context.instructions && String(context.instructions).trim()) ||
+        (context.focus && String(context.focus).trim()) ||
+        (context.summary && String(context.summary).trim())
+      ) {
+        return true;
+      }
+    }
+  }
+  const structure = payload.structure;
+  if (structure && typeof structure === 'object') {
+    const intro = structure.intro;
+    const conclusion = structure.conclusion;
+    if (
+      (intro && typeof intro === 'object' && (intro.enabled || (intro.focus && String(intro.focus).trim()))) ||
+      (conclusion && typeof conclusion === 'object' && (conclusion.enabled || (conclusion.focus && String(conclusion.focus).trim())))
+    ) {
+      return true;
+    }
+    if (Array.isArray(structure.sections) && structure.sections.length > 0) {
+      return true;
+    }
+  }
+  const personalization = payload.personalization;
+  if (personalization && typeof personalization === 'object') {
+    const personaKeys = ['length', 'language', 'tone', 'profile'];
+    for (let j = 0; j < personaKeys.length; j++) {
+      const personaKey = personaKeys[j];
+      if (
+        Object.prototype.hasOwnProperty.call(personalization, personaKey) &&
+        personalization[personaKey] !== '' &&
+        personalization[personaKey] !== null &&
+        personalization[personaKey] !== undefined
+      ) {
+        return true;
+      }
+    }
+  }
+  const web = payload.web;
+  if (web && typeof web === 'object') {
+    if (
+      Object.prototype.hasOwnProperty.call(web, 'externalEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedEnabled') ||
+      Object.prototype.hasOwnProperty.call(web, 'sources') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTexts') ||
+      Object.prototype.hasOwnProperty.call(web, 'savedTables')
+    ) {
+      return true;
+    }
+  }
+  if (payload.placement && typeof payload.placement === 'object') {
+    return true;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'splitSentences') ||
+    Object.prototype.hasOwnProperty.call(payload, 'splitTextIntoCells')
+  ) {
+    return true;
+  }
+  if (payload.theme && String(payload.theme).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  if (payload.mode && String(payload.mode).toLowerCase().indexOf('word') !== -1) {
+    return true;
+  }
+  const nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
+  for (let k = 0; k < nestedKeys.length; k++) {
+    const nestedKey = nestedKeys[k];
+    if (!Object.prototype.hasOwnProperty.call(payload, nestedKey)) {
+      continue;
+    }
+    const nestedValue = payload[nestedKey];
+    if (!nestedValue || nestedValue === payload) {
+      continue;
+    }
+    if (hasWordFavoriteConfigSignals(nestedValue, level + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function inferFavoriteOriginType(origin) {
   if (origin === null || origin === undefined) {
     return '';
@@ -168,10 +294,23 @@ function inferFavoriteOriginType(origin) {
   if (!text) {
     return '';
   }
+  if (
+    text.indexOf('word') !== -1 ||
+    text.indexOf('texto') !== -1 ||
+    text.indexOf('wordcrafter') !== -1 ||
+    text.indexOf('panelia') !== -1
+  ) {
+    return 'wordFavorite';
+  }
   if (text.indexOf('edit') !== -1 || text.indexOf('editar') !== -1) {
     return 'tableEditFavorite';
   }
-  if (text.indexOf('create') !== -1 || text.indexOf('crear') !== -1) {
+  if (
+    text.indexOf('table') !== -1 ||
+    text.indexOf('tabla') !== -1 ||
+    text.indexOf('create') !== -1 ||
+    text.indexOf('crear') !== -1
+  ) {
     return 'tableFavorite';
   }
   return '';
@@ -228,6 +367,9 @@ function inferFavoriteTypeFromConfigPayload(payload, depth) {
   if (originCandidate) {
     return originCandidate;
   }
+  if (hasWordFavoriteConfigSignals(payload)) {
+    return 'wordFavorite';
+  }
   const nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
   for (let j = 0; j < nestedKeys.length; j++) {
     const nestedKey = nestedKeys[j];
@@ -274,6 +416,9 @@ function inferFavoriteTypeFromEntryConfig(entry) {
   const originCandidate = inferFavoriteOriginType(entry.origin);
   if (originCandidate) {
     return originCandidate;
+  }
+  if (hasWordFavoriteConfigSignals(entry)) {
+    return 'wordFavorite';
   }
   const sources = [];
   if (entry.config !== null && entry.config !== undefined) {
