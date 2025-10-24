@@ -1595,27 +1595,39 @@ async function promptFavoriteName(options) {
 
 
 const FAVORITE_METADATA_CONTEXT_RULES = Object.freeze({
-        panelIaReport: { idPrefix: 'AccionTC', code: '01', typePrefix: 'AccionTC' },
-        panelIaAsk: { idPrefix: 'AccionTC', code: '02', typePrefix: 'AccionTC' },
-        panelIaWordLength: { idPrefix: 'AccionWC', code: '01', typePrefix: 'AccionWC' },
-        panelIaWordRewrite: { idPrefix: 'AccionWC', code: '02', typePrefix: 'AccionWC' },
-        panelIaWordTone: { idPrefix: 'AccionWC', code: '03', typePrefix: 'AccionWC' },
-        panelIaWordSummary: { idPrefix: 'AccionWC', code: '04', typePrefix: 'AccionWC' },
+        panelIaReport: { idPrefix: 'AccionesTC', code: '01', typePrefix: 'AccionesTC' },
+        panelIaAsk: { idPrefix: 'AccionesTC', code: '02', typePrefix: 'AccionesTC' },
+        panelIaWordLength: { idPrefix: 'AccionesWC', code: '01', typePrefix: 'AccionesWC' },
+        panelIaWordRewrite: { idPrefix: 'AccionesWC', code: '02', typePrefix: 'AccionesWC' },
+        panelIaWordTone: { idPrefix: 'AccionesWC', code: '03', typePrefix: 'AccionesWC' },
+        panelIaWordSummary: { idPrefix: 'AccionesWC', code: '04', typePrefix: 'AccionesWC' },
         crearTabla: { idPrefix: 'CrearTablaTC', typePrefix: 'CrearTablaTC' },
         editarTabla: { idPrefix: 'EditarTablaTC', typePrefix: 'EditarTablaTC' },
         crearTexto: { idPrefix: 'CrearTextoWC', typePrefix: 'CrearTextoWC' },
         editarTexto: { idPrefix: 'EditarTextoWC', typePrefix: 'EditarTextoWC' }
       });
 
-function generateMetadataNumericSuffix(reference) {
-        const raw = reference ? String(reference) : '';
-        const digits = raw.replace(/\D+/g, '');
-        if (digits.length >= 6) {
-          return digits.slice(-6);
+function generateMetadataGuidSuffix(reference) {
+        const raw = reference ? String(reference).trim() : '';
+        if (raw) {
+          const delimiterIndex = raw.indexOf(':');
+          if (delimiterIndex !== -1 && delimiterIndex < raw.length - 1) {
+            const candidate = raw.substring(delimiterIndex + 1).trim();
+            if (candidate) {
+              return candidate;
+            }
+          }
+          const uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+          if (uuidMatch && uuidMatch[0]) {
+            return uuidMatch[0];
+          }
         }
-        const timestamp = String(Date.now());
-        const combined = (digits + timestamp).replace(/\D+/g, '');
-        return combined.slice(-6) || timestamp.slice(-6);
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).slice(2, 12);
+        return (timestamp + random).replace(/[^a-z0-9-]/gi, '').slice(0, 32) || timestamp;
       }
 
 function normalizeFavoriteMetadataContextKey(context) {
@@ -1729,22 +1741,29 @@ function applyMetadataRule(metadata, ruleInfo, extras) {
         const rule = ruleInfo.rule;
         const prefix = rule.idPrefix;
         const typePrefix = rule.typePrefix || prefix;
+        const idPrefixWithDelimiter = prefix ? prefix + ':' : '';
+        const typePrefixWithDelimiter = typePrefix ? typePrefix + ':' : '';
         let suffix = '';
         if (rule.code) {
           suffix = rule.code;
-        } else if (result.id && prefix && result.id.indexOf(prefix) === 0) {
-          suffix = result.id.substring(prefix.length) || generateMetadataNumericSuffix(result.id);
+        } else if (result.id && prefix && result.id.indexOf(idPrefixWithDelimiter) === 0) {
+          const existing = result.id.substring(idPrefixWithDelimiter.length);
+          suffix = existing || generateMetadataGuidSuffix(result.id);
         } else if (prefix) {
           const sourceId = extras && extras.sourceId ? extras.sourceId : '';
           const favoriteId = extras && extras.favoriteId ? extras.favoriteId : '';
           const fallback = sourceId || favoriteId || Date.now();
-          suffix = generateMetadataNumericSuffix(fallback);
+          suffix = generateMetadataGuidSuffix(fallback);
         }
         if (prefix) {
-          result.id = prefix + suffix;
+          result.id = idPrefixWithDelimiter + suffix;
         }
         if (typePrefix) {
-          result.type = typePrefix + suffix;
+          if (!suffix && result.type && result.type.indexOf(typePrefixWithDelimiter) === 0) {
+            suffix = result.type.substring(typePrefixWithDelimiter.length) || suffix;
+          }
+          const normalizedSuffix = suffix || generateMetadataGuidSuffix(result.type || result.id || '');
+          result.type = typePrefixWithDelimiter + normalizedSuffix;
         }
         if (ruleInfo.key) {
           result.context = ruleInfo.key;
@@ -3895,10 +3914,15 @@ function playSidebarAnimation() {
           Digit5: 'actionsTab'
         };
 
-        document.addEventListener('keydown', function(event) {
+        const shortcutHandledFlag = '__tcShortcutHandled';
+        const handleGlobalShortcut = function(event) {
+          if (!event || event[shortcutHandledFlag]) {
+            return;
+          }
           if (!event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) {
             return;
           }
+          event[shortcutHandledFlag] = true;
 
           const targetTab = tabShortcutMap[event.code];
           if (targetTab) {
@@ -3927,7 +3951,42 @@ function playSidebarAnimation() {
             themeToggle.checked = !themeToggle.checked;
             themeToggle.dispatchEvent(new Event('change', { bubbles: true }));
           }
-        });
+        };
+
+        const shortcutTargets = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+        const registerShortcutTarget = function(target) {
+          if (!target || typeof target.addEventListener !== 'function') {
+            return;
+          }
+          if (shortcutTargets && shortcutTargets.has(target)) {
+            return;
+          }
+          try {
+            target.addEventListener('keydown', handleGlobalShortcut, true);
+            if (shortcutTargets) {
+              shortcutTargets.add(target);
+            }
+          } catch (err) {}
+        };
+
+        registerShortcutTarget(document);
+        registerShortcutTarget(window);
+        try {
+          if (window.parent && window.parent !== window) {
+            registerShortcutTarget(window.parent);
+            if (window.parent.document) {
+              registerShortcutTarget(window.parent.document);
+            }
+          }
+        } catch (err) {}
+        try {
+          if (window.top && window.top !== window) {
+            registerShortcutTarget(window.top);
+            if (window.top.document) {
+              registerShortcutTarget(window.top.document);
+            }
+          }
+        } catch (err) {}
 
         fetchWelcomePreference();
         applyTheme(themeToggle.checked, { forceSync: true });

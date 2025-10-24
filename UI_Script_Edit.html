@@ -926,12 +926,22 @@ async function handleEditSaveFavorite() {
                   tableId: editingId || '',
                   tableName: validation.values.name
                 })
-              : {
-                  type: 'tab',
-                  id: 'editTab',
-                  sourceType: 'table',
-                  action: 'tableEditFavorite'
-                }
+              : (function() {
+                  const suffix =
+                    typeof generateMetadataGuidSuffix === 'function'
+                      ? generateMetadataGuidSuffix()
+                      : String(Date.now());
+                  const baseId = 'EditarTablaTC:' + suffix;
+                  return {
+                    type: 'EditarTablaTC:' + suffix,
+                    id: baseId,
+                    tabId: 'editTab',
+                    tab: 'editTab',
+                    sourceType: 'table',
+                    action: 'tableEditFavorite',
+                    context: 'editarTabla'
+                  };
+                })()
         };
         editFavoriteSaving = true;
         updateEditFavoriteButtonState();

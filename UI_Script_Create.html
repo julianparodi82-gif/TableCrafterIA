@@ -504,12 +504,22 @@ async function handleTableFavoriteSave() {
                   favoriteId: tableFavoriteEditingId || '',
                   tableName: tableTitle
                 })
-              : {
-                  type: 'tab',
-                  id: 'createTab',
-                  sourceType: 'table',
-                  action: 'tableFavorite'
-                }
+              : (function() {
+                  const suffix =
+                    typeof generateMetadataGuidSuffix === 'function'
+                      ? generateMetadataGuidSuffix()
+                      : String(Date.now());
+                  const baseId = 'CrearTablaTC:' + suffix;
+                  return {
+                    type: 'CrearTablaTC:' + suffix,
+                    id: baseId,
+                    tabId: 'createTab',
+                    tab: 'createTab',
+                    sourceType: 'table',
+                    action: 'tableFavorite',
+                    context: 'crearTabla'
+                  };
+                })()
         };
         tableFavoriteSaving = true;
         updateTableFavoriteButtonState();

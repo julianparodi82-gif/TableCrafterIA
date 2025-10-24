@@ -1066,9 +1066,14 @@ function collectWordFavoriteConfig() {
             favoriteId: wordFavoriteEditingId || ''
           });
         } else {
+          const suffix =
+            typeof generateMetadataGuidSuffix === 'function'
+              ? generateMetadataGuidSuffix()
+              : String(Date.now());
+          const baseId = 'CrearTextoWC:' + suffix;
           config.metadata = {
-            type: 'CrearTextoWC',
-            id: 'CrearTextoWC' + String(Date.now()).slice(-6),
+            type: 'CrearTextoWC:' + suffix,
+            id: baseId,
             tabId: 'createTab',
             tab: 'createTab',
             context: 'crearTexto'

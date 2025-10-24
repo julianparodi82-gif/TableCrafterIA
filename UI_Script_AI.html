@@ -5077,12 +5077,24 @@ async function handleReportFavoriteSave() {
                   favoriteId: editingId || '',
                   reportName: favoriteName
                 })
-              : {
-                  type: 'tab',
-                  id: 'aiTab',
-                  sourceType: 'report',
-                  action: 'reportFavorite'
-                }
+              : (function() {
+                  const suffix =
+                    typeof generateMetadataGuidSuffix === 'function'
+                      ? generateMetadataGuidSuffix()
+                      : String(Date.now());
+                  const isWordTheme = currentAiTheme === 'word';
+                  const prefix = isWordTheme ? 'AccionesWC' : 'AccionesTC';
+                  const baseId = prefix + ':' + suffix;
+                  return {
+                    type: prefix + ':' + suffix,
+                    id: baseId,
+                    tabId: 'aiTab',
+                    tab: 'aiTab',
+                    sourceType: 'report',
+                    action: 'reportFavorite',
+                    context: isWordTheme ? 'panelIaWordRewrite' : 'panelIaReport'
+                  };
+                })()
         };
         const saveBtn = document.getElementById('aiReportFavoriteSaveBtn');
         try {

@@ -468,30 +468,34 @@ function normalizeFavoriteMetadata(metadata, options) {
 }
 
 var FAVORITE_METADATA_CONTEXT_RULES = {
-  panelIaReport: { idPrefix: 'AccionTC', code: '01', typePrefix: 'AccionTC' },
-  panelIaAsk: { idPrefix: 'AccionTC', code: '02', typePrefix: 'AccionTC' },
-  panelIaWordLength: { idPrefix: 'AccionWC', code: '01', typePrefix: 'AccionWC' },
-  panelIaWordRewrite: { idPrefix: 'AccionWC', code: '02', typePrefix: 'AccionWC' },
-  panelIaWordTone: { idPrefix: 'AccionWC', code: '03', typePrefix: 'AccionWC' },
-  panelIaWordSummary: { idPrefix: 'AccionWC', code: '04', typePrefix: 'AccionWC' },
+  panelIaReport: { idPrefix: 'AccionesTC', code: '01', typePrefix: 'AccionesTC' },
+  panelIaAsk: { idPrefix: 'AccionesTC', code: '02', typePrefix: 'AccionesTC' },
+  panelIaWordLength: { idPrefix: 'AccionesWC', code: '01', typePrefix: 'AccionesWC' },
+  panelIaWordRewrite: { idPrefix: 'AccionesWC', code: '02', typePrefix: 'AccionesWC' },
+  panelIaWordTone: { idPrefix: 'AccionesWC', code: '03', typePrefix: 'AccionesWC' },
+  panelIaWordSummary: { idPrefix: 'AccionesWC', code: '04', typePrefix: 'AccionesWC' },
   crearTabla: { idPrefix: 'CrearTablaTC', typePrefix: 'CrearTablaTC' },
   editarTabla: { idPrefix: 'EditarTablaTC', typePrefix: 'EditarTablaTC' },
   crearTexto: { idPrefix: 'CrearTextoWC', typePrefix: 'CrearTextoWC' },
   editarTexto: { idPrefix: 'EditarTextoWC', typePrefix: 'EditarTextoWC' }
 };
 
-function buildMetadataNumericSuffix(reference) {
-  var raw = reference === undefined || reference === null ? '' : String(reference);
-  var digits = raw.replace(/\D+/g, '');
-  if (digits.length >= 6) {
-    return digits.slice(-6);
+function buildMetadataGuidSuffix(reference) {
+  var raw = reference === undefined || reference === null ? '' : String(reference).trim();
+  if (raw) {
+    var delimiterIndex = raw.indexOf(':');
+    if (delimiterIndex !== -1 && delimiterIndex < raw.length - 1) {
+      var candidate = raw.substring(delimiterIndex + 1).trim();
+      if (candidate) {
+        return candidate;
+      }
+    }
+    var uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (uuidMatch && uuidMatch[0]) {
+      return uuidMatch[0];
+    }
   }
-  var timestamp = String(new Date().getTime());
-  var combined = (digits + timestamp).replace(/\D+/g, '');
-  if (combined.length >= 6) {
-    return combined.slice(-6);
-  }
-  return (timestamp + '000000').slice(-6);
+  return Utilities.getUuid();
 }
 
 function normalizeMetadataContextKey(context) {
@@ -622,19 +626,26 @@ function ensureFavoriteMetadataIdentifiers(metadata, options) {
   var prefix = rule && rule.idPrefix ? rule.idPrefix : '';
   var typePrefix = rule && rule.typePrefix ? rule.typePrefix : prefix;
   var suffix = '';
+  var idPrefixWithDelimiter = prefix ? prefix + ':' : '';
+  var typePrefixWithDelimiter = typePrefix ? typePrefix + ':' : '';
   if (rule && rule.code) {
     suffix = rule.code;
-  } else if (prefix && result.id && result.id.indexOf(prefix) === 0) {
-    suffix = result.id.substring(prefix.length) || buildMetadataNumericSuffix(result.id);
+  } else if (prefix && result.id && result.id.indexOf(idPrefixWithDelimiter) === 0) {
+    var existingSuffix = result.id.substring(idPrefixWithDelimiter.length);
+    suffix = existingSuffix || buildMetadataGuidSuffix(result.id);
   } else if (prefix) {
     var reference = opts.referenceId || opts.sourceId || result.sourceId || result.favoriteId || '';
-    suffix = buildMetadataNumericSuffix(reference);
+    suffix = buildMetadataGuidSuffix(reference);
   }
   if (prefix) {
-    result.id = prefix + suffix;
+    result.id = idPrefixWithDelimiter + suffix;
   }
   if (typePrefix) {
-    result.type = typePrefix + suffix;
+    if (!suffix && result.type && result.type.indexOf(typePrefixWithDelimiter) === 0) {
+      suffix = result.type.substring(typePrefixWithDelimiter.length) || suffix;
+    }
+    var normalizedTypeSuffix = suffix || buildMetadataGuidSuffix(result.type || result.id || '');
+    result.type = typePrefixWithDelimiter + normalizedTypeSuffix;
   }
   if (contextKey) {
     result.context = contextKey;
@@ -680,7 +691,8 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'texto' ||
     normalizedPrefix === 'textfavorite' ||
     normalizedPrefix === 'textofavorito' ||
-    normalizedPrefix === 'favoritotexto'
+    normalizedPrefix === 'favoritotexto' ||
+    normalizedPrefix === 'textoguardado'
   ) {
     return 'wordFavorite';
   }
@@ -699,7 +711,7 @@ function inferMetaRecordTypeFromId(value) {
   ) {
     return 'tableEditFavorite';
   }
-  if (normalizedPrefix === 'table') {
+  if (normalizedPrefix === 'table' || normalizedPrefix === 'tablaguardada') {
     return 'table';
   }
   return '';
@@ -2722,7 +2734,7 @@ function saveWordFavorite(payload) {
     if (nameConflict) {
       throw new Error('Ya existe un texto favorito con ese nombre.');
     }
-    normalizedId = 'wordFavorite:' + Utilities.getUuid();
+    normalizedId = 'TextoGuardado:' + Utilities.getUuid();
     config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
       context: config.metadata && config.metadata.context ? config.metadata.context : 'crearTexto',
       tabId: 'createTab',
@@ -3952,7 +3964,7 @@ function applyTableFormatting(tableId, rangeA1, name, description, headers, styl
   var id = tableId && tableId.trim() !== '' ? tableId.trim() : '';
   var isNew = false;
   if (doSave && !id) {
-    id = Utilities.getUuid();
+    id = 'TablaGuardada:' + Utilities.getUuid();
     isNew = true;
   }
 
