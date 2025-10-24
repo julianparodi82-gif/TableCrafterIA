@@ -4140,11 +4140,32 @@ function playSidebarAnimation() {
           }
 
           if (event.code === 'KeyR') {
-            if (isTableThemeActive && currentTab === 'createTab') {
-              const refreshBtn = document.getElementById('refreshRangeBtn');
-              if (refreshBtn && !refreshBtn.disabled) {
+            if (isTableThemeActive) {
+              if (currentTab === 'editTab') {
+                const editRefreshBtn = document.getElementById('editRefreshApplyBtn');
+                if (editRefreshBtn && !editRefreshBtn.disabled) {
+                  event.preventDefault();
+                  editRefreshBtn.click();
+                  return;
+                }
+              }
+              if (currentTab === 'createTab') {
+                const refreshBtn = document.getElementById('refreshRangeBtn');
+                if (refreshBtn && !refreshBtn.disabled) {
+                  event.preventDefault();
+                  refreshBtn.click();
+                }
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'Delete' || event.code === 'Backspace') {
+            if (isTableThemeActive && currentTab === 'editTab') {
+              const deleteBtn = document.getElementById('editDeleteTableBtn');
+              if (deleteBtn && !deleteBtn.disabled) {
                 event.preventDefault();
-                refreshBtn.click();
+                deleteBtn.click();
               }
             }
             return;

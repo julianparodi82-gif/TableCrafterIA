@@ -5077,8 +5077,8 @@
             <div class="range-actions range-actions--stacked">
               <button
                 id="editRefreshApplyBtn"
-                class="btn-secondary"
-                title="Actualizar rango y aplicar formato"
+                class="btn-secondary tc-tooltip-target"
+                data-tooltip="(Alt + R)"
                 disabled
               >
                 Actualizar rango y formato
@@ -5137,7 +5137,14 @@
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
             <button id="editSaveTableBtn" class="btn-primary tc-tooltip-target" disabled data-tooltip="(Alt + G)">Guardar tabla</button>
-            <button id="editDeleteTableBtn" class="btn-danger" disabled>Borrar tabla</button>
+            <button
+              id="editDeleteTableBtn"
+              class="btn-danger tc-tooltip-target"
+              disabled
+              data-tooltip="(Alt + Supr)"
+            >
+              Borrar tabla
+            </button>
           </div>
         </div>
       </div>
