@@ -493,6 +493,7 @@ async function handleTableFavoriteSave() {
           config: config,
           kind: 'tableFavorite',
           origin: 'tableCreate',
+          idPrefix: 'CrearTablaTC',
           metadata:
             typeof buildFavoriteMetadata === 'function'
               ? buildFavoriteMetadata('createTab', {

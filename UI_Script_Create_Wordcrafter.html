@@ -1352,7 +1352,8 @@ async function handleWordFavoriteSave() {
           id: wordFavoriteEditingId || '',
           name: name,
           description: getWordFavoriteDescriptionFromConfig(config),
-          config: config
+          config: config,
+          idPrefix: 'CrearTextoWC'
         };
         wordFavoriteSaving = true;
         updateWordFavoriteButtonState();

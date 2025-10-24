@@ -914,6 +914,7 @@ async function handleEditSaveFavorite() {
           config: config,
           kind: 'tableEditFavorite',
           origin: 'tableEdit',
+          idPrefix: 'EditarTablaTC',
           metadata:
             typeof buildFavoriteMetadata === 'function'
               ? buildFavoriteMetadata('editTab', {

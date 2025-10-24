@@ -99,14 +99,17 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'texto' ||
     normalizedPrefix === 'textfavorite' ||
     normalizedPrefix === 'textofavorito' ||
-    normalizedPrefix === 'favoritotexto'
+    normalizedPrefix === 'favoritotexto' ||
+    normalizedPrefix === 'textoguardado' ||
+    normalizedPrefix === 'creartextowc'
   ) {
     return 'wordFavorite';
   }
   if (
     normalizedPrefix === 'tablefavorite' ||
     normalizedPrefix === 'favoritotabla' ||
-    normalizedPrefix === 'tablafavorita'
+    normalizedPrefix === 'tablafavorita' ||
+    normalizedPrefix === 'creartablatc'
   ) {
     return 'tableFavorite';
   }
@@ -114,7 +117,8 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'tableeditfavorite' ||
     normalizedPrefix === 'tableedit' ||
     normalizedPrefix === 'favoritoeditar' ||
-    normalizedPrefix === 'tablaeditarfavorita'
+    normalizedPrefix === 'tablaeditarfavorita' ||
+    normalizedPrefix === 'editartablatc'
   ) {
     return 'tableEditFavorite';
   }
@@ -149,14 +153,17 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'texto' ||
     normalized === 'textfavorite' ||
     normalized === 'textofavorito' ||
-    normalized === 'favoritotexto'
+    normalized === 'favoritotexto' ||
+    normalized === 'textoguardado' ||
+    normalized === 'creartextowc'
   ) {
     return 'wordFavorite';
   }
   if (
     normalized === 'tablefavorite' ||
     normalized === 'favoritotabla' ||
-    normalized === 'tablafavorita'
+    normalized === 'tablafavorita' ||
+    normalized === 'creartablatc'
   ) {
     return 'tableFavorite';
   }
@@ -165,7 +172,8 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'tableedit' ||
     normalized === 'favoritoeditar' ||
     normalized === 'tablaeditarfavorita' ||
-    normalized === 'tablaeditar'
+    normalized === 'tablaeditar' ||
+    normalized === 'editartablatc'
   ) {
     return 'tableEditFavorite';
   }
