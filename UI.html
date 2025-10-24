@@ -1789,6 +1789,88 @@
         flex: 1 1 auto;
         min-height: 38px;
       }
+      .ai-actions-list-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .ai-actions-summary {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--tc-border);
+        border-radius: 12px;
+        background: var(--tc-surface);
+      }
+      .ai-actions-summary-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ai-actions-summary-title {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--tc-text);
+      }
+      .ai-actions-summary-meta {
+        font-size: 12px;
+        color: var(--tc-text-muted);
+        word-break: break-word;
+      }
+      .ai-actions-list {
+        border: 1px solid var(--tc-border);
+        border-radius: 12px;
+        background: var(--tc-surface);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+      .ai-actions-list.ai-hidden {
+        display: none;
+      }
+      .ai-actions-list-item {
+        border: none;
+        background: transparent;
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+      .ai-actions-list-item:hover {
+        background: rgba(28, 100, 242, 0.08);
+      }
+      .ai-actions-list-item:focus-visible {
+        outline: 2px solid var(--tc-accent);
+        outline-offset: 2px;
+      }
+      .ai-actions-list-item--active {
+        background: rgba(28, 100, 242, 0.16);
+        box-shadow: inset 0 0 0 1px rgba(28, 100, 242, 0.35);
+      }
+      .ai-actions-list-item-title {
+        font-weight: 600;
+        color: var(--tc-text);
+      }
+      .ai-actions-list-item-meta {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--tc-text-muted);
+        word-break: break-word;
+      }
+      .ai-actions-list-item-desc {
+        display: block;
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--tc-text-muted);
+        line-height: 1.4;
+      }
       .ai-action-details {
         margin-top: 12px;
         display: flex;
@@ -7748,10 +7830,22 @@
               </div>
             </div>
             <div class="tc-form-field">
-              <label for="aiSavedActions">Lista de favoritos</label>
-              <select id="aiSavedActions" class="ai-actions-dropdown">
-                <option value="">Seleccionar...</option>
-              </select>
+              <label>Acciones guardadas</label>
+              <div id="aiSavedActionsPanel" class="ai-actions-list-panel">
+                <div id="aiSavedActionsSummary" class="ai-actions-summary ai-hidden" aria-live="polite">
+                  <div class="ai-actions-summary-info">
+                    <span id="aiSavedActionsSummaryName" class="ai-actions-summary-title"></span>
+                    <span id="aiSavedActionsSummaryMeta" class="ai-actions-summary-meta"></span>
+                  </div>
+                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar favorito</button>
+                </div>
+                <div
+                  id="aiSavedActionsList"
+                  class="ai-actions-list"
+                  role="listbox"
+                  aria-label="Acciones guardadas de Wordcrafter"
+                ></div>
+              </div>
             </div>
             <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">
