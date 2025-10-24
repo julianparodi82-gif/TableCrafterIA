@@ -4174,7 +4174,11 @@
       <div id="createTab" class="tab-content" data-themes="table word">
         <div class="section">
           <div id="wordRangeToggleRow" class="word-range-toggle" style="display:none;">
-            <label for="wordUseRangeToggle" class="checkbox-subtle">
+            <label
+              for="wordUseRangeToggle"
+              class="checkbox-subtle tc-tooltip-target"
+              data-tooltip="Selecciona un rango específico para combinarlo y pegar allí el texto generado. Si está desactivado, se usará la posición actual del cursor."
+            >
               <input type="checkbox" id="wordUseRangeToggle" />
               Seleccionar rango
             </label>
@@ -4201,7 +4205,11 @@
             El texto se pegará donde esté el cursor actual.
           </div>
           <div id="wordSplitSentencesRow" class="word-split-sentences" style="display:none;">
-            <label for="wordSplitSentencesToggle" class="checkbox-subtle">
+            <label
+              for="wordSplitSentencesToggle"
+              class="checkbox-subtle tc-tooltip-target"
+              data-tooltip="Divide el texto generado en oraciones y las pega en celdas consecutivas de la misma columna. Disponible cuando no se selecciona un rango fijo."
+            >
               <input type="checkbox" id="wordSplitSentencesToggle" />
               Pegar una oración por celda (en la misma columna)
             </label>

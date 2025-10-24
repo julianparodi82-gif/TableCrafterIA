@@ -136,6 +136,8 @@ function resetWordTextOptions() {
         const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
         const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
         const splitToggle = document.getElementById('wordSplitSentencesToggle');
+        const splitLabel = document.querySelector('label[for="wordSplitSentencesToggle"]');
+        const splitRow = document.getElementById('wordSplitSentencesRow');
         const titleInput = document.getElementById('tableName');
         wordStructureSectionLinksState = { intro: [], conclusion: [] };
         if (autoToggle) {
@@ -149,6 +151,18 @@ function resetWordTextOptions() {
         }
         if (splitToggle) {
           splitToggle.checked = false;
+          splitToggle.disabled = false;
+          splitToggle.removeAttribute('aria-disabled');
+          if (splitToggle.dataset) {
+            delete splitToggle.dataset.wordStoredValue;
+          }
+        }
+        if (splitLabel) {
+          splitLabel.classList.remove('is-disabled');
+          splitLabel.removeAttribute('aria-disabled');
+        }
+        if (splitRow) {
+          splitRow.classList.remove('is-disabled');
         }
         if (titleInput) {
           if (titleInput.dataset && titleInput.dataset.autoFilled === 'true') {
