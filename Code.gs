@@ -428,6 +428,45 @@ function normalizeMetaRecordType(value) {
   return 'table';
 }
 
+function normalizeFavoriteMetadata(metadata, options) {
+  var meta = metadata && typeof metadata === 'object' ? metadata : {};
+  var opts = options || {};
+  var normalized = {};
+  var fallbackType = opts.fallbackType !== undefined && opts.fallbackType !== null
+    ? String(opts.fallbackType).trim()
+    : '';
+  var fallbackId = opts.fallbackId !== undefined && opts.fallbackId !== null
+    ? String(opts.fallbackId).trim()
+    : '';
+
+  Object.keys(meta).forEach(function(key) {
+    if (!Object.prototype.hasOwnProperty.call(meta, key)) {
+      return;
+    }
+    var value = meta[key];
+    if (value === null || value === undefined) {
+      return;
+    }
+    var text = typeof value === 'string' ? value.trim() : String(value).trim();
+    if (!text) {
+      if (key === 'type' || key === 'id') {
+        normalized[key] = '';
+      }
+      return;
+    }
+    normalized[key] = text;
+  });
+
+  if (!normalized.type) {
+    normalized.type = fallbackType || '';
+  }
+  if (!normalized.id) {
+    normalized.id = fallbackId || '';
+  }
+
+  return normalized;
+}
+
 function inferMetaRecordTypeFromId(value) {
   var id = normalizeMetaId(value);
   if (!id) {
@@ -1661,6 +1700,11 @@ function buildReportFavoriteResponse(entry) {
   if (!config || typeof config !== 'object') {
     config = {};
   }
+  var normalizedMetadata = normalizeFavoriteMetadata(config.metadata, {
+    fallbackType: 'tab',
+    fallbackId: 'aiTab'
+  });
+  config.metadata = normalizedMetadata;
   var features = Array.isArray(config.features) ? config.features : [];
   var featureDetails = Array.isArray(config.featureDetails) ? config.featureDetails : [];
   var tableList = Array.isArray(config.tables) ? config.tables : [];
@@ -1770,7 +1814,8 @@ function buildReportFavoriteResponse(entry) {
     featureOrder: normalizedOrder,
     emails: Array.isArray(config.emails) ? config.emails : [],
     phones: Array.isArray(config.phones) ? config.phones : [],
-    customization: normalizeReportCustomization(config.customization)
+    customization: normalizeReportCustomization(config.customization),
+    metadata: normalizedMetadata
   };
 }
 
@@ -1860,28 +1905,33 @@ function normalizeTableFavoriteOrigin(origin, kind) {
 }
 
 function normalizeTableFavoriteConfig(source) {
-  var config = source && typeof source === 'object' ? source : {};
-  var versionValue = parseInt(config.version, 10);
+  var raw = source && typeof source === 'object' ? source : {};
+  var versionValue = parseInt(raw.version, 10);
   if (isNaN(versionValue) || versionValue < 1) {
     versionValue = 1;
   }
-  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(config.headers));
-  var kindValue = config.kind === null || config.kind === undefined ? '' : String(config.kind).trim();
-  var originValue = normalizeTableFavoriteOrigin(config.origin, kindValue);
+  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(raw.headers));
+  var kindValue = raw.kind === null || raw.kind === undefined ? '' : String(raw.kind).trim();
+  var originValue = normalizeTableFavoriteOrigin(raw.origin, kindValue);
   var normalizedKind = normalizeMetaRecordType(kindValue);
   if (!normalizedKind || normalizedKind === 'table') {
     normalizedKind = originValue === 'tableEdit' ? 'tableEditFavorite' : 'tableFavorite';
   }
+  var metadata = normalizeFavoriteMetadata(raw.metadata, {
+    fallbackType: '',
+    fallbackId: ''
+  });
   return {
     version: versionValue,
-    name: config.name ? String(config.name).trim() : '',
-    description: config.description ? String(config.description).trim() : '',
-    range: normalizeTableFavoriteRange(config.range),
+    name: raw.name ? String(raw.name).trim() : '',
+    description: raw.description ? String(raw.description).trim() : '',
+    range: normalizeTableFavoriteRange(raw.range),
     headers: normalizedHeaders,
-    style: normalizeTableFavoriteStyle(config.style),
-    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true),
+    style: normalizeTableFavoriteStyle(raw.style),
+    updateFormulaReferences: parseBooleanValue(raw.updateFormulaReferences, true),
     origin: originValue,
-    kind: normalizedKind
+    kind: normalizedKind,
+    metadata: metadata
   };
 }
 
@@ -1927,6 +1977,13 @@ function buildTableFavoriteResponse(entry) {
   var normalizedOrigin = normalizeTableFavoriteOrigin(config.origin || storedOrigin, normalizedKind);
   config.kind = normalizedKind;
   config.origin = normalizedOrigin;
+  var storedMetadata = storedConfig && typeof storedConfig === 'object' ? storedConfig.metadata : null;
+  var configMetadata = config && typeof config === 'object' ? config.metadata : null;
+  var normalizedMetadata = normalizeFavoriteMetadata(configMetadata || storedMetadata, {
+    fallbackType: '',
+    fallbackId: ''
+  });
+  config.metadata = normalizedMetadata;
   var id = normalizeMetaId(data[META_INDEX.id]);
   var name = data[META_INDEX.name] || config.name || '';
   var description = data[META_INDEX.description] || config.description || '';
@@ -1950,7 +2007,8 @@ function buildTableFavoriteResponse(entry) {
     config: config,
     range: config.range,
     style: config.style,
-    headers: config.headers
+    headers: config.headers,
+    metadata: normalizedMetadata
   };
 }
 
@@ -2010,6 +2068,22 @@ function saveTableFavorite(payload) {
   var recordTypeValue = config.kind === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite';
   config.kind = recordTypeValue;
   config.origin = normalizeTableFavoriteOrigin(config.origin, recordTypeValue);
+  var baseMetadata = normalizeFavoriteMetadata(config.metadata, { fallbackType: '', fallbackId: '' });
+  var payloadMetadata = normalizeFavoriteMetadata(data.metadata, {
+    fallbackType: baseMetadata.type || '',
+    fallbackId: baseMetadata.id || ''
+  });
+  var mergedMetadata = {};
+  Object.keys(baseMetadata).forEach(function(key) {
+    mergedMetadata[key] = baseMetadata[key];
+  });
+  Object.keys(payloadMetadata).forEach(function(key) {
+    mergedMetadata[key] = payloadMetadata[key];
+  });
+  config.metadata = normalizeFavoriteMetadata(mergedMetadata, {
+    fallbackType: payloadMetadata.type || baseMetadata.type || '',
+    fallbackId: payloadMetadata.id || baseMetadata.id || ''
+  });
   var meta = getMetaSheet();
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   var normalizedHeaders = ensureHeaderKeys(config.headers);
@@ -4916,6 +4990,11 @@ function prepareReportFavoriteStorage(payload, options) {
   }
   var opts = options || {};
   var editingId = normalizeMetaId(opts.editingId);
+  var defaultTabId = opts.tabId ? String(opts.tabId).trim() : 'aiTab';
+  var baseMetadata = normalizeFavoriteMetadata(opts.existingMetadata, {
+    fallbackType: 'tab',
+    fallbackId: defaultTabId
+  });
   var missing = [];
   var name = payload.name ? String(payload.name).trim() : '';
   if (!name) {
@@ -5133,6 +5212,21 @@ function prepareReportFavoriteStorage(payload, options) {
   });
   var quantityMapForOrder = buildFeatureQuantityMap(normalizedFeatureDetails);
   var normalizedFeatureOrder = normalizeFeatureOrderEntries(payload.featureOrder, quantityMapForOrder);
+  var incomingMetadata = normalizeFavoriteMetadata(payload.metadata, {
+    fallbackType: baseMetadata.type || 'tab',
+    fallbackId: baseMetadata.id || defaultTabId
+  });
+  var mergedMetadata = {};
+  Object.keys(baseMetadata).forEach(function(key) {
+    mergedMetadata[key] = baseMetadata[key];
+  });
+  Object.keys(incomingMetadata).forEach(function(key) {
+    mergedMetadata[key] = incomingMetadata[key];
+  });
+  var normalizedMetadata = normalizeFavoriteMetadata(mergedMetadata, {
+    fallbackType: incomingMetadata.type || baseMetadata.type || 'tab',
+    fallbackId: incomingMetadata.id || baseMetadata.id || defaultTabId
+  });
   return {
     name: name,
     config: {
@@ -5152,13 +5246,14 @@ function prepareReportFavoriteStorage(payload, options) {
       emails: normalizedEmails,
       phones: normalizedPhones,
       customization: customization,
-      savedAt: ''
+      savedAt: '',
+      metadata: normalizedMetadata
     }
   };
 }
 
 function saveReportFavorite(payload) {
-  var prepared = prepareReportFavoriteStorage(payload, {});
+  var prepared = prepareReportFavoriteStorage(payload, { tabId: 'aiTab' });
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   prepared.config.savedAt = now;
   var favoriteId = 'reportFavorite:' + Utilities.getUuid();
@@ -5195,7 +5290,24 @@ function updateReportFavorite(favoriteId, payload) {
   if (resolveMetaRecordType(entry.data) !== 'reportFavorite') {
     throw new Error('El elemento seleccionado no es un reporte favorito.');
   }
-  var prepared = prepareReportFavoriteStorage(payload, { editingId: normalizedId });
+  var storedConfig = parseJsonValue(entry.data[META_INDEX.reportConfig], {});
+  var existingMetadata = null;
+  if (storedConfig && typeof storedConfig === 'object') {
+    if (Object.prototype.hasOwnProperty.call(storedConfig, 'metadata')) {
+      existingMetadata = storedConfig.metadata;
+    }
+    if ((!existingMetadata || typeof existingMetadata !== 'object') && storedConfig.config) {
+      var nestedConfig = storedConfig.config;
+      if (nestedConfig && typeof nestedConfig === 'object' && Object.prototype.hasOwnProperty.call(nestedConfig, 'metadata')) {
+        existingMetadata = nestedConfig.metadata;
+      }
+    }
+  }
+  var prepared = prepareReportFavoriteStorage(payload, {
+    editingId: normalizedId,
+    existingMetadata: existingMetadata,
+    tabId: 'aiTab'
+  });
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   prepared.config.savedAt = now;
   var createdAt = entry.data[META_INDEX.createdAt] || now;

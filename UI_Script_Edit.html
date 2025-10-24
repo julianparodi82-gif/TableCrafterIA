@@ -11,6 +11,7 @@ let editSavedTextsCollapsed = false;
 let editFavoriteSaving = false;
 let editWordFavoritesCache = [];
 let editWordFavoritesLoadingPromise = null;
+let editFavoriteName = '';
 
 function getCurrentEditSavedTextSelection() {
         const select = document.getElementById('editSavedTexts');
@@ -871,13 +872,43 @@ async function handleEditSaveFavorite() {
           descInput.value = validation.values.description;
         }
         const config = collectEditFavoriteConfig(validation);
+        const promptFn = typeof promptFavoriteName === 'function' ? promptFavoriteName : window.promptFavoriteName;
+        const favoriteName = promptFn
+          ? await promptFn({
+              title: 'Guardar favorito',
+              label: 'Nombre del favorito',
+              placeholder: 'Ej. Ajustes de tabla de ventas',
+              confirmText: 'Guardar',
+              defaultValue: editFavoriteName,
+              maxLength: 140
+            })
+          : null;
+        if (!favoriteName) {
+          return;
+        }
         const payload = {
           id: '',
-          name: config.name || validation.values.name,
+          name: favoriteName,
           description: validation.values.description || config.description || '',
           config: config,
           kind: 'tableEditFavorite',
-          origin: 'tableEdit'
+          origin: 'tableEdit',
+          metadata:
+            typeof buildFavoriteMetadata === 'function'
+              ? buildFavoriteMetadata('editTab', {
+                  tabId: 'editTab',
+                  sourceType: 'table',
+                  action: 'tableEditFavorite',
+                  sourceId: editingId || '',
+                  tableId: editingId || '',
+                  tableName: validation.values.name
+                })
+              : {
+                  type: 'tab',
+                  id: 'editTab',
+                  sourceType: 'table',
+                  action: 'tableEditFavorite'
+                }
         };
         editFavoriteSaving = true;
         updateEditFavoriteButtonState();
@@ -895,6 +926,7 @@ async function handleEditSaveFavorite() {
           } else if (typeof refreshTableFavorites === 'function') {
             refreshTableFavorites({ selectId: savedId, silent: true }).catch(function() {});
           }
+          editFavoriteName = favoriteName;
           if (typeof notifySavedActionMutation === 'function') {
             notifySavedActionMutation({
               id: savedId,
@@ -952,11 +984,13 @@ function resetEditTabView(options) {
           }
           if (opts.clearEditingId !== false) {
             editingId = '';
+            editFavoriteName = '';
           }
           setEditSavedListCollapsed(false);
           setEditSavedTextsCollapsed(false);
         } else if (opts.clearEditingId) {
           editingId = '';
+          editFavoriteName = '';
         }
         editHeaders = [];
         editRangeInfo = null;
@@ -1191,6 +1225,7 @@ function populateEditForm(meta) {
         lastSavedTableId = normalizedMeta.id;
         clearEditFormatDirty();
         editingId = normalizedMeta.id;
+        editFavoriteName = '';
 
         const rangeSection = document.getElementById('editRangeSection');
         const metaSection = document.getElementById('editMetaSection');

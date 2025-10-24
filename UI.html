@@ -3980,6 +3980,33 @@
         font-size: 14px;
         white-space: pre-wrap;
       }
+      .tc-modal-message.tc-modal-message--form {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        gap: 12px;
+        margin-bottom: 16px;
+        color: var(--tc-text);
+        white-space: normal;
+      }
+      .tc-modal-message.tc-modal-message--form label {
+        font-weight: 600;
+        color: var(--tc-text);
+      }
+      .tc-modal-input {
+        border: 1px solid #D0D5DD;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: var(--tc-text);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .tc-modal-input:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 2px rgba(102, 214, 142, 0.35);
+      }
       .tc-modal-actions {
         display: flex;
         justify-content: center;
@@ -4051,7 +4078,7 @@
       <div class="container">
       <div class="theme-header">
         <h2 id="appTitle"><?!= __isWordcrafter ? 'WordCrafterAI' : 'TableCrafterAI' ?></h2>
-        <label class="theme-toggle" for="themeToggle">
+        <label class="theme-toggle tc-tooltip-target" for="themeToggle" data-tooltip="(Alt + Intro) Alterna entre WordCrafter y TableCrafter.">
           <input
             type="checkbox"
             id="themeToggle"
@@ -4101,7 +4128,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
             data-tab="aiTab"
             data-themes="table word"
-            data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
+            data-tooltip="(Alt + 1) Gestiona consultas, reportes y contactos asistidos por IA."
           >
             Panel IA
           </button>
@@ -4109,7 +4136,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--edit"
             data-tab="editTab"
             data-themes="table word"
-            data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
+            data-tooltip="(Alt + 2) Modifica tablas guardadas y ajusta sus estilos."
           >
             Editar tabla
           </button>
@@ -4117,7 +4144,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--create"
             data-tab="createTab"
             data-themes="table word"
-            data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
+            data-tooltip="(Alt + 3) Crea nuevas tablas con ayuda de IA y formatos personalizados."
           >
             Crear tabla
           </button>
@@ -4127,7 +4154,7 @@
             class="tab-btn tab-btn--triggers"
             data-tab="triggersTab"
             data-themes="table word"
-            data-tooltip="Configura automatizaciones que mantengan tus datos al día."
+            data-tooltip="(Alt + 4) Configura automatizaciones que mantengan tus datos al día."
           >
             Triggers
           </button>
@@ -4135,7 +4162,7 @@
             class="tab-btn tab-btn--actions"
             data-tab="actionsTab"
             data-themes="table word"
-            data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
+            data-tooltip="(Alt + 5) Accede y edita reportes, tablas y preguntas guardadas."
           >
             Acciones
           </button>

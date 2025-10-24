@@ -5064,7 +5064,22 @@ async function handleReportFavoriteSave() {
           phones: sanitizeContactSelection(
             getCheckedValuesFromList('aiReportPhoneList'),
             REPORT_ALL_PHONES_VALUE
-          )
+          ),
+          metadata:
+            typeof buildFavoriteMetadata === 'function'
+              ? buildFavoriteMetadata('aiTab', {
+                  tabId: 'aiTab',
+                  sourceType: 'report',
+                  action: 'reportFavorite',
+                  sourceId: editingId || '',
+                  reportName: favoriteName
+                })
+              : {
+                  type: 'tab',
+                  id: 'aiTab',
+                  sourceType: 'report',
+                  action: 'reportFavorite'
+                }
         };
         const saveBtn = document.getElementById('aiReportFavoriteSaveBtn');
         try {

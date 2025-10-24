@@ -1334,14 +1334,30 @@ function openModal(options) {
         overlay.dataset.variant = variant;
         icon.textContent = options.icon || (variant === 'error' ? '⚠️' : variant === 'success' ? '✅' : variant === 'warning' ? '⚠️' : 'ℹ️');
         titleEl.textContent = options.title || defaultTitleForVariant(variant);
-        messageEl.textContent = options.message || '';
+        let contentCleanup = null;
+        if (typeof options.renderContent === 'function') {
+          messageEl.innerHTML = '';
+          try {
+            const maybeCleanup = options.renderContent(messageEl);
+            if (typeof maybeCleanup === 'function') {
+              contentCleanup = maybeCleanup;
+            }
+          } catch (err) {
+            console.log('No se pudo renderizar el contenido personalizado del modal.', err);
+            messageEl.textContent = options.message || '';
+          }
+        } else if (Object.prototype.hasOwnProperty.call(options, 'messageHtml')) {
+          messageEl.innerHTML = options.messageHtml || '';
+        } else {
+          messageEl.textContent = options.message || '';
+        }
 
         primaryBtn.textContent = options.primaryText || 'Aceptar';
-        secondaryBtn.textContent = options.secondaryText || 'Cancelar';
-
         if (options.secondaryText) {
+          secondaryBtn.textContent = options.secondaryText;
           secondaryBtn.style.display = 'inline-flex';
         } else {
+          secondaryBtn.textContent = 'Cancelar';
           secondaryBtn.style.display = 'none';
         }
 
@@ -1349,11 +1365,34 @@ function openModal(options) {
 
         return new Promise(function(resolve) {
           function cleanup(result) {
+            if (typeof contentCleanup === 'function') {
+              try {
+                contentCleanup();
+              } catch (err) {
+                console.log('No se pudo limpiar el contenido personalizado del modal.', err);
+              }
+            }
+            messageEl.classList.remove('tc-modal-message--form');
+            messageEl.innerHTML = '';
+            messageEl.textContent = '';
             overlay.classList.remove('show');
             overlay.setAttribute('aria-hidden', 'true');
             document.removeEventListener('keydown', keyListener, true);
             primaryBtn.removeEventListener('click', primaryHandler);
             secondaryBtn.removeEventListener('click', secondaryHandler);
+            if (typeof options.onClose === 'function') {
+              try {
+                options.onClose({
+                  result: result,
+                  overlay: overlay,
+                  primaryBtn: primaryBtn,
+                  secondaryBtn: secondaryBtn,
+                  messageEl: messageEl
+                });
+              } catch (err) {
+                console.log('No se pudo ejecutar onClose del modal.', err);
+              }
+            }
             if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
               previouslyFocused.focus();
             }
@@ -1400,6 +1439,19 @@ function openModal(options) {
           primaryBtn.addEventListener('click', primaryHandler);
           secondaryBtn.addEventListener('click', secondaryHandler);
 
+          if (typeof options.onOpen === 'function') {
+            try {
+              options.onOpen({
+                overlay: overlay,
+                primaryBtn: primaryBtn,
+                secondaryBtn: secondaryBtn,
+                messageEl: messageEl
+              });
+            } catch (err) {
+              console.log('No se pudo ejecutar onOpen del modal.', err);
+            }
+          }
+
           requestAnimationFrame(function() {
             primaryBtn.focus();
           });
@@ -1436,6 +1488,173 @@ function showConfirmModal(message, opts) {
         return openModal(options).then(function(result) {
           return result === 'primary';
         });
+      }
+
+
+
+
+
+
+async function promptFavoriteName(options) {
+        const opts = options || {};
+        const defaultValue = opts.defaultValue ? String(opts.defaultValue).trim() : '';
+        const labelText = opts.label || 'Nombre del favorito';
+        const placeholder = opts.placeholder || 'Ej. Favorito personalizado';
+        const title = opts.title || 'Guardar favorito';
+        const confirmText = opts.confirmText || 'Guardar';
+        const cancelText = opts.cancelText === '' ? '' : opts.cancelText || 'Cancelar';
+        const allowEscape = opts.allowEscape !== false;
+        const maxLength = typeof opts.maxLength === 'number' && opts.maxLength > 0 ? opts.maxLength : 120;
+        let latestValue = defaultValue;
+        let inputEl = null;
+        let primaryBtnRef = null;
+        let inputListener = null;
+        let keyListener = null;
+
+        function syncPrimaryState() {
+          if (primaryBtnRef) {
+            primaryBtnRef.disabled = latestValue.length === 0;
+          }
+        }
+
+        const result = await openModal({
+          title: title,
+          variant: opts.variant || 'info',
+          primaryText: confirmText,
+          secondaryText: cancelText,
+          allowEscape: allowEscape,
+          renderContent: function(container) {
+            container.textContent = '';
+            container.classList.add('tc-modal-message--form');
+            const inputId = opts.inputId || 'tcFavoriteNameInput';
+            const label = document.createElement('label');
+            label.setAttribute('for', inputId);
+            label.textContent = labelText;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = inputId;
+            input.className = 'tc-modal-input';
+            input.placeholder = placeholder;
+            input.value = defaultValue;
+            input.maxLength = maxLength;
+            container.appendChild(label);
+            container.appendChild(input);
+            inputEl = input;
+
+            inputListener = function() {
+              latestValue = input.value.trim();
+              syncPrimaryState();
+            };
+            input.addEventListener('input', inputListener);
+
+            keyListener = function(evt) {
+              if (evt.key === 'Enter' && !evt.shiftKey) {
+                evt.preventDefault();
+                if (primaryBtnRef && !primaryBtnRef.disabled) {
+                  primaryBtnRef.click();
+                }
+              }
+            };
+            input.addEventListener('keydown', keyListener);
+
+            return function() {
+              container.classList.remove('tc-modal-message--form');
+              if (inputListener) {
+                input.removeEventListener('input', inputListener);
+                inputListener = null;
+              }
+              if (keyListener) {
+                input.removeEventListener('keydown', keyListener);
+                keyListener = null;
+              }
+              inputEl = null;
+            };
+          },
+          onOpen: function(api) {
+            primaryBtnRef = api && api.primaryBtn ? api.primaryBtn : null;
+            syncPrimaryState();
+            if (inputEl) {
+              window.setTimeout(function() {
+                inputEl.focus();
+                inputEl.select();
+              }, 0);
+            }
+          },
+          onClose: function() {
+            primaryBtnRef = null;
+          }
+        });
+
+        if (result === 'primary' && latestValue) {
+          return latestValue;
+        }
+        return null;
+      }
+
+
+
+
+function buildFavoriteMetadata(tabId, extras) {
+        const trimmedTabId = tabId ? String(tabId).trim() : '';
+        const metadata = {
+          type: 'tab',
+          id: trimmedTabId
+        };
+        const additional = extras && typeof extras === 'object' ? extras : {};
+        const normalizedExtras = {};
+        Object.keys(additional).forEach(function(key) {
+          const value = additional[key];
+          if (value === null || value === undefined) {
+            return;
+          }
+          normalizedExtras[key] = typeof value === 'string' ? value.trim() : String(value).trim();
+        });
+        if (normalizedExtras.type) {
+          metadata.type = normalizedExtras.type;
+        }
+        if (normalizedExtras.id) {
+          metadata.id = normalizedExtras.id;
+        }
+        if (normalizedExtras.tabId) {
+          metadata.id = normalizedExtras.tabId;
+          metadata.tabId = normalizedExtras.tabId;
+        }
+        if (normalizedExtras.tab && !metadata.tab) {
+          metadata.tab = normalizedExtras.tab;
+        }
+        ['sourceId', 'sourceType', 'action', 'context'].forEach(function(key) {
+          if (normalizedExtras[key]) {
+            metadata[key] = normalizedExtras[key];
+          }
+        });
+        Object.keys(normalizedExtras).forEach(function(key) {
+          if (
+            key === 'type' ||
+            key === 'id' ||
+            key === 'sourceId' ||
+            key === 'sourceType' ||
+            key === 'action' ||
+            key === 'context' ||
+            key === 'tab' ||
+            key === 'tabId'
+          ) {
+            return;
+          }
+          metadata[key] = normalizedExtras[key];
+        });
+        if (!metadata.type) {
+          metadata.type = 'tab';
+        }
+        if (!metadata.id) {
+          metadata.id = trimmedTabId;
+        }
+        if (!metadata.tabId && metadata.id) {
+          metadata.tabId = metadata.id;
+        }
+        if (!metadata.tab && metadata.id) {
+          metadata.tab = metadata.id;
+        }
+        return metadata;
       }
 
 
@@ -3386,29 +3605,29 @@ function playSidebarAnimation() {
           if (tabButtonRefs.edit) {
             tabButtonRefs.edit.textContent = isWord ? 'Editar Texto' : 'Editar tabla';
             tabButtonRefs.edit.dataset.tooltip = isWord
-              ? 'Modifica textos guardados y ajusta su estilo.'
-              : 'Modifica tablas guardadas y ajusta sus estilos.';
+              ? '(Alt + 2) Modifica textos guardados y ajusta su estilo.'
+              : '(Alt + 2) Modifica tablas guardadas y ajusta sus estilos.';
           }
           if (tabButtonRefs.create) {
             tabButtonRefs.create.textContent = isWord ? 'Crear Texto' : 'Crear tabla';
             tabButtonRefs.create.dataset.tooltip = isWord
-              ? 'Genera nuevos textos con apoyo de IA y plantillas personalizadas.'
-              : 'Crea nuevas tablas con ayuda de IA y formatos personalizados.';
+              ? '(Alt + 3) Genera nuevos textos con apoyo de IA y plantillas personalizadas.'
+              : '(Alt + 3) Crea nuevas tablas con ayuda de IA y formatos personalizados.';
           }
           if (tabButtonRefs.triggers) {
             tabButtonRefs.triggers.dataset.tooltip = isWord
-              ? 'Configura automatizaciones que mantengan tus contenidos al día.'
-              : 'Configura automatizaciones que mantengan tus datos al día.';
+              ? '(Alt + 4) Configura automatizaciones que mantengan tus contenidos al día.'
+              : '(Alt + 4) Configura automatizaciones que mantengan tus datos al día.';
           }
           if (tabButtonRefs.actions) {
             tabButtonRefs.actions.dataset.tooltip = isWord
-              ? 'Accede y edita reportes y textos guardados.'
-              : 'Accede y edita reportes, tablas y preguntas guardadas.';
+              ? '(Alt + 5) Accede y edita reportes y textos guardados.'
+              : '(Alt + 5) Accede y edita reportes, tablas y preguntas guardadas.';
           }
           if (tabButtonRefs.ai) {
             tabButtonRefs.ai.dataset.tooltip = isWord
-              ? 'Gestiona consultas, resúmenes y ediciones asistidas por IA.'
-              : 'Gestiona consultas, reportes y contactos asistidos por IA.';
+              ? '(Alt + 1) Gestiona consultas, resúmenes y ediciones asistidas por IA.'
+              : '(Alt + 1) Gestiona consultas, reportes y contactos asistidos por IA.';
           }
         }
 
@@ -3527,9 +3746,13 @@ const TableCrafterCore = Object.freeze({
         findFirstTabForTheme: findFirstTabForTheme,
         updateTabVisibilityForTheme: updateTabVisibilityForTheme,
         showMessageModal: showMessageModal,
-        showConfirmModal: showConfirmModal
+        showConfirmModal: showConfirmModal,
+        promptFavoriteName: promptFavoriteName,
+        buildFavoriteMetadata: buildFavoriteMetadata
       });
 
 window.TableCrafterCore = TableCrafterCore;
+window.promptFavoriteName = promptFavoriteName;
+window.buildFavoriteMetadata = buildFavoriteMetadata;
 
 </script>
