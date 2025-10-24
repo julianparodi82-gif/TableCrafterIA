@@ -83,13 +83,16 @@ function inferFavoriteTypeFromId(id) {
   }
   const delimiterIndex = text.indexOf(':');
   const prefix = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
-  const normalizedPrefix = prefix.toLowerCase().replace(/[\s_-]+/g, '');
+  const normalizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const normalizedFull = text.toLowerCase().replace(/[^a-z0-9]+/g, '');
   if (
     normalizedPrefix === 'reportfavorite' ||
     normalizedPrefix === 'reporte' ||
     normalizedPrefix === 'favorite' ||
     normalizedPrefix === 'favorito' ||
-    normalizedPrefix === 'report'
+    normalizedPrefix === 'report' ||
+    normalizedFull.indexOf('reportfavorite') !== -1 ||
+    normalizedFull.indexOf('reporte') !== -1
   ) {
     return 'reportFavorite';
   }
@@ -103,7 +106,11 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'textoguardado' ||
     normalizedPrefix === 'creartextowc' ||
     normalizedPrefix === 'editartextowc' ||
-    normalizedPrefix === 'accioneswc'
+    normalizedPrefix === 'accioneswc' ||
+    normalizedFull.indexOf('textoguardado') !== -1 ||
+    normalizedFull.indexOf('creartextowc') !== -1 ||
+    normalizedFull.indexOf('editartextowc') !== -1 ||
+    normalizedFull.indexOf('accioneswc') !== -1
   ) {
     return 'wordFavorite';
   }
@@ -111,7 +118,10 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'tablefavorite' ||
     normalizedPrefix === 'favoritotabla' ||
     normalizedPrefix === 'tablafavorita' ||
-    normalizedPrefix === 'creartablatc'
+    normalizedPrefix === 'creartablatc' ||
+    normalizedFull.indexOf('tablefavorite') !== -1 ||
+    normalizedFull.indexOf('favoritotabla') !== -1 ||
+    normalizedFull.indexOf('creartablatc') !== -1
   ) {
     return 'tableFavorite';
   }
@@ -120,11 +130,14 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'tableedit' ||
     normalizedPrefix === 'favoritoeditar' ||
     normalizedPrefix === 'tablaeditarfavorita' ||
-    normalizedPrefix === 'editartablatc'
+    normalizedPrefix === 'editartablatc' ||
+    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
+    normalizedFull.indexOf('tablaeditar') !== -1 ||
+    normalizedFull.indexOf('editartablatc') !== -1
   ) {
     return 'tableEditFavorite';
   }
-  if (normalizedPrefix === 'table') {
+  if (normalizedPrefix === 'table' || normalizedFull.indexOf('tablaguardada') !== -1) {
     return 'table';
   }
   return '';
@@ -140,14 +153,17 @@ function normalizeFavoriteTypeCandidate(value) {
   }
   const delimiterIndex = text.indexOf(':');
   const base = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
-  const normalized = base.toLowerCase().replace(/[\s_-]+/g, '');
+  const normalized = base.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const normalizedFull = text.toLowerCase().replace(/[^a-z0-9]+/g, '');
   if (
     normalized === 'reportfavorite' ||
     normalized === 'reporte' ||
     normalized === 'reportefavorito' ||
     normalized === 'favorite' ||
     normalized === 'favorito' ||
-    normalized === 'report'
+    normalized === 'report' ||
+    normalizedFull.indexOf('reportfavorite') !== -1 ||
+    normalizedFull.indexOf('reporte') !== -1
   ) {
     return 'reportFavorite';
   }
@@ -161,7 +177,11 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'textoguardado' ||
     normalized === 'creartextowc' ||
     normalized === 'editartextowc' ||
-    normalized === 'accioneswc'
+    normalized === 'accioneswc' ||
+    normalizedFull.indexOf('textoguardado') !== -1 ||
+    normalizedFull.indexOf('creartextowc') !== -1 ||
+    normalizedFull.indexOf('editartextowc') !== -1 ||
+    normalizedFull.indexOf('accioneswc') !== -1
   ) {
     return 'wordFavorite';
   }
@@ -169,7 +189,10 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'tablefavorite' ||
     normalized === 'favoritotabla' ||
     normalized === 'tablafavorita' ||
-    normalized === 'creartablatc'
+    normalized === 'creartablatc' ||
+    normalizedFull.indexOf('tablefavorite') !== -1 ||
+    normalizedFull.indexOf('favoritotabla') !== -1 ||
+    normalizedFull.indexOf('creartablatc') !== -1
   ) {
     return 'tableFavorite';
   }
@@ -179,11 +202,14 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'favoritoeditar' ||
     normalized === 'tablaeditarfavorita' ||
     normalized === 'tablaeditar' ||
-    normalized === 'editartablatc'
+    normalized === 'editartablatc' ||
+    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
+    normalizedFull.indexOf('tablaeditar') !== -1 ||
+    normalizedFull.indexOf('editartablatc') !== -1
   ) {
     return 'tableEditFavorite';
   }
-  if (normalized === 'table' || normalized === 'tabla') {
+  if (normalized === 'table' || normalized === 'tabla' || normalizedFull.indexOf('tablaguardada') !== -1) {
     return 'table';
   }
   return '';
