@@ -164,11 +164,21 @@ function ensureWordStructurePlacement() {
         if (!parent) {
           return;
         }
-        const nextSibling = contextCard.nextElementSibling;
+
+        const webSourcesCard = document.getElementById('wordWebSourcesCard');
+        if (webSourcesCard && webSourcesCard.parentNode === parent) {
+          const desiredNext = contextCard.nextElementSibling;
+          if (desiredNext !== webSourcesCard) {
+            parent.insertBefore(webSourcesCard, contextCard.nextSibling);
+          }
+        }
+
+        const referenceElement = webSourcesCard && webSourcesCard.parentNode === parent ? webSourcesCard : contextCard;
+        const nextSibling = referenceElement.nextElementSibling;
         if (nextSibling === structureCard) {
           return;
         }
-        parent.insertBefore(structureCard, contextCard.nextSibling);
+        parent.insertBefore(structureCard, referenceElement.nextSibling);
       }
 
 function normalizeWordWebSourceEntry(entry) {
