@@ -1910,12 +1910,12 @@
       .ai-report-favorite-row {
         margin-top: 16px;
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
       }
       .ai-report-generate-row {
         margin-top: 12px;
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
       }
       .ai-report-favorite-btn {
         display: inline-flex;
@@ -1930,6 +1930,9 @@
         font-weight: 600;
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease;
+        width: 100%;
+        max-width: 360px;
+        justify-content: center;
       }
       .ai-report-favorite-btn:hover {
         background-color: #F3F4F6;
@@ -1958,6 +1961,13 @@
       }
       .ai-report-favorite-btn .ai-favorite-label {
         line-height: 1;
+      }
+      .ai-report-generate-btn {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        max-width: 360px;
       }
       .ai-report-favorite-notice {
         margin-top: 10px;
@@ -7727,7 +7737,12 @@
               </button>
             </div>
             <div class="ai-report-generate-row">
-              <button type="button" id="aiReportGenerateBtn" class="btn-primary ai-report-generate-btn">
+              <button
+                type="button"
+                id="aiReportGenerateBtn"
+                class="btn-primary ai-report-generate-btn tc-tooltip-target"
+                data-tooltip="(Alt + G)"
+              >
                 Generar y enviar reporte
               </button>
             </div>
@@ -7822,7 +7837,14 @@
             </div>
             <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">
-              <button type="button" id="aiSavedActionsRefreshBtn" class="btn-secondary">Actualizar</button>
+              <button
+                type="button"
+                id="aiSavedActionsRefreshBtn"
+                class="btn-secondary tc-tooltip-target"
+                data-tooltip="(Alt + R)"
+              >
+                Actualizar
+              </button>
             </div>
           </div>
             <div class="tc-card">

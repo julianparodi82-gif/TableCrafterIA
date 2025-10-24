@@ -4110,6 +4110,14 @@ function playSidebarAnimation() {
 
           if (event.code === 'KeyG') {
             if (isTableThemeActive) {
+              if (currentTab === 'aiTab') {
+                const generateBtn = document.getElementById('aiReportGenerateBtn');
+                if (generateBtn && !generateBtn.disabled) {
+                  event.preventDefault();
+                  generateBtn.click();
+                  return;
+                }
+              }
               const handled = activateShortcutByIds(
                 currentTab === 'editTab'
                   ? ['editSaveTableBtn', 'saveTableBtn']
@@ -4140,7 +4148,16 @@ function playSidebarAnimation() {
           }
 
           if (event.code === 'KeyR') {
-            if (isTableThemeActive) {
+            let handled = false;
+            if (currentTab === 'actionsTab') {
+              const actionsRefreshBtn = document.getElementById('aiSavedActionsRefreshBtn');
+              if (actionsRefreshBtn && !actionsRefreshBtn.disabled) {
+                event.preventDefault();
+                actionsRefreshBtn.click();
+                handled = true;
+              }
+            }
+            if (!handled && isTableThemeActive) {
               if (currentTab === 'editTab') {
                 const editRefreshBtn = document.getElementById('editRefreshApplyBtn');
                 if (editRefreshBtn && !editRefreshBtn.disabled) {
