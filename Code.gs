@@ -2039,6 +2039,7 @@ function normalizeWordFavoriteConfig(config) {
   var personalization =
     source.personalization && typeof source.personalization === 'object' ? source.personalization : {};
   var web = source.web && typeof source.web === 'object' ? source.web : {};
+  var placement = source.placement && typeof source.placement === 'object' ? source.placement : {};
   var normalized = {
     version: 1,
     name: source.name ? String(source.name).trim() : '',
@@ -2083,6 +2084,9 @@ function normalizeWordFavoriteConfig(config) {
       savedEnabled: parseBooleanValue(web.savedEnabled, false),
       savedTables: normalizeWordFavoriteIdArray(web.savedTables),
       savedTexts: normalizeWordFavoriteIdArray(web.savedTexts)
+    },
+    placement: {
+      splitSentences: parseBooleanValue(placement.splitSentences, false)
     }
   };
   return normalized;
@@ -2783,6 +2787,33 @@ function buildRangeConflictMessage(rangeLabel, conflicts) {
   return message;
 }
 
+function splitWordTextIntoSentences(text) {
+  if (!text) {
+    return [];
+  }
+  var normalized = String(text).replace(/\r\n/g, '\n');
+  var lines = normalized.split(/\n+/);
+  var sentences = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i] ? String(lines[i]).trim() : '';
+    if (!line) {
+      continue;
+    }
+    var parts = line.match(/[^.!?]+(?:[.!?]+|$)/g);
+    if (parts && parts.length) {
+      for (var j = 0; j < parts.length; j++) {
+        var sentence = parts[j] ? String(parts[j]).trim() : '';
+        if (sentence) {
+          sentences.push(sentence);
+        }
+      }
+      continue;
+    }
+    sentences.push(line);
+  }
+  return sentences;
+}
+
 function generateWordcrafterText(request) {
   var apiKey = PropertiesService.getUserProperties().getProperty('TC_API_KEY');
   if (!apiKey) {
@@ -3081,30 +3112,79 @@ function generateWordcrafterText(request) {
       if (!normalizedText) {
         return { error: 'No se obtuvo contenido de la IA.' };
       }
-      var outputRange = targetInfo.range;
+      var baseRange = targetInfo.range;
+      var targetSheet = baseRange && typeof baseRange.getSheet === 'function' ? baseRange.getSheet() : null;
+      if (!targetSheet) {
+        return { error: 'No se pudo determinar la hoja destino para pegar el texto.' };
+      }
+      var placementConfig = config.placement && typeof config.placement === 'object' ? config.placement : {};
+      var useSentenceSplit = placementConfig.splitSentences === true;
+      var sentences = [];
+      var appliedSentenceSplit = false;
+      var finalRange = baseRange;
+      if (useSentenceSplit) {
+        sentences = splitWordTextIntoSentences(normalizedText);
+        if (sentences.length > 1) {
+          appliedSentenceSplit = true;
+          var anchorCell = baseRange.getCell(1, 1);
+          var startRow = anchorCell.getRow();
+          var startColumn = anchorCell.getColumn();
+          var requiredRows = sentences.length;
+          var lastNeededRow = startRow + requiredRows - 1;
+          var maxRows = targetSheet.getMaxRows();
+          if (lastNeededRow > maxRows) {
+            targetSheet.insertRowsAfter(maxRows, lastNeededRow - maxRows);
+          }
+          finalRange = targetSheet.getRange(startRow, startColumn, requiredRows, 1);
+          var extendedConflicts = findMetaRangeConflictsForRange(finalRange, {
+            ignoreIds: favoriteId ? [favoriteId] : []
+          });
+          if (extendedConflicts.length > 0) {
+            var plannedLabel = buildFullRangeNotation(targetSheet.getName(), finalRange.getA1Notation());
+            return {
+              error: buildRangeConflictMessage(plannedLabel, extendedConflicts)
+            };
+          }
+        }
+      }
       try {
-        if (outputRange.getNumRows() > 1 || outputRange.getNumColumns() > 1) {
+        if (appliedSentenceSplit) {
           try {
-            outputRange.breakApart();
-          } catch (mergeErr) {}
+            baseRange.breakApart();
+          } catch (breakErr) {}
+          baseRange.clearContent();
+          finalRange.clearContent();
+          var rowsData = [];
+          for (var idx = 0; idx < sentences.length; idx++) {
+            rowsData.push([sentences[idx]]);
+          }
+          finalRange.setValues(rowsData);
+          finalRange.setWrap(true);
+        } else {
+          if (baseRange.getNumRows() > 1 || baseRange.getNumColumns() > 1) {
+            try {
+              baseRange.breakApart();
+            } catch (mergeErr) {}
+          }
+          baseRange.clearContent();
+          if (baseRange.getNumRows() > 1 || baseRange.getNumColumns() > 1) {
+            baseRange = baseRange.merge();
+          }
+          baseRange.setValue(normalizedText);
+          baseRange.setWrap(true);
+          finalRange = baseRange;
         }
-        outputRange.clearContent();
-        if (outputRange.getNumRows() > 1 || outputRange.getNumColumns() > 1) {
-          outputRange = outputRange.merge();
-        }
-        outputRange.setValue(normalizedText);
-        outputRange.setWrap(true);
       } catch (writeErr) {
         return {
           error: 'No se pudo escribir el texto en el rango seleccionado: ' + writeErr.message
         };
       }
       SpreadsheetApp.flush();
-      var finalSheetName = outputRange.getSheet().getName();
-      var finalA1 = outputRange.getA1Notation();
+      var finalSheetName = finalRange.getSheet().getName();
+      var finalA1 = finalRange.getA1Notation();
       var finalFullNotation = buildFullRangeNotation(finalSheetName, finalA1);
-      var finalRows = outputRange.getNumRows();
-      var finalCols = outputRange.getNumColumns();
+      var finalRows = finalRange.getNumRows();
+      var finalCols = finalRange.getNumColumns();
       var savePayload = {
         id: favoriteId,
         name: favoriteName,

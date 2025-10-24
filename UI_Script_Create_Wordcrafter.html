@@ -135,6 +135,7 @@ function resetWordTextOptions() {
         const autoToggle = document.getElementById('wordAutoTitleToggle');
         const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
         const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
         const titleInput = document.getElementById('tableName');
         wordStructureSectionLinksState = { intro: [], conclusion: [] };
         if (autoToggle) {
@@ -145,6 +146,9 @@ function resetWordTextOptions() {
         }
         if (manualBodyToggle) {
           manualBodyToggle.checked = false;
+        }
+        if (splitToggle) {
+          splitToggle.checked = false;
         }
         if (titleInput) {
           if (titleInput.dataset && titleInput.dataset.autoFilled === 'true') {
@@ -865,6 +869,7 @@ function collectWordFavoriteConfig() {
         const autoToggle = document.getElementById('wordAutoTitleToggle');
         const manualTitleToggle = document.getElementById('wordManualTitleFormatToggle');
         const manualBodyToggle = document.getElementById('wordManualBodyFormatToggle');
+        const splitToggle = document.getElementById('wordSplitSentencesToggle');
         const contextInput = document.getElementById('wordBodyContext');
         const introToggle = document.getElementById('wordIntroToggle');
         const conclusionToggle = document.getElementById('wordConclusionToggle');
@@ -929,6 +934,9 @@ function collectWordFavoriteConfig() {
             savedEnabled: !!(webSavedToggle && webSavedToggle.checked),
             savedTables: savedTables,
             savedTexts: savedTexts
+          },
+          placement: {
+            splitSentences: !!(splitToggle && splitToggle.checked)
           }
         };
       }
@@ -955,6 +963,8 @@ function applyWordFavoriteConfig(config) {
         setControlValue(document.getElementById('wordAutoTitleToggle'), safe.autoTitle);
         setControlValue(document.getElementById('wordManualTitleFormatToggle'), safe.manualTitleFormat);
         setControlValue(document.getElementById('wordManualBodyFormatToggle'), safe.manualBodyFormat);
+        const placement = safe.placement && typeof safe.placement === 'object' ? safe.placement : {};
+        setControlValue(document.getElementById('wordSplitSentencesToggle'), placement.splitSentences);
 
         const contextInput = document.getElementById('wordBodyContext');
         if (contextInput) {

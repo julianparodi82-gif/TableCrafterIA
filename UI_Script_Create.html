@@ -21,6 +21,7 @@ function syncCreateRangeModeUI() {
         const rangeFields = document.getElementById('wordRangeFields');
         const legend = document.getElementById('wordRangeLegend');
         const cursorNotice = document.getElementById('wordCursorNotice');
+        const splitRow = document.getElementById('wordSplitSentencesRow');
         const refreshBtn = document.getElementById('refreshRangeBtn');
         const rangeInput = document.getElementById('rangeInput');
         const applyBtn = document.getElementById('applyFormatBtn');
@@ -36,6 +37,9 @@ function syncCreateRangeModeUI() {
         }
         if (cursorNotice) {
           cursorNotice.style.display = isWordTheme && !useRange ? 'block' : 'none';
+        }
+        if (splitRow) {
+          splitRow.style.display = isWordTheme ? 'block' : 'none';
         }
         if (refreshBtn) {
           refreshBtn.disabled = Boolean(isWordTheme && !useRange);
