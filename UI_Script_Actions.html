@@ -37,13 +37,8 @@ function shouldDisplayActionForTheme(action, theme) {
     return false;
   }
   if (theme === 'word') {
-    const rawType = action.type === null || action.type === undefined ? '' : String(action.type);
-    const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
-    if (
-      normalizedType === 'table' ||
-      normalizedType === 'tablefavorite' ||
-      normalizedType === 'tableeditfavorite'
-    ) {
+    const resolvedType = resolveFavoriteTypeFromEntry(action);
+    if (resolvedType === 'table' || resolvedType === 'tableFavorite' || resolvedType === 'tableEditFavorite') {
       return false;
     }
   }
@@ -112,6 +107,56 @@ function inferFavoriteTypeFromId(id) {
     return 'table';
   }
   return '';
+}
+
+function resolveFavoriteTypeFromEntry(entry) {
+  if (!entry) {
+    return '';
+  }
+  const rawType = entry.type === null || entry.type === undefined ? '' : String(entry.type);
+  const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    normalizedType === 'reportfavorite' ||
+    normalizedType === 'reportefavorito' ||
+    normalizedType === 'favorite' ||
+    normalizedType === 'favorito'
+  ) {
+    return 'reportFavorite';
+  }
+  if (
+    normalizedType === 'wordfavorite' ||
+    normalizedType === 'word' ||
+    normalizedType === 'texto' ||
+    normalizedType === 'textfavorite' ||
+    normalizedType === 'textofavorito' ||
+    normalizedType === 'favoritotexto'
+  ) {
+    return 'wordFavorite';
+  }
+  if (
+    normalizedType === 'tablefavorite' ||
+    normalizedType === 'favoritotabla' ||
+    normalizedType === 'tablafavorita'
+  ) {
+    return 'tableFavorite';
+  }
+  if (
+    normalizedType === 'tableeditfavorite' ||
+    normalizedType === 'tablaeditarfavorita' ||
+    normalizedType === 'favoritoeditar'
+  ) {
+    return 'tableEditFavorite';
+  }
+  if (normalizedType === 'table') {
+    return 'table';
+  }
+  if (entry.id) {
+    const inferredType = inferFavoriteTypeFromId(entry.id);
+    if (inferredType) {
+      return inferredType;
+    }
+  }
+  return normalizedType || '';
 }
 
 function getCurrentSavedActionId() {
@@ -523,32 +568,12 @@ function filterLegacyFavoriteEntries(list) {
     if (!entry) {
       return false;
     }
-    const rawType = entry.type === null || entry.type === undefined ? '' : String(entry.type);
-    const normalizedType = rawType.toLowerCase().replace(/[\s_-]+/g, '');
+    const resolvedType = resolveFavoriteTypeFromEntry(entry);
     if (
-      normalizedType === 'reportfavorite' ||
-      normalizedType === 'reportefavorito' ||
-      normalizedType === 'favorite' ||
-      normalizedType === 'favorito'
-    ) {
-      return true;
-    }
-    if (
-      normalizedType === 'wordfavorite' ||
-      normalizedType === 'word' ||
-      normalizedType === 'texto' ||
-      normalizedType === 'textfavorite' ||
-      normalizedType === 'favoritotexto' ||
-      normalizedType === 'textofavorito'
-    ) {
-      return true;
-    }
-    const inferredType = inferFavoriteTypeFromId(entry.id);
-    if (
-      inferredType === 'reportFavorite' ||
-      inferredType === 'wordFavorite' ||
-      inferredType === 'tableFavorite' ||
-      inferredType === 'tableEditFavorite'
+      resolvedType === 'reportFavorite' ||
+      resolvedType === 'wordFavorite' ||
+      resolvedType === 'tableFavorite' ||
+      resolvedType === 'tableEditFavorite'
     ) {
       return true;
     }
