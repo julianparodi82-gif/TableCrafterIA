@@ -136,7 +136,9 @@ function normalizeFavoriteTypeCandidate(value) {
   if (!text) {
     return '';
   }
-  const normalized = text.toLowerCase().replace(/[\s_-]+/g, '');
+  const delimiterIndex = text.indexOf(':');
+  const base = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
+  const normalized = base.toLowerCase().replace(/[\s_-]+/g, '');
   if (
     normalized === 'reportfavorite' ||
     normalized === 'reporte' ||

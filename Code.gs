@@ -379,6 +379,10 @@ function normalizeMetaRecordType(value) {
   if (!text) {
     return 'table';
   }
+  var delimiterIndex = text.indexOf(':');
+  if (delimiterIndex !== -1) {
+    text = text.substring(0, delimiterIndex);
+  }
   if (
     text === 'reportfavorite' ||
     text === 'report_favorite' ||
