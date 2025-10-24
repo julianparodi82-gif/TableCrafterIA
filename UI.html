@@ -174,36 +174,26 @@
         justify-items: stretch;
       }
       .tab-nav-primary {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
         margin-bottom: 20px;
+      }
+      .tab-nav-primary-top {
+        display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        grid-template-rows: repeat(2, minmax(0, 1fr));
-        grid-template-areas:
-          "panel edit create"
-          "placeholder triggers actions";
+        gap: 12px;
       }
-      .tab-btn--panel {
-        grid-area: panel;
-      }
-      .tab-btn--edit {
-        grid-area: edit;
-      }
-      .tab-btn--create {
-        grid-area: create;
-      }
-      .tab-btn--triggers {
-        grid-area: triggers;
-      }
-      .tab-btn--actions {
-        grid-area: actions;
-      }
-      .tab-btn-placeholder {
-        grid-area: placeholder;
-        display: block;
+      .tab-nav-primary-bottom {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
         width: 100%;
-        min-height: 52px;
-        border-radius: 9px;
-        visibility: hidden;
-        pointer-events: none;
+      }
+      .tab-nav-primary-bottom .tab-btn {
+        flex: 0 1 calc((100% - 24px) / 3);
+        width: calc((100% - 24px) / 3);
+        max-width: calc((100% - 24px) / 3);
       }
       .tab-btn {
         border: 1px solid var(--tc-border);
@@ -4106,47 +4096,50 @@
         </div>
       </div>
       <div class="tab-nav tab-nav-primary">
-        <button
-          class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
-          data-tab="aiTab"
-          data-themes="table word"
-          data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
-        >
-          Panel IA
-        </button>
-        <button
-          class="tab-btn tab-btn--tooltip-below tab-btn--edit"
-          data-tab="editTab"
-          data-themes="table word"
-          data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
-        >
-          Editar tabla
-        </button>
-        <button
-          class="tab-btn tab-btn--tooltip-below tab-btn--create"
-          data-tab="createTab"
-          data-themes="table word"
-          data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
-        >
-          Crear tabla
-        </button>
-        <span class="tab-btn-placeholder" aria-hidden="true"></span>
-        <button
-          class="tab-btn tab-btn--triggers"
-          data-tab="triggersTab"
-          data-themes="table word"
-          data-tooltip="Configura automatizaciones que mantengan tus datos al día."
-        >
-          Triggers
-        </button>
-        <button
-          class="tab-btn tab-btn--actions"
-          data-tab="actionsTab"
-          data-themes="table word"
-          data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
-        >
-          Acciones
-        </button>
+        <div class="tab-nav-primary-top">
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
+            data-tab="aiTab"
+            data-themes="table word"
+            data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
+          >
+            Panel IA
+          </button>
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--edit"
+            data-tab="editTab"
+            data-themes="table word"
+            data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
+          >
+            Editar tabla
+          </button>
+          <button
+            class="tab-btn tab-btn--tooltip-below tab-btn--create"
+            data-tab="createTab"
+            data-themes="table word"
+            data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
+          >
+            Crear tabla
+          </button>
+        </div>
+        <div class="tab-nav-primary-bottom">
+          <button
+            class="tab-btn tab-btn--triggers"
+            data-tab="triggersTab"
+            data-themes="table word"
+            data-tooltip="Configura automatizaciones que mantengan tus datos al día."
+          >
+            Triggers
+          </button>
+          <button
+            class="tab-btn tab-btn--actions"
+            data-tab="actionsTab"
+            data-themes="table word"
+            data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
+          >
+            Acciones
+          </button>
+        </div>
       </div>
 
       <div id="createTab" class="tab-content" data-themes="table word">
