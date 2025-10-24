@@ -98,7 +98,7 @@ function clearSavedActionsSelection() {
   }
   const items = list.querySelectorAll('[data-action-id]');
   items.forEach(function(item) {
-    item.classList.remove('ai-actions-list-item--active');
+    item.classList.remove('selected');
     item.setAttribute('aria-selected', 'false');
   });
   updateSavedActionsSummary(null, { collapse: false });
@@ -117,11 +117,11 @@ function setSavedActionsSelection(actionId, options) {
     const itemId = item.getAttribute('data-action-id');
     const isSelected = target && itemId === target;
     if (isSelected) {
-      item.classList.add('ai-actions-list-item--active');
+      item.classList.add('selected');
       item.setAttribute('aria-selected', 'true');
       selectedAction = item.__favoriteAction || null;
     } else {
-      item.classList.remove('ai-actions-list-item--active');
+      item.classList.remove('selected');
       item.setAttribute('aria-selected', 'false');
     }
   });
@@ -901,17 +901,24 @@ function updateSavedActionsEmptyState(hasEntries) {
   }
   if (hasEntries) {
     emptyMessage.classList.add('ai-hidden');
+    if (listElement) {
+      listElement.classList.remove('disabled');
+      listElement.setAttribute('aria-disabled', 'false');
+    }
+    if (showAllBtn) {
+      showAllBtn.disabled = false;
+    }
   } else {
     emptyMessage.classList.remove('ai-hidden');
-    if (listElement) {
-      listElement.classList.add('ai-hidden');
-      listElement.innerHTML = '';
-    }
     if (summary) {
       summary.classList.add('ai-hidden');
     }
     if (showAllBtn) {
       showAllBtn.disabled = true;
+    }
+    if (listElement) {
+      listElement.classList.add('disabled');
+      listElement.setAttribute('aria-disabled', 'true');
     }
   }
 }
@@ -1262,10 +1269,18 @@ function renderSavedActionsList(actions, selectedId, options) {
     });
   }
   listElement.innerHTML = '';
+  listElement.setAttribute('aria-multiselectable', 'false');
+  listElement.classList.remove('ai-hidden');
+  listElement.classList.remove('disabled');
+  listElement.setAttribute('aria-disabled', 'false');
   if (filteredList.length === 0) {
-    listElement.classList.add('ai-hidden');
     updateSavedActionsEmptyState(false);
     clearSavedActionsSelection();
+    const empty = document.createElement('div');
+    empty.className = 'ai-multi-empty';
+    empty.textContent = 'No hay favoritos guardados';
+    listElement.appendChild(empty);
+    listElement.classList.add('disabled');
     return { hasEntries: false, selectedId: '', firstId: '' };
   }
   updateSavedActionsEmptyState(true);
@@ -1287,36 +1302,41 @@ function renderSavedActionsList(actions, selectedId, options) {
     if (!action || !action.id) {
       return;
     }
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'ai-actions-list-item';
+    const item = createAiMultiItem(action, false, {
+      labelOverride: action.name ? action.name : 'Favorito sin nombre'
+    });
+    if (!item) {
+      return;
+    }
     item.setAttribute('data-action-id', String(action.id));
-    item.setAttribute('role', 'option');
     item.setAttribute('aria-selected', 'false');
     item.__favoriteAction = action;
-    const title = document.createElement('span');
-    title.className = 'ai-actions-list-item-title';
-    title.textContent = action.name ? action.name : 'Favorito sin nombre';
-    item.appendChild(title);
     const metaLabel = formatActionMetadataLabel(action.metadata);
-    const meta = document.createElement('span');
-    meta.className = 'ai-actions-list-item-meta';
-    meta.textContent = metaLabel || (action.id ? String(action.id) : '');
-    item.appendChild(meta);
     const description = buildSavedActionListDescription(action);
+    const tooltipParts = [];
+    if (metaLabel) {
+      tooltipParts.push(metaLabel);
+    }
     if (description) {
-      const desc = document.createElement('span');
-      desc.className = 'ai-actions-list-item-desc';
-      desc.textContent = description;
-      item.appendChild(desc);
+      tooltipParts.push(description);
+    }
+    if (tooltipParts.length) {
+      item.title = tooltipParts.join('\n');
+    } else {
+      item.title = action.id ? String(action.id) : '';
     }
     item.addEventListener('click', function() {
       handleSavedActionListSelection(action.id);
     });
+    item.addEventListener('keydown', function(evt) {
+      if (evt.key === 'Enter' || evt.key === ' ' || evt.key === 'Spacebar') {
+        evt.preventDefault();
+        handleSavedActionListSelection(action.id);
+      }
+    });
     fragment.appendChild(item);
   });
   listElement.appendChild(fragment);
-  listElement.classList.remove('ai-hidden');
   const normalizedSelectedId = selectedId ? String(selectedId) : '';
   let resolvedSelection = null;
   if (normalizedSelectedId) {
@@ -1369,9 +1389,9 @@ function showSavedActionsList() {
   const summarySource = currentSavedActionDetails || findSavedActionById(currentSavedActionId);
   updateSavedActionsSummary(summarySource || null, { collapse: false });
   if (listElement) {
-    let focusTarget = listElement.querySelector('.ai-actions-list-item--active');
+    let focusTarget = listElement.querySelector('.ai-multi-item.selected');
     if (!focusTarget) {
-      focusTarget = listElement.querySelector('.ai-actions-list-item');
+      focusTarget = listElement.querySelector('.ai-multi-item');
     }
     if (focusTarget && typeof focusTarget.focus === 'function') {
       focusTarget.focus();
