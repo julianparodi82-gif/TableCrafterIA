@@ -3491,6 +3491,33 @@ function playSidebarAnimation() {
           applyTheme(themeToggle.checked, { animate: true });
         });
 
+        const tabShortcutMap = {
+          Digit1: 'aiTab',
+          Digit2: 'editTab',
+          Digit3: 'createTab',
+          Digit4: 'triggersTab',
+          Digit5: 'actionsTab'
+        };
+
+        document.addEventListener('keydown', function(event) {
+          if (!event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) {
+            return;
+          }
+
+          const targetTab = tabShortcutMap[event.code];
+          if (targetTab) {
+            event.preventDefault();
+            attemptTabChange(targetTab);
+            return;
+          }
+
+          if (event.code === 'Enter') {
+            event.preventDefault();
+            themeToggle.checked = !themeToggle.checked;
+            themeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
         fetchWelcomePreference();
         applyTheme(themeToggle.checked, { forceSync: true });
       });
