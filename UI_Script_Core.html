@@ -3906,14 +3906,29 @@ function playSidebarAnimation() {
           applyTheme(themeToggle.checked, { animate: true });
         });
 
-        const favoriteShortcutLabel = 'Alt + F';
+        const favoriteShortcutLabel = '(Alt + F)';
         const ensureFavoriteShortcutTooltips = function(root) {
           const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
           const buttons = scope.querySelectorAll('.ai-report-favorite-btn');
           for (let i = 0; i < buttons.length; i++) {
             const button = buttons[i];
-            if (button && !button.getAttribute('title')) {
-              button.setAttribute('title', favoriteShortcutLabel);
+            if (!button || button.nodeType !== 1) {
+              continue;
+            }
+            try {
+              if (
+                typeof button.removeAttribute === 'function' &&
+                typeof button.hasAttribute === 'function' &&
+                button.hasAttribute('title')
+              ) {
+                button.removeAttribute('title');
+              }
+            } catch (removeError) {}
+            if (button.classList && typeof button.classList.add === 'function') {
+              button.classList.add('tc-tooltip-target');
+            }
+            if (typeof button.setAttribute === 'function') {
+              button.setAttribute('data-tooltip', favoriteShortcutLabel);
             }
           }
         };

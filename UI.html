@@ -5022,16 +5022,16 @@
               <input type="color" id="colorAlt2" />
             </div>
             <div class="toggle-group">
-              <label title="Alt + N"><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
-              <label title="Alt + B"><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
+              <label class="tc-tooltip-target" data-tooltip="(Alt + N)"><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
+              <label class="tc-tooltip-target" data-tooltip="(Alt + B)"><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
             </div>
           </div>
           <div class="word-action-buttons is-word-only" data-themes="word">
             <button
               id="wordFavoriteBtn"
-              class="ai-report-favorite-btn word-favorite-btn"
+              class="ai-report-favorite-btn word-favorite-btn tc-tooltip-target"
               type="button"
-              title="Alt + F"
+              data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
@@ -5041,15 +5041,15 @@
           <div class="action-buttons is-table-only" data-themes="table">
             <button
               id="tableFavoriteBtn"
-              class="ai-report-favorite-btn table-favorite-btn"
+              class="ai-report-favorite-btn table-favorite-btn tc-tooltip-target"
               type="button"
-              title="Alt + F"
+              data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
-            <button id="applyFormatBtn" class="btn-primary" title="Alt + A">Aplicar formato</button>
-            <button id="saveTableBtn" class="btn-secondary" title="Alt + G">Guardar tabla</button>
+            <button id="applyFormatBtn" class="btn-primary tc-tooltip-target" data-tooltip="(Alt + A)">Aplicar formato</button>
+            <button id="saveTableBtn" class="btn-secondary tc-tooltip-target" data-tooltip="(Alt + G)">Guardar tabla</button>
           </div>
         </div>
       </div>
@@ -5122,21 +5122,21 @@
             <input type="color" id="editColorAlt2" />
           </div>
           <div class="toggle-group">
-            <label title="Alt + N"><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
-            <label title="Alt + B"><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
+            <label class="tc-tooltip-target" data-tooltip="(Alt + N)"><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
+            <label class="tc-tooltip-target" data-tooltip="(Alt + B)"><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
           </div>
           <div id="editActionsRow" class="action-buttons action-buttons--balanced" style="display:none;">
             <button
               id="editFavoriteBtn"
-              class="ai-report-favorite-btn table-favorite-btn is-table-only"
+              class="ai-report-favorite-btn table-favorite-btn is-table-only tc-tooltip-target"
               data-themes="table"
               type="button"
-              title="Alt + F"
+              data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
-            <button id="editSaveTableBtn" class="btn-primary" disabled title="Alt + G">Guardar tabla</button>
+            <button id="editSaveTableBtn" class="btn-primary tc-tooltip-target" disabled data-tooltip="(Alt + G)">Guardar tabla</button>
             <button id="editDeleteTableBtn" class="btn-danger" disabled>Borrar tabla</button>
           </div>
         </div>
@@ -7696,11 +7696,11 @@
               <button
                 type="button"
                 id="aiReportFavoriteBtn"
-                class="ai-report-favorite-btn"
+                class="ai-report-favorite-btn tc-tooltip-target"
                 aria-haspopup="dialog"
                 aria-expanded="false"
                 aria-controls="aiFavoriteModalOverlay"
-                title="Alt + F"
+                data-tooltip="(Alt + F)"
               >
                 <span class="ai-favorite-icon" aria-hidden="true">★</span>
                 <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a favoritos</span>
