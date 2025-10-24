@@ -175,11 +175,11 @@
       }
       .tab-nav-primary {
         margin-bottom: 20px;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(2, minmax(0, 1fr));
         grid-template-areas:
-          "panel panel edit edit create create"
-          ". triggers triggers actions actions .";
+          "panel edit create"
+          "placeholder triggers actions";
       }
       .tab-btn--panel {
         grid-area: panel;
@@ -196,17 +196,14 @@
       .tab-btn--actions {
         grid-area: actions;
       }
-      @media (max-width: 640px) {
-        .tab-nav-primary {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          grid-template-rows: repeat(5, minmax(0, 1fr));
-          grid-template-areas:
-            "panel panel"
-            "edit edit"
-            "create create"
-            "triggers triggers"
-            "actions actions";
-        }
+      .tab-btn-placeholder {
+        grid-area: placeholder;
+        display: block;
+        width: 100%;
+        min-height: 52px;
+        border-radius: 9px;
+        visibility: hidden;
+        pointer-events: none;
       }
       .tab-btn {
         border: 1px solid var(--tc-border);
@@ -4133,6 +4130,7 @@
         >
           Crear tabla
         </button>
+        <span class="tab-btn-placeholder" aria-hidden="true"></span>
         <button
           class="tab-btn tab-btn--triggers"
           data-tab="triggersTab"
