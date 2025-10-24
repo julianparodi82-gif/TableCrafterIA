@@ -1789,6 +1789,39 @@
         flex: 1 1 auto;
         min-height: 38px;
       }
+      .ai-actions-list-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .ai-actions-summary {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--tc-border);
+        border-radius: 12px;
+        background: var(--tc-surface);
+      }
+      .ai-actions-summary-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ai-actions-summary-title {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--tc-text);
+      }
+      .ai-actions-summary-meta {
+        font-size: 12px;
+        color: var(--tc-text-muted);
+        word-break: break-word;
+      }
+      .ai-multi-select--single .ai-multi-item {
+        padding-right: 16px;
+      }
       .ai-action-details {
         margin-top: 12px;
         display: flex;
@@ -7748,10 +7781,25 @@
               </div>
             </div>
             <div class="tc-form-field">
-              <label for="aiSavedActions">Lista de favoritos</label>
-              <select id="aiSavedActions" class="ai-actions-dropdown">
-                <option value="">Seleccionar...</option>
-              </select>
+              <label>Acciones guardadas</label>
+              <div id="aiSavedActionsPanel" class="ai-actions-list-panel">
+                <div id="aiSavedActionsSummary" class="ai-actions-summary ai-hidden" aria-live="polite">
+                  <div class="ai-actions-summary-info">
+                    <span id="aiSavedActionsSummaryName" class="ai-actions-summary-title"></span>
+                    <span id="aiSavedActionsSummaryMeta" class="ai-actions-summary-meta"></span>
+                  </div>
+                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar favorito</button>
+                </div>
+                <div class="ai-multi-select ai-multi-select--single">
+                  <div
+                    id="aiSavedActionsList"
+                    class="ai-multi-list"
+                    role="listbox"
+                    aria-label="Acciones guardadas de Wordcrafter"
+                    aria-multiselectable="false"
+                  ></div>
+                </div>
+              </div>
             </div>
             <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">

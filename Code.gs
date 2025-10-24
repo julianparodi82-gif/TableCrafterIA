@@ -375,54 +375,81 @@ function normalizeMetaRecordType(value) {
   if (value === null || value === undefined) {
     return 'table';
   }
-  var text = String(value).trim().toLowerCase();
-  if (!text) {
+  var rawText = String(value).trim().toLowerCase();
+  if (!rawText) {
     return 'table';
   }
+  var delimiterIndex = rawText.indexOf(':');
+  var prefixText = delimiterIndex === -1 ? rawText : rawText.substring(0, delimiterIndex);
+  var normalizedPrefix = prefixText.replace(/[^a-z0-9]+/g, '');
+  var normalizedFull = rawText.replace(/[^a-z0-9]+/g, '');
   if (
-    text === 'reportfavorite' ||
-    text === 'report_favorite' ||
-    text === 'report-favorite' ||
-    text === 'report' ||
-    text === 'reporte' ||
-    text === 'reporte_favorito' ||
-    text === 'reporte-favorito'
+    normalizedPrefix === 'reportfavorite' ||
+    normalizedPrefix === 'report_favorite' ||
+    normalizedPrefix === 'report-favorite' ||
+    normalizedPrefix === 'report' ||
+    normalizedPrefix === 'reporte' ||
+    normalizedPrefix === 'reporte_favorito' ||
+    normalizedPrefix === 'reporte-favorito' ||
+    normalizedFull.indexOf('reportfavorite') !== -1 ||
+    normalizedFull.indexOf('reporte') !== -1
   ) {
     return 'reportFavorite';
   }
   if (
-    text === 'wordfavorite' ||
-    text === 'word_favorite' ||
-    text === 'word-favorite' ||
-    text === 'word' ||
-    text === 'texto' ||
-    text === 'textfavorite' ||
-    text === 'texto_favorito' ||
-    text === 'texto-favorito'
+    normalizedPrefix === 'wordfavorite' ||
+    normalizedPrefix === 'word_favorite' ||
+    normalizedPrefix === 'word-favorite' ||
+    normalizedPrefix === 'word' ||
+    normalizedPrefix === 'texto' ||
+    normalizedPrefix === 'textfavorite' ||
+    normalizedPrefix === 'texto_favorito' ||
+    normalizedPrefix === 'texto-favorito' ||
+    normalizedPrefix === 'textoguardado' ||
+    normalizedPrefix === 'creartextowc' ||
+    normalizedPrefix === 'editartextowc' ||
+    normalizedPrefix === 'accioneswc' ||
+    normalizedFull.indexOf('textoguardado') !== -1 ||
+    normalizedFull.indexOf('creartextowc') !== -1 ||
+    normalizedFull.indexOf('editartextowc') !== -1 ||
+    normalizedFull.indexOf('accioneswc') !== -1
   ) {
     return 'wordFavorite';
   }
   if (
-    text === 'tablefavorite' ||
-    text === 'table_favorite' ||
-    text === 'table-favorite' ||
-    text === 'favoritotabla' ||
-    text === 'tabla_favorita' ||
-    text === 'tabla-favorita'
+    normalizedPrefix === 'tablefavorite' ||
+    normalizedPrefix === 'table_favorite' ||
+    normalizedPrefix === 'table-favorite' ||
+    normalizedPrefix === 'favoritotabla' ||
+    normalizedPrefix === 'tabla_favorita' ||
+    normalizedPrefix === 'tabla-favorita' ||
+    normalizedPrefix === 'creartablatc' ||
+    normalizedFull.indexOf('tablefavorite') !== -1 ||
+    normalizedFull.indexOf('favoritotabla') !== -1 ||
+    normalizedFull.indexOf('creartablatc') !== -1
   ) {
     return 'tableFavorite';
   }
   if (
-    text === 'tableeditfavorite' ||
-    text === 'table_edit_favorite' ||
-    text === 'table-edit-favorite' ||
-    text === 'favoritoeditar' ||
-    text === 'tabla_editar_favorita' ||
-    text === 'tabla-editar-favorita'
+    normalizedPrefix === 'tableeditfavorite' ||
+    normalizedPrefix === 'table_edit_favorite' ||
+    normalizedPrefix === 'table-edit-favorite' ||
+    normalizedPrefix === 'favoritoeditar' ||
+    normalizedPrefix === 'tabla_editar_favorita' ||
+    normalizedPrefix === 'tabla-editar-favorita' ||
+    normalizedPrefix === 'editartablatc' ||
+    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
+    normalizedFull.indexOf('tablaeditar') !== -1 ||
+    normalizedFull.indexOf('editartablatc') !== -1
   ) {
     return 'tableEditFavorite';
   }
-  if (text === 'table') {
+  if (
+    normalizedPrefix === 'table' ||
+    normalizedPrefix === 'tabla' ||
+    normalizedPrefix === 'tablaguardada' ||
+    normalizedFull.indexOf('tablaguardada') !== -1
+  ) {
     return 'table';
   }
   return 'table';
@@ -675,13 +702,16 @@ function inferMetaRecordTypeFromId(value) {
   }
   var delimiterIndex = id.indexOf(':');
   var prefix = delimiterIndex === -1 ? id : id.substring(0, delimiterIndex);
-  var normalizedPrefix = prefix.toLowerCase().replace(/[\s_-]+/g, '');
+  var normalizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  var normalizedFull = id.toLowerCase().replace(/[^a-z0-9]+/g, '');
   if (
     normalizedPrefix === 'reportfavorite' ||
     normalizedPrefix === 'reporte' ||
     normalizedPrefix === 'favorite' ||
     normalizedPrefix === 'favorito' ||
-    normalizedPrefix === 'report'
+    normalizedPrefix === 'report' ||
+    normalizedFull.indexOf('reportfavorite') !== -1 ||
+    normalizedFull.indexOf('reporte') !== -1
   ) {
     return 'reportFavorite';
   }
@@ -692,14 +722,25 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'textfavorite' ||
     normalizedPrefix === 'textofavorito' ||
     normalizedPrefix === 'favoritotexto' ||
-    normalizedPrefix === 'textoguardado'
+    normalizedPrefix === 'textoguardado' ||
+    normalizedPrefix === 'creartextowc' ||
+    normalizedPrefix === 'editartextowc' ||
+    normalizedPrefix === 'accioneswc' ||
+    normalizedFull.indexOf('textoguardado') !== -1 ||
+    normalizedFull.indexOf('creartextowc') !== -1 ||
+    normalizedFull.indexOf('editartextowc') !== -1 ||
+    normalizedFull.indexOf('accioneswc') !== -1
   ) {
     return 'wordFavorite';
   }
   if (
     normalizedPrefix === 'tablefavorite' ||
     normalizedPrefix === 'favoritotabla' ||
-    normalizedPrefix === 'tablafavorita'
+    normalizedPrefix === 'tablafavorita' ||
+    normalizedPrefix === 'creartablatc' ||
+    normalizedFull.indexOf('tablefavorite') !== -1 ||
+    normalizedFull.indexOf('favoritotabla') !== -1 ||
+    normalizedFull.indexOf('creartablatc') !== -1
   ) {
     return 'tableFavorite';
   }
@@ -707,11 +748,19 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'tableeditfavorite' ||
     normalizedPrefix === 'tableedit' ||
     normalizedPrefix === 'favoritoeditar' ||
-    normalizedPrefix === 'tablaeditarfavorita'
+    normalizedPrefix === 'tablaeditarfavorita' ||
+    normalizedPrefix === 'editartablatc' ||
+    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
+    normalizedFull.indexOf('tablaeditar') !== -1 ||
+    normalizedFull.indexOf('editartablatc') !== -1
   ) {
     return 'tableEditFavorite';
   }
-  if (normalizedPrefix === 'table' || normalizedPrefix === 'tablaguardada') {
+  if (
+    normalizedPrefix === 'table' ||
+    normalizedPrefix === 'tablaguardada' ||
+    normalizedFull.indexOf('tablaguardada') !== -1
+  ) {
     return 'table';
   }
   return '';
@@ -2281,6 +2330,19 @@ function saveTableFavorite(payload) {
     throw new Error('Debe indicar un nombre para la tabla favorita.');
   }
   var normalizedId = normalizeMetaId(data.id);
+  var requestedPrefix = '';
+  if (data.idPrefix !== undefined && data.idPrefix !== null) {
+    requestedPrefix = String(data.idPrefix).trim();
+  }
+  if (requestedPrefix) {
+    var prefixDelimiter = requestedPrefix.indexOf(':');
+    if (prefixDelimiter !== -1) {
+      requestedPrefix = requestedPrefix.substring(0, prefixDelimiter).trim();
+    }
+    if (!requestedPrefix) {
+      requestedPrefix = '';
+    }
+  }
   var config = normalizeTableFavoriteConfig(data.config);
   config.name = name;
   config.description = data.description ? String(data.description).trim() : config.description;
@@ -2383,8 +2445,9 @@ function saveTableFavorite(payload) {
     if (nameConflict) {
       throw new Error('Ya existe una tabla favorita con ese nombre.');
     }
-    var idPrefix = recordTypeValue === 'tableEditFavorite' ? 'tableEditFavorite:' : 'tableFavorite:';
-    normalizedId = idPrefix + Utilities.getUuid();
+    var fallbackPrefix = recordTypeValue === 'tableEditFavorite' ? 'EditarTablaTC' : 'CrearTablaTC';
+    var selectedPrefix = requestedPrefix || fallbackPrefix;
+    normalizedId = selectedPrefix + ':' + Utilities.getUuid();
     config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
       context: config.metadata && config.metadata.context ? config.metadata.context : (config.origin === 'tableEdit' ? 'editarTabla' : 'crearTabla'),
       tabId: config.origin === 'tableEdit' ? 'editTab' : 'createTab',
@@ -2684,6 +2747,19 @@ function saveWordFavorite(payload) {
     throw new Error('Debe indicar un título para el texto favorito.');
   }
   var normalizedId = normalizeMetaId(data.id);
+  var requestedPrefix = '';
+  if (data.idPrefix !== undefined && data.idPrefix !== null) {
+    requestedPrefix = String(data.idPrefix).trim();
+  }
+  if (requestedPrefix) {
+    var delimiter = requestedPrefix.indexOf(':');
+    if (delimiter !== -1) {
+      requestedPrefix = requestedPrefix.substring(0, delimiter).trim();
+    }
+    if (!requestedPrefix) {
+      requestedPrefix = '';
+    }
+  }
   var config = normalizeWordFavoriteConfig(data.config);
   config.name = name;
   var description = data.description ? String(data.description).trim() : '';
@@ -2734,7 +2810,8 @@ function saveWordFavorite(payload) {
     if (nameConflict) {
       throw new Error('Ya existe un texto favorito con ese nombre.');
     }
-    normalizedId = 'TextoGuardado:' + Utilities.getUuid();
+    var preferredPrefix = requestedPrefix || 'TextoGuardado';
+    normalizedId = preferredPrefix + ':' + Utilities.getUuid();
     config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
       context: config.metadata && config.metadata.context ? config.metadata.context : 'crearTexto',
       tabId: 'createTab',
@@ -3698,6 +3775,7 @@ function generateWordcrafterText(request) {
         name: favoriteName,
         description: favoriteDescription,
         config: config,
+        idPrefix: 'TextoGuardado',
         range: {
           value: finalFullNotation,
           sheetName: finalSheetName,
