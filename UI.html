@@ -175,55 +175,16 @@
       }
       .tab-nav-primary {
         margin-bottom: 20px;
-      }
-      body.theme-wordcrafter .tab-nav-primary,
-      body.theme-tablecrafter .tab-nav-primary {
         grid-template-columns: repeat(5, minmax(0, 1fr));
-        grid-template-areas:
-          'tab-ai tab-ai tab-edit tab-edit tab-create'
-          '. tab-triggers tab-triggers tab-actions tab-actions';
       }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='aiTab'],
-      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='aiTab'] {
-        grid-area: tab-ai;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='editTab'],
-      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='editTab'] {
-        grid-area: tab-edit;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='createTab'],
-      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='createTab'] {
-        grid-area: tab-create;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'],
-      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
-        grid-area: tab-triggers;
-      }
-      body.theme-wordcrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'],
-      body.theme-tablecrafter .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
-        grid-area: tab-actions;
-      }
-      @media (min-width: 641px) {
+      @media (max-width: 720px) {
         .tab-nav-primary {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          grid-template-areas:
-            'tab-ai tab-edit tab-create tab-create'
-            'tab-triggers tab-triggers tab-actions tab-actions';
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
-        .tab-nav-primary .tab-btn[data-tab='aiTab'] {
-          grid-area: tab-ai;
-        }
-        .tab-nav-primary .tab-btn[data-tab='editTab'] {
-          grid-area: tab-edit;
-        }
-        .tab-nav-primary .tab-btn[data-tab='createTab'] {
-          grid-area: tab-create;
-        }
-        .tab-nav-primary .tab-btn[data-tab='triggersTab'] {
-          grid-area: tab-triggers;
-        }
-        .tab-nav-primary .tab-btn[data-tab='actionsTab'] {
-          grid-area: tab-actions;
+      }
+      @media (max-width: 520px) {
+        .tab-nav-primary {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
       .tab-btn {
