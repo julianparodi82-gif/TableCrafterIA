@@ -404,7 +404,9 @@ function normalizeMetaRecordType(value) {
     text === 'texto_favorito' ||
     text === 'texto-favorito' ||
     text === 'textoguardado' ||
-    text === 'creartextowc'
+    text === 'creartextowc' ||
+    text === 'editartextowc' ||
+    text === 'accioneswc'
   ) {
     return 'wordFavorite';
   }
@@ -701,7 +703,9 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'textofavorito' ||
     normalizedPrefix === 'favoritotexto' ||
     normalizedPrefix === 'textoguardado' ||
-    normalizedPrefix === 'creartextowc'
+    normalizedPrefix === 'creartextowc' ||
+    normalizedPrefix === 'editartextowc' ||
+    normalizedPrefix === 'accioneswc'
   ) {
     return 'wordFavorite';
   }

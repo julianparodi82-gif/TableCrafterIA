@@ -101,7 +101,9 @@ function inferFavoriteTypeFromId(id) {
     normalizedPrefix === 'textofavorito' ||
     normalizedPrefix === 'favoritotexto' ||
     normalizedPrefix === 'textoguardado' ||
-    normalizedPrefix === 'creartextowc'
+    normalizedPrefix === 'creartextowc' ||
+    normalizedPrefix === 'editartextowc' ||
+    normalizedPrefix === 'accioneswc'
   ) {
     return 'wordFavorite';
   }
@@ -157,7 +159,9 @@ function normalizeFavoriteTypeCandidate(value) {
     normalized === 'textofavorito' ||
     normalized === 'favoritotexto' ||
     normalized === 'textoguardado' ||
-    normalized === 'creartextowc'
+    normalized === 'creartextowc' ||
+    normalized === 'editartextowc' ||
+    normalized === 'accioneswc'
   ) {
     return 'wordFavorite';
   }
