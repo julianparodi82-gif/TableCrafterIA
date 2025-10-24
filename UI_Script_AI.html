@@ -4576,7 +4576,11 @@ function updateReportFavoriteControls() {
         const editing = !!activeReportFavoriteId;
         const label = document.getElementById('aiReportFavoriteBtnLabel');
         if (label) {
-          label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+          if (typeof setFavoriteLabelContent === 'function') {
+            setFavoriteLabelContent(label, editing ? 'Actualizar favorito' : 'Agregar a favoritos');
+          } else {
+            label.textContent = editing ? 'Actualizar favorito' : 'Agregar a favoritos';
+          }
         }
         const btn = document.getElementById('aiReportFavoriteBtn');
         if (btn) {

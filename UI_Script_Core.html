@@ -52,6 +52,26 @@ function getFavoriteButtonLabelTarget(button) {
         return label || button;
       }
 
+function setFavoriteLabelContent(target, text) {
+        if (!target) {
+          return;
+        }
+        const normalized = typeof text === 'string' ? text.trim() : '';
+        if (!normalized) {
+          target.textContent = '';
+          return;
+        }
+        if (
+          target.classList &&
+          target.classList.contains('ai-favorite-label') &&
+          normalized.toLowerCase() === 'agregar a favoritos'
+        ) {
+          target.innerHTML = 'Agregar a <span class="shortcut-accesskey">F</span>avoritos';
+          return;
+        }
+        target.textContent = normalized;
+      }
+
 function beginFavoriteButtonLoading(button, baseWord) {
         if (!button) {
           return;
@@ -100,9 +120,9 @@ function endFavoriteButtonLoading(button, text) {
         }
         favoriteButtonLoaders.delete(button);
         if (target && text !== undefined) {
-          target.textContent = text;
+          setFavoriteLabelContent(target, text);
         } else if (target && state && state.idleText !== undefined && text === undefined) {
-          target.textContent = state.idleText;
+          setFavoriteLabelContent(target, state.idleText);
         }
         button.classList.remove('is-loading');
         button.removeAttribute('data-loading');

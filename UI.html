@@ -1962,6 +1962,11 @@
       .ai-report-favorite-btn .ai-favorite-label {
         line-height: 1;
       }
+      .shortcut-accesskey {
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
       .ai-report-generate-btn {
         display: flex;
         justify-content: center;
@@ -4203,7 +4208,7 @@
             data-themes="table word"
             data-tooltip="(Alt + 2) Modifica tablas guardadas y ajusta sus estilos."
           >
-            Editar tabla
+            Editar Tabla
           </button>
           <button
             class="tab-btn tab-btn--tooltip-below tab-btn--create"
@@ -4211,7 +4216,7 @@
             data-themes="table word"
             data-tooltip="(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados."
           >
-            Crear tabla
+            Crear Tabla
           </button>
         </div>
         <div class="tab-nav-primary-bottom">
@@ -5044,7 +5049,7 @@
               data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
             <button id="wordGenerateBtn" class="btn-primary" type="button">Generar y Guardar Texto</button>
           </div>
@@ -5056,10 +5061,10 @@
               data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="applyFormatBtn" class="btn-primary tc-tooltip-target" data-tooltip="(Alt + A)">Aplicar formato</button>
-            <button id="saveTableBtn" class="btn-secondary tc-tooltip-target" data-tooltip="(Alt + G)">Guardar tabla</button>
+            <button id="applyFormatBtn" class="btn-primary tc-tooltip-target" data-tooltip="(Alt + A)"><span class="shortcut-accesskey">A</span>plicar Formato</button>
+            <button id="saveTableBtn" class="btn-secondary tc-tooltip-target" data-tooltip="(Alt + G)"><span class="shortcut-accesskey">G</span>uardar Tabla</button>
           </div>
         </div>
       </div>
@@ -5144,9 +5149,9 @@
               data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="editSaveTableBtn" class="btn-primary tc-tooltip-target" disabled data-tooltip="(Alt + G)">Guardar tabla</button>
+            <button id="editSaveTableBtn" class="btn-primary tc-tooltip-target" disabled data-tooltip="(Alt + G)"><span class="shortcut-accesskey">G</span>uardar Tabla</button>
             <button
               id="editDeleteTableBtn"
               class="btn-danger tc-tooltip-target"
@@ -7720,7 +7725,7 @@
                 data-tooltip="(Alt + F)"
               >
                 <span class="ai-favorite-icon" aria-hidden="true">★</span>
-                <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a favoritos</span>
+                <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
               </button>
             </div>
             <div
