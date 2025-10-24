@@ -7,6 +7,7 @@ let rangeInfo = null;
 let createFormatDirty = false;
 let pendingFormatState = { applied: false, range: null };
 let tableFavoriteEditingId = '';
+let tableFavoriteEditingName = '';
 let tableFavoritesCache = [];
 let tableFavoritesLoadingPromise = null;
 let tableFavoriteSaving = false;
@@ -334,8 +335,13 @@ function updateTableFavoriteButtonState() {
         }
       }
 
-function setTableFavoriteEditingId(id) {
+function setTableFavoriteEditingId(id, name) {
         tableFavoriteEditingId = id ? String(id) : '';
+        if (name !== undefined) {
+          tableFavoriteEditingName = name ? String(name) : '';
+        } else if (!tableFavoriteEditingId) {
+          tableFavoriteEditingName = '';
+        }
         updateTableFavoriteButtonState();
       }
 
@@ -453,8 +459,8 @@ async function handleTableFavoriteSave() {
           });
           return;
         }
-        const name = getTableFavoriteName();
-        if (!name) {
+        const tableTitle = getTableFavoriteName();
+        if (!tableTitle) {
           await showMessageModal('Agrega un título a la tabla antes de guardarla como favorita.', {
             title: 'Título requerido',
             variant: 'warning'
@@ -464,13 +470,56 @@ async function handleTableFavoriteSave() {
         currentHeaders = cloneHeaderModels(validation.values.headers || []);
         renderCreateHeaders();
         const config = collectTableFavoriteConfig(validation);
+        const promptFn = typeof promptFavoriteName === 'function'
+          ? promptFavoriteName
+          : window.promptFavoriteName;
+        const favoriteName = promptFn
+          ? await promptFn({
+              title: tableFavoriteEditingId ? 'Actualizar favorito' : 'Guardar en favoritos',
+              label: 'Nombre del favorito',
+              placeholder: 'Ej. Tabla semanal de métricas',
+              confirmText: tableFavoriteEditingId ? 'Actualizar' : 'Guardar',
+              defaultValue: tableFavoriteEditingName,
+              maxLength: 140
+            })
+          : null;
+        if (!favoriteName) {
+          return;
+        }
         const payload = {
           id: tableFavoriteEditingId || '',
-          name: name,
+          name: favoriteName,
           description: validation.values.description || getTableFavoriteDescriptionFromConfig(config),
           config: config,
           kind: 'tableFavorite',
-          origin: 'tableCreate'
+          origin: 'tableCreate',
+          metadata:
+            typeof buildFavoriteMetadata === 'function'
+              ? buildFavoriteMetadata('createTab', {
+                  tabId: 'createTab',
+                  sourceType: 'table',
+                  action: 'tableFavorite',
+                  context: 'crearTabla',
+                  sourceId: tableFavoriteEditingId || '',
+                  favoriteId: tableFavoriteEditingId || '',
+                  tableName: tableTitle
+                })
+              : (function() {
+                  const suffix =
+                    typeof generateMetadataGuidSuffix === 'function'
+                      ? generateMetadataGuidSuffix()
+                      : String(Date.now());
+                  const baseId = 'CrearTablaTC:' + suffix;
+                  return {
+                    type: 'CrearTablaTC:' + suffix,
+                    id: baseId,
+                    tabId: 'createTab',
+                    tab: 'createTab',
+                    sourceType: 'table',
+                    action: 'tableFavorite',
+                    context: 'crearTabla'
+                  };
+                })()
         };
         tableFavoriteSaving = true;
         updateTableFavoriteButtonState();
@@ -480,7 +529,7 @@ async function handleTableFavoriteSave() {
             throw new Error((response && response.error) || 'No se pudo guardar la tabla favorita.');
           }
           const savedId = response.id || tableFavoriteEditingId || '';
-          setTableFavoriteEditingId(savedId);
+          setTableFavoriteEditingId(savedId, favoriteName);
           await refreshTableFavorites({ selectId: savedId });
           if (typeof notifySavedActionMutation === 'function') {
             notifySavedActionMutation({
@@ -627,7 +676,7 @@ async function openTableFavoriteForEditing(favoriteId, options) {
         await attemptTabChange('createTab', { force: true, preserveForm: true });
         resetCreateTabView({ preserveRange: false, preserveFields: false, preserveHeaders: false });
         applyTableFavoriteConfig(details.config || {});
-        setTableFavoriteEditingId(details.id || id);
+        setTableFavoriteEditingId(details.id || id, details.name || '');
         await refreshTableFavorites({ selectId: details.id || id, silent: true }).catch(function() {});
         updateTableFavoriteButtonState();
         if (!options || options.focusName !== false) {

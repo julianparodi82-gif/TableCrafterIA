@@ -428,6 +428,246 @@ function normalizeMetaRecordType(value) {
   return 'table';
 }
 
+function normalizeFavoriteMetadata(metadata, options) {
+  var meta = metadata && typeof metadata === 'object' ? metadata : {};
+  var opts = options || {};
+  var normalized = {};
+  var fallbackType = opts.fallbackType !== undefined && opts.fallbackType !== null
+    ? String(opts.fallbackType).trim()
+    : '';
+  var fallbackId = opts.fallbackId !== undefined && opts.fallbackId !== null
+    ? String(opts.fallbackId).trim()
+    : '';
+
+  Object.keys(meta).forEach(function(key) {
+    if (!Object.prototype.hasOwnProperty.call(meta, key)) {
+      return;
+    }
+    var value = meta[key];
+    if (value === null || value === undefined) {
+      return;
+    }
+    var text = typeof value === 'string' ? value.trim() : String(value).trim();
+    if (!text) {
+      if (key === 'type' || key === 'id') {
+        normalized[key] = '';
+      }
+      return;
+    }
+    normalized[key] = text;
+  });
+
+  if (!normalized.type) {
+    normalized.type = fallbackType || '';
+  }
+  if (!normalized.id) {
+    normalized.id = fallbackId || '';
+  }
+
+  return normalized;
+}
+
+var FAVORITE_METADATA_CONTEXT_RULES = {
+  panelIaReport: { idPrefix: 'AccionesTC', code: '01', typePrefix: 'AccionesTC' },
+  panelIaAsk: { idPrefix: 'AccionesTC', code: '02', typePrefix: 'AccionesTC' },
+  panelIaWordLength: { idPrefix: 'AccionesWC', code: '01', typePrefix: 'AccionesWC' },
+  panelIaWordRewrite: { idPrefix: 'AccionesWC', code: '02', typePrefix: 'AccionesWC' },
+  panelIaWordTone: { idPrefix: 'AccionesWC', code: '03', typePrefix: 'AccionesWC' },
+  panelIaWordSummary: { idPrefix: 'AccionesWC', code: '04', typePrefix: 'AccionesWC' },
+  crearTabla: { idPrefix: 'CrearTablaTC', typePrefix: 'CrearTablaTC' },
+  editarTabla: { idPrefix: 'EditarTablaTC', typePrefix: 'EditarTablaTC' },
+  crearTexto: { idPrefix: 'CrearTextoWC', typePrefix: 'CrearTextoWC' },
+  editarTexto: { idPrefix: 'EditarTextoWC', typePrefix: 'EditarTextoWC' }
+};
+
+function buildMetadataGuidSuffix(reference) {
+  var raw = reference === undefined || reference === null ? '' : String(reference).trim();
+  if (raw) {
+    var delimiterIndex = raw.indexOf(':');
+    if (delimiterIndex !== -1 && delimiterIndex < raw.length - 1) {
+      var candidate = raw.substring(delimiterIndex + 1).trim();
+      if (candidate) {
+        return candidate;
+      }
+    }
+    var uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (uuidMatch && uuidMatch[0]) {
+      return uuidMatch[0];
+    }
+  }
+  return Utilities.getUuid();
+}
+
+function normalizeMetadataContextKey(context) {
+  if (!context) {
+    return '';
+  }
+  var text = String(context).trim();
+  if (!text) {
+    return '';
+  }
+  var normalized = text.toLowerCase();
+  if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('report') !== -1) {
+    return 'panelIaReport';
+  }
+  if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('ask') !== -1) {
+    return 'panelIaAsk';
+  }
+  if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('length') !== -1 || normalized.indexOf('longitud') !== -1)) {
+    return 'panelIaWordLength';
+  }
+  if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('rewrite') !== -1 || normalized.indexOf('reformula') !== -1)) {
+    return 'panelIaWordRewrite';
+  }
+  if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('tono') !== -1) {
+    return 'panelIaWordTone';
+  }
+  if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('summary') !== -1 || normalized.indexOf('resumen') !== -1)) {
+    return 'panelIaWordSummary';
+  }
+  if (normalized.indexOf('edit') !== -1 && normalized.indexOf('tabla') !== -1) {
+    return 'editarTabla';
+  }
+  if (normalized.indexOf('create') !== -1 && normalized.indexOf('tabla') !== -1) {
+    return 'crearTabla';
+  }
+  if (normalized.indexOf('edit') !== -1 && normalized.indexOf('texto') !== -1) {
+    return 'editarTexto';
+  }
+  if (normalized.indexOf('crear') !== -1 && normalized.indexOf('texto') !== -1) {
+    return 'crearTexto';
+  }
+  if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('texto') !== -1) {
+    return 'panelIaWordRewrite';
+  }
+  return text;
+}
+
+function resolveFavoriteMetadataContext(metadata, options) {
+  var metaContext = metadata && metadata.context ? metadata.context : '';
+  var resolved = normalizeMetadataContextKey(metaContext);
+  if (resolved && FAVORITE_METADATA_CONTEXT_RULES[resolved]) {
+    return resolved;
+  }
+  var opts = options || {};
+  if (opts.context) {
+    var optionContext = normalizeMetadataContextKey(opts.context);
+    if (optionContext && FAVORITE_METADATA_CONTEXT_RULES[optionContext]) {
+      return optionContext;
+    }
+  }
+  var tabId = opts.tabId ? String(opts.tabId).trim() : '';
+  var action = opts.action ? String(opts.action).trim() : '';
+  var sourceType = opts.sourceType ? String(opts.sourceType).trim() : '';
+  var origin = opts.origin ? String(opts.origin).trim() : '';
+  var theme = opts.theme ? String(opts.theme).trim() : '';
+  if (tabId === 'aiTab') {
+    if (action === 'reportFavorite' || sourceType === 'report') {
+      return 'panelIaReport';
+    }
+    if (action === 'ask') {
+      return 'panelIaAsk';
+    }
+    if (action === 'word-length') {
+      return 'panelIaWordLength';
+    }
+    if (action === 'word-rewrite') {
+      return 'panelIaWordRewrite';
+    }
+    if (action === 'word-tone') {
+      return 'panelIaWordTone';
+    }
+    if (action === 'word-summary') {
+      return 'panelIaWordSummary';
+    }
+    if (theme === 'word' || sourceType === 'wordFavorite') {
+      return 'panelIaWordRewrite';
+    }
+    return 'panelIaReport';
+  }
+  if (tabId === 'editTab') {
+    if (action === 'wordFavorite' || sourceType === 'wordFavorite') {
+      return 'editarTexto';
+    }
+    return 'editarTabla';
+  }
+  if (tabId === 'createTab') {
+    if (action === 'wordFavorite' || sourceType === 'wordFavorite' || theme === 'word') {
+      return 'crearTexto';
+    }
+    return 'crearTabla';
+  }
+  if (origin) {
+    var loweredOrigin = origin.toLowerCase();
+    if (loweredOrigin.indexOf('edit') !== -1 || loweredOrigin.indexOf('editar') !== -1) {
+      return 'editarTabla';
+    }
+    if (loweredOrigin.indexOf('table') !== -1 || loweredOrigin.indexOf('crear') !== -1 || loweredOrigin.indexOf('create') !== -1) {
+      return 'crearTabla';
+    }
+  }
+  return resolved;
+}
+
+function ensureFavoriteMetadataIdentifiers(metadata, options) {
+  var base = normalizeFavoriteMetadata(metadata, {
+    fallbackType: options && options.fallbackType ? options.fallbackType : '',
+    fallbackId: options && options.fallbackId ? options.fallbackId : ''
+  });
+  var result = {};
+  Object.keys(base).forEach(function(key) {
+    result[key] = base[key];
+  });
+  var opts = options || {};
+  var contextKey = resolveFavoriteMetadataContext(result, opts);
+  var rule = contextKey && FAVORITE_METADATA_CONTEXT_RULES[contextKey]
+    ? FAVORITE_METADATA_CONTEXT_RULES[contextKey]
+    : null;
+  var prefix = rule && rule.idPrefix ? rule.idPrefix : '';
+  var typePrefix = rule && rule.typePrefix ? rule.typePrefix : prefix;
+  var suffix = '';
+  var idPrefixWithDelimiter = prefix ? prefix + ':' : '';
+  var typePrefixWithDelimiter = typePrefix ? typePrefix + ':' : '';
+  if (rule && rule.code) {
+    suffix = rule.code;
+  } else if (prefix && result.id && result.id.indexOf(idPrefixWithDelimiter) === 0) {
+    var existingSuffix = result.id.substring(idPrefixWithDelimiter.length);
+    suffix = existingSuffix || buildMetadataGuidSuffix(result.id);
+  } else if (prefix) {
+    var reference = opts.referenceId || opts.sourceId || result.sourceId || result.favoriteId || '';
+    suffix = buildMetadataGuidSuffix(reference);
+  }
+  if (prefix) {
+    result.id = idPrefixWithDelimiter + suffix;
+  }
+  if (typePrefix) {
+    if (!suffix && result.type && result.type.indexOf(typePrefixWithDelimiter) === 0) {
+      suffix = result.type.substring(typePrefixWithDelimiter.length) || suffix;
+    }
+    var normalizedTypeSuffix = suffix || buildMetadataGuidSuffix(result.type || result.id || '');
+    result.type = typePrefixWithDelimiter + normalizedTypeSuffix;
+  }
+  if (contextKey) {
+    result.context = contextKey;
+  }
+  if (opts.tabId && !result.tabId) {
+    result.tabId = String(opts.tabId);
+  }
+  if (opts.tabId && !result.tab) {
+    result.tab = String(opts.tabId);
+  }
+  if (opts.sourceId && !result.sourceId) {
+    result.sourceId = String(opts.sourceId);
+  }
+  if (opts.action && !result.action) {
+    result.action = String(opts.action);
+  }
+  if (opts.sourceType && !result.sourceType) {
+    result.sourceType = String(opts.sourceType);
+  }
+  return result;
+}
+
 function inferMetaRecordTypeFromId(value) {
   var id = normalizeMetaId(value);
   if (!id) {
@@ -451,7 +691,8 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'texto' ||
     normalizedPrefix === 'textfavorite' ||
     normalizedPrefix === 'textofavorito' ||
-    normalizedPrefix === 'favoritotexto'
+    normalizedPrefix === 'favoritotexto' ||
+    normalizedPrefix === 'textoguardado'
   ) {
     return 'wordFavorite';
   }
@@ -470,7 +711,7 @@ function inferMetaRecordTypeFromId(value) {
   ) {
     return 'tableEditFavorite';
   }
-  if (normalizedPrefix === 'table') {
+  if (normalizedPrefix === 'table' || normalizedPrefix === 'tablaguardada') {
     return 'table';
   }
   return '';
@@ -1496,7 +1737,8 @@ function listFavoriteActions() {
         featureOrder: featureOrder,
         emails: Array.isArray(favorite.emails) ? favorite.emails.slice() : [],
         phones: Array.isArray(favorite.phones) ? favorite.phones.slice() : [],
-        customization: customization
+        customization: customization,
+        metadata: favorite.metadata ? JSON.parse(JSON.stringify(favorite.metadata)) : {}
       });
       seenIds[entryId] = true;
       continue;
@@ -1512,7 +1754,8 @@ function listFavoriteActions() {
         name: wordFavorite.name || '',
         description: wordFavorite.description || '',
         createdAt: wordFavorite.createdAt || '',
-        updatedAt: wordFavorite.updatedAt || ''
+        updatedAt: wordFavorite.updatedAt || '',
+        metadata: wordFavorite.metadata ? JSON.parse(JSON.stringify(wordFavorite.metadata)) : {}
       });
       seenIds[entryId] = true;
       continue;
@@ -1563,7 +1806,8 @@ function listFavoriteActions() {
         headers: clonedHeaders,
         updateFormulaReferences: Object.prototype.hasOwnProperty.call(tableConfig, 'updateFormulaReferences')
           ? !!tableConfig.updateFormulaReferences
-          : true
+          : true,
+        metadata: tableFavorite.metadata ? JSON.parse(JSON.stringify(tableFavorite.metadata)) : {}
       });
       seenIds[entryId] = true;
     }
@@ -1634,7 +1878,8 @@ function listSavedActions(options) {
           name: wordFavorite.name || '',
           description: wordFavorite.description || '',
           createdAt: wordFavorite.createdAt || '',
-          updatedAt: wordFavorite.updatedAt || ''
+          updatedAt: wordFavorite.updatedAt || '',
+          metadata: wordFavorite.metadata ? JSON.parse(JSON.stringify(wordFavorite.metadata)) : {}
         });
         continue;
       }
@@ -1661,6 +1906,20 @@ function buildReportFavoriteResponse(entry) {
   if (!config || typeof config !== 'object') {
     config = {};
   }
+  var normalizedMetadata = normalizeFavoriteMetadata(config.metadata, {
+    fallbackType: 'tab',
+    fallbackId: 'aiTab'
+  });
+  var favoriteId = normalizeMetaId(data[META_INDEX.id]);
+  var finalizedMetadata = ensureFavoriteMetadataIdentifiers(normalizedMetadata, {
+    context: normalizedMetadata.context || 'panelIaReport',
+    tabId: 'aiTab',
+    action: 'reportFavorite',
+    sourceType: 'report',
+    sourceId: favoriteId,
+    referenceId: favoriteId
+  });
+  config.metadata = finalizedMetadata;
   var features = Array.isArray(config.features) ? config.features : [];
   var featureDetails = Array.isArray(config.featureDetails) ? config.featureDetails : [];
   var tableList = Array.isArray(config.tables) ? config.tables : [];
@@ -1770,7 +2029,8 @@ function buildReportFavoriteResponse(entry) {
     featureOrder: normalizedOrder,
     emails: Array.isArray(config.emails) ? config.emails : [],
     phones: Array.isArray(config.phones) ? config.phones : [],
-    customization: normalizeReportCustomization(config.customization)
+    customization: normalizeReportCustomization(config.customization),
+    metadata: finalizedMetadata
   };
 }
 
@@ -1860,28 +2120,33 @@ function normalizeTableFavoriteOrigin(origin, kind) {
 }
 
 function normalizeTableFavoriteConfig(source) {
-  var config = source && typeof source === 'object' ? source : {};
-  var versionValue = parseInt(config.version, 10);
+  var raw = source && typeof source === 'object' ? source : {};
+  var versionValue = parseInt(raw.version, 10);
   if (isNaN(versionValue) || versionValue < 1) {
     versionValue = 1;
   }
-  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(config.headers));
-  var kindValue = config.kind === null || config.kind === undefined ? '' : String(config.kind).trim();
-  var originValue = normalizeTableFavoriteOrigin(config.origin, kindValue);
+  var normalizedHeaders = ensureHeaderKeys(normalizeHeaderArray(raw.headers));
+  var kindValue = raw.kind === null || raw.kind === undefined ? '' : String(raw.kind).trim();
+  var originValue = normalizeTableFavoriteOrigin(raw.origin, kindValue);
   var normalizedKind = normalizeMetaRecordType(kindValue);
   if (!normalizedKind || normalizedKind === 'table') {
     normalizedKind = originValue === 'tableEdit' ? 'tableEditFavorite' : 'tableFavorite';
   }
+  var metadata = normalizeFavoriteMetadata(raw.metadata, {
+    fallbackType: '',
+    fallbackId: ''
+  });
   return {
     version: versionValue,
-    name: config.name ? String(config.name).trim() : '',
-    description: config.description ? String(config.description).trim() : '',
-    range: normalizeTableFavoriteRange(config.range),
+    name: raw.name ? String(raw.name).trim() : '',
+    description: raw.description ? String(raw.description).trim() : '',
+    range: normalizeTableFavoriteRange(raw.range),
     headers: normalizedHeaders,
-    style: normalizeTableFavoriteStyle(config.style),
-    updateFormulaReferences: parseBooleanValue(config.updateFormulaReferences, true),
+    style: normalizeTableFavoriteStyle(raw.style),
+    updateFormulaReferences: parseBooleanValue(raw.updateFormulaReferences, true),
     origin: originValue,
-    kind: normalizedKind
+    kind: normalizedKind,
+    metadata: metadata
   };
 }
 
@@ -1927,6 +2192,24 @@ function buildTableFavoriteResponse(entry) {
   var normalizedOrigin = normalizeTableFavoriteOrigin(config.origin || storedOrigin, normalizedKind);
   config.kind = normalizedKind;
   config.origin = normalizedOrigin;
+  var storedMetadata = storedConfig && typeof storedConfig === 'object' ? storedConfig.metadata : null;
+  var configMetadata = config && typeof config === 'object' ? config.metadata : null;
+  var normalizedMetadata = normalizeFavoriteMetadata(configMetadata || storedMetadata, {
+    fallbackType: '',
+    fallbackId: ''
+  });
+  var id = normalizeMetaId(data[META_INDEX.id]);
+  var metadataContext = normalizedMetadata.context || (normalizedOrigin === 'tableEdit' ? 'editarTabla' : 'crearTabla');
+  var finalizedMetadata = ensureFavoriteMetadataIdentifiers(normalizedMetadata, {
+    context: metadataContext,
+    tabId: normalizedOrigin === 'tableEdit' ? 'editTab' : 'createTab',
+    action: normalizedKind === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite',
+    sourceType: normalizedKind,
+    origin: normalizedOrigin,
+    sourceId: id,
+    referenceId: id
+  });
+  config.metadata = finalizedMetadata;
   var id = normalizeMetaId(data[META_INDEX.id]);
   var name = data[META_INDEX.name] || config.name || '';
   var description = data[META_INDEX.description] || config.description || '';
@@ -1950,7 +2233,8 @@ function buildTableFavoriteResponse(entry) {
     config: config,
     range: config.range,
     style: config.style,
-    headers: config.headers
+    headers: config.headers,
+    metadata: finalizedMetadata
   };
 }
 
@@ -2010,6 +2294,22 @@ function saveTableFavorite(payload) {
   var recordTypeValue = config.kind === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite';
   config.kind = recordTypeValue;
   config.origin = normalizeTableFavoriteOrigin(config.origin, recordTypeValue);
+  var baseMetadata = normalizeFavoriteMetadata(config.metadata, { fallbackType: '', fallbackId: '' });
+  var payloadMetadata = normalizeFavoriteMetadata(data.metadata, {
+    fallbackType: baseMetadata.type || '',
+    fallbackId: baseMetadata.id || ''
+  });
+  var mergedMetadata = {};
+  Object.keys(baseMetadata).forEach(function(key) {
+    mergedMetadata[key] = baseMetadata[key];
+  });
+  Object.keys(payloadMetadata).forEach(function(key) {
+    mergedMetadata[key] = payloadMetadata[key];
+  });
+  config.metadata = normalizeFavoriteMetadata(mergedMetadata, {
+    fallbackType: payloadMetadata.type || baseMetadata.type || '',
+    fallbackId: payloadMetadata.id || baseMetadata.id || ''
+  });
   var meta = getMetaSheet();
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   var normalizedHeaders = ensureHeaderKeys(config.headers);
@@ -2028,12 +2328,6 @@ function saveTableFavorite(payload) {
     rows = 0;
   }
   var formulaPreferenceValue = config.updateFormulaReferences ? 'TRUE' : 'FALSE';
-  var storedConfig = stringifyJsonValue({
-    kind: recordTypeValue,
-    origin: config.origin,
-    version: config.version || 1,
-    config: config
-  });
   var createdAt = now;
   if (normalizedId) {
     var existing = findMetaById(normalizedId);
@@ -2049,6 +2343,21 @@ function saveTableFavorite(payload) {
       throw new Error('Ya existe una tabla favorita con ese nombre.');
     }
     createdAt = existing.data[META_INDEX.createdAt] || now;
+    config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
+      context: config.metadata && config.metadata.context ? config.metadata.context : (config.origin === 'tableEdit' ? 'editarTabla' : 'crearTabla'),
+      tabId: config.origin === 'tableEdit' ? 'editTab' : 'createTab',
+      action: recordTypeValue === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite',
+      sourceType: recordTypeValue,
+      origin: config.origin,
+      sourceId: normalizedId,
+      referenceId: normalizedId
+    });
+    var storedConfig = stringifyJsonValue({
+      kind: recordTypeValue,
+      origin: config.origin,
+      version: config.version || 1,
+      config: config
+    });
     meta
       .getRange(existing.row, 1, 1, META_HEADERS.length)
       .setValues([
@@ -2076,6 +2385,21 @@ function saveTableFavorite(payload) {
     }
     var idPrefix = recordTypeValue === 'tableEditFavorite' ? 'tableEditFavorite:' : 'tableFavorite:';
     normalizedId = idPrefix + Utilities.getUuid();
+    config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
+      context: config.metadata && config.metadata.context ? config.metadata.context : (config.origin === 'tableEdit' ? 'editarTabla' : 'crearTabla'),
+      tabId: config.origin === 'tableEdit' ? 'editTab' : 'createTab',
+      action: recordTypeValue === 'tableEditFavorite' ? 'tableEditFavorite' : 'tableFavorite',
+      sourceType: recordTypeValue,
+      origin: config.origin,
+      sourceId: normalizedId,
+      referenceId: normalizedId
+    });
+    var storedConfig = stringifyJsonValue({
+      kind: recordTypeValue,
+      origin: config.origin,
+      version: config.version || 1,
+      config: config
+    });
     meta.appendRow([
       normalizedId,
       name,
@@ -2193,6 +2517,7 @@ function normalizeWordFavoriteConfig(config) {
     source.personalization && typeof source.personalization === 'object' ? source.personalization : {};
   var web = source.web && typeof source.web === 'object' ? source.web : {};
   var placement = source.placement && typeof source.placement === 'object' ? source.placement : {};
+  var metadata = normalizeFavoriteMetadata(source.metadata, { fallbackType: '', fallbackId: '' });
   var normalized = {
     version: 1,
     name: source.name ? String(source.name).trim() : '',
@@ -2240,7 +2565,8 @@ function normalizeWordFavoriteConfig(config) {
     },
     placement: {
       splitSentences: parseBooleanValue(placement.splitSentences, false)
-    }
+    },
+    metadata: metadata
   };
   return normalized;
 }
@@ -2252,13 +2578,25 @@ function buildWordFavoriteResponse(entry) {
     storedConfig = {};
   }
   var config = normalizeWordFavoriteConfig(storedConfig.config);
+  var favoriteId = normalizeMetaId(data[META_INDEX.id]);
+  var normalizedMetadata = config.metadata || {};
+  var finalizedMetadata = ensureFavoriteMetadataIdentifiers(normalizedMetadata, {
+    context: normalizedMetadata.context || 'crearTexto',
+    tabId: 'createTab',
+    action: 'wordFavorite',
+    sourceType: 'wordFavorite',
+    sourceId: favoriteId,
+    referenceId: favoriteId
+  });
+  config.metadata = finalizedMetadata;
   return {
-    id: normalizeMetaId(data[META_INDEX.id]),
+    id: favoriteId,
     type: 'wordFavorite',
     name: data[META_INDEX.name] || '',
     description: data[META_INDEX.description] || '',
     createdAt: data[META_INDEX.createdAt] || '',
     updatedAt: data[META_INDEX.updatedAt] || '',
+    metadata: finalizedMetadata,
     config: config
   };
 }
@@ -2359,7 +2697,6 @@ function saveWordFavorite(payload) {
   var rowsValue = rangeInfo.rows > 0 ? rangeInfo.rows : '';
   var meta = getMetaSheet();
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-  var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
   var createdAt = now;
   if (normalizedId) {
     var existing = findMetaById(normalizedId);
@@ -2380,6 +2717,15 @@ function saveWordFavorite(payload) {
       colsValue = existing.data[META_INDEX.cols] || colsValue;
       rowsValue = existing.data[META_INDEX.rows] || rowsValue;
     }
+    config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
+      context: config.metadata && config.metadata.context ? config.metadata.context : 'crearTexto',
+      tabId: 'createTab',
+      action: 'wordFavorite',
+      sourceType: 'wordFavorite',
+      sourceId: normalizedId,
+      referenceId: normalizedId
+    });
+    var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
     meta
       .getRange(existing.row, 1, 1, META_HEADERS.length)
       .setValues([[normalizedId, name, rangeValue, description, sheetNameValue, colsValue, rowsValue, createdAt, now, '', '', 'FALSE', 'wordFavorite', storedConfig]]);
@@ -2388,7 +2734,16 @@ function saveWordFavorite(payload) {
     if (nameConflict) {
       throw new Error('Ya existe un texto favorito con ese nombre.');
     }
-    normalizedId = 'wordFavorite:' + Utilities.getUuid();
+    normalizedId = 'TextoGuardado:' + Utilities.getUuid();
+    config.metadata = ensureFavoriteMetadataIdentifiers(config.metadata, {
+      context: config.metadata && config.metadata.context ? config.metadata.context : 'crearTexto',
+      tabId: 'createTab',
+      action: 'wordFavorite',
+      sourceType: 'wordFavorite',
+      sourceId: normalizedId,
+      referenceId: normalizedId
+    });
+    var storedConfig = stringifyJsonValue({ kind: 'wordFavorite', version: config.version || 1, config: config });
     meta.appendRow([
       normalizedId,
       name,
@@ -3609,7 +3964,7 @@ function applyTableFormatting(tableId, rangeA1, name, description, headers, styl
   var id = tableId && tableId.trim() !== '' ? tableId.trim() : '';
   var isNew = false;
   if (doSave && !id) {
-    id = Utilities.getUuid();
+    id = 'TablaGuardada:' + Utilities.getUuid();
     isNew = true;
   }
 
@@ -4916,6 +5271,11 @@ function prepareReportFavoriteStorage(payload, options) {
   }
   var opts = options || {};
   var editingId = normalizeMetaId(opts.editingId);
+  var defaultTabId = opts.tabId ? String(opts.tabId).trim() : 'aiTab';
+  var baseMetadata = normalizeFavoriteMetadata(opts.existingMetadata, {
+    fallbackType: 'tab',
+    fallbackId: defaultTabId
+  });
   var missing = [];
   var name = payload.name ? String(payload.name).trim() : '';
   if (!name) {
@@ -5133,6 +5493,21 @@ function prepareReportFavoriteStorage(payload, options) {
   });
   var quantityMapForOrder = buildFeatureQuantityMap(normalizedFeatureDetails);
   var normalizedFeatureOrder = normalizeFeatureOrderEntries(payload.featureOrder, quantityMapForOrder);
+  var incomingMetadata = normalizeFavoriteMetadata(payload.metadata, {
+    fallbackType: baseMetadata.type || 'tab',
+    fallbackId: baseMetadata.id || defaultTabId
+  });
+  var mergedMetadata = {};
+  Object.keys(baseMetadata).forEach(function(key) {
+    mergedMetadata[key] = baseMetadata[key];
+  });
+  Object.keys(incomingMetadata).forEach(function(key) {
+    mergedMetadata[key] = incomingMetadata[key];
+  });
+  var normalizedMetadata = normalizeFavoriteMetadata(mergedMetadata, {
+    fallbackType: incomingMetadata.type || baseMetadata.type || 'tab',
+    fallbackId: incomingMetadata.id || baseMetadata.id || defaultTabId
+  });
   return {
     name: name,
     config: {
@@ -5152,16 +5527,25 @@ function prepareReportFavoriteStorage(payload, options) {
       emails: normalizedEmails,
       phones: normalizedPhones,
       customization: customization,
-      savedAt: ''
+      savedAt: '',
+      metadata: normalizedMetadata
     }
   };
 }
 
 function saveReportFavorite(payload) {
-  var prepared = prepareReportFavoriteStorage(payload, {});
+  var prepared = prepareReportFavoriteStorage(payload, { tabId: 'aiTab' });
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   prepared.config.savedAt = now;
   var favoriteId = 'reportFavorite:' + Utilities.getUuid();
+  prepared.config.metadata = ensureFavoriteMetadataIdentifiers(prepared.config.metadata, {
+    context: prepared.config.metadata && prepared.config.metadata.context ? prepared.config.metadata.context : 'panelIaReport',
+    tabId: 'aiTab',
+    action: 'reportFavorite',
+    sourceType: 'report',
+    sourceId: favoriteId,
+    referenceId: favoriteId
+  });
   var sheet = getMetaSheet();
   sheet.appendRow([
     favoriteId,
@@ -5195,10 +5579,35 @@ function updateReportFavorite(favoriteId, payload) {
   if (resolveMetaRecordType(entry.data) !== 'reportFavorite') {
     throw new Error('El elemento seleccionado no es un reporte favorito.');
   }
-  var prepared = prepareReportFavoriteStorage(payload, { editingId: normalizedId });
+  var storedConfig = parseJsonValue(entry.data[META_INDEX.reportConfig], {});
+  var existingMetadata = null;
+  if (storedConfig && typeof storedConfig === 'object') {
+    if (Object.prototype.hasOwnProperty.call(storedConfig, 'metadata')) {
+      existingMetadata = storedConfig.metadata;
+    }
+    if ((!existingMetadata || typeof existingMetadata !== 'object') && storedConfig.config) {
+      var nestedConfig = storedConfig.config;
+      if (nestedConfig && typeof nestedConfig === 'object' && Object.prototype.hasOwnProperty.call(nestedConfig, 'metadata')) {
+        existingMetadata = nestedConfig.metadata;
+      }
+    }
+  }
+  var prepared = prepareReportFavoriteStorage(payload, {
+    editingId: normalizedId,
+    existingMetadata: existingMetadata,
+    tabId: 'aiTab'
+  });
   var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   prepared.config.savedAt = now;
   var createdAt = entry.data[META_INDEX.createdAt] || now;
+  prepared.config.metadata = ensureFavoriteMetadataIdentifiers(prepared.config.metadata, {
+    context: prepared.config.metadata && prepared.config.metadata.context ? prepared.config.metadata.context : 'panelIaReport',
+    tabId: 'aiTab',
+    action: 'reportFavorite',
+    sourceType: 'report',
+    sourceId: normalizedId,
+    referenceId: normalizedId
+  });
   getMetaSheet()
     .getRange(entry.row, 1, 1, META_HEADERS.length)
     .setValues([

@@ -11,6 +11,7 @@ let editSavedTextsCollapsed = false;
 let editFavoriteSaving = false;
 let editWordFavoritesCache = [];
 let editWordFavoritesLoadingPromise = null;
+let editFavoriteName = '';
 
 function getCurrentEditSavedTextSelection() {
         const select = document.getElementById('editSavedTexts');
@@ -32,12 +33,21 @@ function normalizeEditWordFavoriteList(entries) {
             if (!entry || !entry.id) {
               return null;
             }
+            let metadata = {};
+            if (entry.metadata && typeof entry.metadata === 'object') {
+              try {
+                metadata = JSON.parse(JSON.stringify(entry.metadata));
+              } catch (err) {
+                metadata = Object.assign({}, entry.metadata);
+              }
+            }
             return {
               id: String(entry.id),
               name: entry.name ? String(entry.name) : String(entry.id),
               description: entry.description ? String(entry.description) : '',
               createdAt: entry.createdAt || '',
-              updatedAt: entry.updatedAt || ''
+              updatedAt: entry.updatedAt || '',
+              metadata: metadata
             };
           })
           .filter(function(item) {
@@ -255,7 +265,11 @@ function createEditSavedItem(entry, selected, disabled) {
 
         const label = document.createElement('span');
         label.className = 'edit-saved-label';
-        label.textContent = entry.name || entry.id;
+        const baseLabel = entry.name || entry.id;
+        const metadataLabel = typeof formatFavoriteMetadataLabel === 'function'
+          ? formatFavoriteMetadataLabel(entry && entry.metadata)
+          : '';
+        label.textContent = metadataLabel ? baseLabel + ' • ' + metadataLabel : baseLabel;
         item.appendChild(label);
 
         const btn = document.createElement('button');
@@ -301,7 +315,11 @@ function createEditSavedTextItem(entry, selected, disabled) {
 
         const label = document.createElement('span');
         label.className = 'edit-saved-label';
-        label.textContent = entry && entry.name ? entry.name : entryId || 'Texto sin título';
+        const baseLabel = entry && entry.name ? entry.name : entryId || 'Texto sin título';
+        const metadataLabel = typeof formatFavoriteMetadataLabel === 'function'
+          ? formatFavoriteMetadataLabel(entry && entry.metadata)
+          : '';
+        label.textContent = metadataLabel ? baseLabel + ' • ' + metadataLabel : baseLabel;
         item.appendChild(label);
 
         const btn = document.createElement('button');
@@ -431,7 +449,11 @@ function renderEditSavedTextsList(entries, config) {
           }
           const option = document.createElement('option');
           option.value = String(entry.id);
-          option.textContent = entry.name || entry.id;
+          const baseLabel = entry.name || entry.id;
+          const metadataLabel = typeof formatFavoriteMetadataLabel === 'function'
+            ? formatFavoriteMetadataLabel(entry.metadata)
+            : '';
+          option.textContent = metadataLabel ? baseLabel + ' • ' + metadataLabel : baseLabel;
           selectEl.appendChild(option);
         });
         if (selectedValue) {
@@ -871,13 +893,55 @@ async function handleEditSaveFavorite() {
           descInput.value = validation.values.description;
         }
         const config = collectEditFavoriteConfig(validation);
+        const promptFn = typeof promptFavoriteName === 'function' ? promptFavoriteName : window.promptFavoriteName;
+        const favoriteName = promptFn
+          ? await promptFn({
+              title: 'Guardar favorito',
+              label: 'Nombre del favorito',
+              placeholder: 'Ej. Ajustes de tabla de ventas',
+              confirmText: 'Guardar',
+              defaultValue: editFavoriteName,
+              maxLength: 140
+            })
+          : null;
+        if (!favoriteName) {
+          return;
+        }
         const payload = {
           id: '',
-          name: config.name || validation.values.name,
+          name: favoriteName,
           description: validation.values.description || config.description || '',
           config: config,
           kind: 'tableEditFavorite',
-          origin: 'tableEdit'
+          origin: 'tableEdit',
+          metadata:
+            typeof buildFavoriteMetadata === 'function'
+              ? buildFavoriteMetadata('editTab', {
+                  tabId: 'editTab',
+                  sourceType: 'table',
+                  action: 'tableEditFavorite',
+                  context: 'editarTabla',
+                  sourceId: editingId || '',
+                  favoriteId: editingId || '',
+                  tableId: editingId || '',
+                  tableName: validation.values.name
+                })
+              : (function() {
+                  const suffix =
+                    typeof generateMetadataGuidSuffix === 'function'
+                      ? generateMetadataGuidSuffix()
+                      : String(Date.now());
+                  const baseId = 'EditarTablaTC:' + suffix;
+                  return {
+                    type: 'EditarTablaTC:' + suffix,
+                    id: baseId,
+                    tabId: 'editTab',
+                    tab: 'editTab',
+                    sourceType: 'table',
+                    action: 'tableEditFavorite',
+                    context: 'editarTabla'
+                  };
+                })()
         };
         editFavoriteSaving = true;
         updateEditFavoriteButtonState();
@@ -895,6 +959,7 @@ async function handleEditSaveFavorite() {
           } else if (typeof refreshTableFavorites === 'function') {
             refreshTableFavorites({ selectId: savedId, silent: true }).catch(function() {});
           }
+          editFavoriteName = favoriteName;
           if (typeof notifySavedActionMutation === 'function') {
             notifySavedActionMutation({
               id: savedId,
@@ -952,11 +1017,13 @@ function resetEditTabView(options) {
           }
           if (opts.clearEditingId !== false) {
             editingId = '';
+            editFavoriteName = '';
           }
           setEditSavedListCollapsed(false);
           setEditSavedTextsCollapsed(false);
         } else if (opts.clearEditingId) {
           editingId = '';
+          editFavoriteName = '';
         }
         editHeaders = [];
         editRangeInfo = null;
@@ -1191,6 +1258,7 @@ function populateEditForm(meta) {
         lastSavedTableId = normalizedMeta.id;
         clearEditFormatDirty();
         editingId = normalizedMeta.id;
+        editFavoriteName = '';
 
         const rangeSection = document.getElementById('editRangeSection');
         const metaSection = document.getElementById('editMetaSection');

@@ -58,6 +58,21 @@ function filterSavedActionsForTheme(actions, theme) {
   });
 }
 
+function formatActionMetadataLabel(metadata) {
+  if (typeof formatFavoriteMetadataLabel === 'function') {
+    return formatFavoriteMetadataLabel(metadata);
+  }
+  if (!metadata || typeof metadata !== 'object') {
+    return '';
+  }
+  const id = metadata.id ? String(metadata.id).trim() : '';
+  const type = metadata.type ? String(metadata.type).trim() : '';
+  if (id && type && id !== type) {
+    return type + ' • ' + id;
+  }
+  return id || type || '';
+}
+
 function inferFavoriteTypeFromId(id) {
   if (!id) {
     return '';
@@ -799,6 +814,15 @@ function normalizeFavoriteActionEntry(action) {
     createdAt: action.createdAt ? String(action.createdAt) : '',
     updatedAt: action.updatedAt ? String(action.updatedAt) : ''
   };
+  if (action.metadata && typeof action.metadata === 'object') {
+    try {
+      normalized.metadata = JSON.parse(JSON.stringify(action.metadata));
+    } catch (err) {
+      normalized.metadata = Object.assign({}, action.metadata);
+    }
+  } else {
+    normalized.metadata = {};
+  }
   if (type === 'reportFavorite') {
     normalized.format = action.format ? String(action.format) : '';
     normalized.fileName = action.fileName ? String(action.fileName) : '';
@@ -1062,7 +1086,9 @@ function renderSavedActionsSelect(actions, selectedId, options) {
       const option = document.createElement('option');
       option.value = action.id;
       const label = action.name ? action.name : 'Favorito sin nombre';
-      option.textContent = label + ' • ' + getActionTypeLabel(action.type);
+      const typeLabel = getActionTypeLabel(action.type);
+      const metadataLabel = formatActionMetadataLabel(action.metadata);
+      option.textContent = label + ' • ' + typeLabel + (metadataLabel ? ' • ' + metadataLabel : '');
       const tooltip = buildSavedActionTooltip(action);
       if (tooltip) {
         option.title = tooltip;
@@ -1445,6 +1471,12 @@ function buildActionDetailCard(action, options) {
   const typeBadge = document.createElement('span');
   typeBadge.textContent = getActionTypeLabel(action && action.type);
   meta.appendChild(typeBadge);
+  const metadataLabel = formatActionMetadataLabel(action && action.metadata);
+  if (metadataLabel) {
+    const metadataBadge = document.createElement('span');
+    metadataBadge.textContent = metadataLabel;
+    meta.appendChild(metadataBadge);
+  }
   if (action && action.updatedAt) {
     const updated = document.createElement('span');
     updated.textContent = 'Actualizado: ' + action.updatedAt;
@@ -1568,8 +1600,15 @@ function buildSavedActionTooltip(action) {
   }
   const parts = [];
   const typeLabel = getActionTypeLabel(action.type);
+  if (typeLabel) {
+    parts.push('Tipo: ' + typeLabel);
+  }
   if (action.description) {
     parts.push(String(action.description));
+  }
+  const metadataLabel = formatActionMetadataLabel(action.metadata);
+  if (metadataLabel) {
+    parts.push('Metadata: ' + metadataLabel);
   }
   if (action.type === 'reportFavorite') {
     const summary = buildReportFavoriteSummary(action);

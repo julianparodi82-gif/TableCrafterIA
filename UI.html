@@ -330,6 +330,24 @@
         opacity: 1;
         transform: translateY(0);
       }
+      .tc-tooltip-target.tc-tooltip-target--below[data-tooltip]::after {
+        bottom: auto;
+        top: calc(100% + 8px);
+      }
+      .tc-tooltip-target.tc-tooltip-target--below[data-tooltip]::before {
+        bottom: auto;
+        top: calc(100% + 4px);
+        border-color: transparent transparent var(--tc-tooltip-bg) transparent;
+      }
+      .tc-tooltip-target.tc-tooltip-target--below.tc-tooltip-target--center[data-tooltip]::after {
+        left: 50%;
+        transform: translate(-50%, 4px);
+        text-align: center;
+      }
+      .tc-tooltip-target.tc-tooltip-target--below.tc-tooltip-target--center[data-tooltip]::before {
+        left: 50%;
+        transform: translateX(-50%);
+      }
       .ai-report-order-label.tc-tooltip-target[data-tooltip]::after {
         bottom: auto;
         top: calc(100% + 8px);
@@ -3980,6 +3998,33 @@
         font-size: 14px;
         white-space: pre-wrap;
       }
+      .tc-modal-message.tc-modal-message--form {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        gap: 12px;
+        margin-bottom: 16px;
+        color: var(--tc-text);
+        white-space: normal;
+      }
+      .tc-modal-message.tc-modal-message--form label {
+        font-weight: 600;
+        color: var(--tc-text);
+      }
+      .tc-modal-input {
+        border: 1px solid #D0D5DD;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: var(--tc-text);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      .tc-modal-input:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 2px rgba(102, 214, 142, 0.35);
+      }
       .tc-modal-actions {
         display: flex;
         justify-content: center;
@@ -4051,7 +4096,11 @@
       <div class="container">
       <div class="theme-header">
         <h2 id="appTitle"><?!= __isWordcrafter ? 'WordCrafterAI' : 'TableCrafterAI' ?></h2>
-        <label class="theme-toggle" for="themeToggle">
+        <label
+          class="theme-toggle tc-tooltip-target tc-tooltip-target--below tc-tooltip-target--center"
+          for="themeToggle"
+          data-tooltip="(Alt + Intro)"
+        >
           <input
             type="checkbox"
             id="themeToggle"
@@ -4101,7 +4150,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--panel active"
             data-tab="aiTab"
             data-themes="table word"
-            data-tooltip="Gestiona consultas, reportes y contactos asistidos por IA."
+            data-tooltip="(Alt + 1) Gestiona consultas, reportes y contactos asistidos por IA."
           >
             Panel IA
           </button>
@@ -4109,7 +4158,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--edit"
             data-tab="editTab"
             data-themes="table word"
-            data-tooltip="Modifica tablas guardadas y ajusta sus estilos."
+            data-tooltip="(Alt + 2) Modifica tablas guardadas y ajusta sus estilos."
           >
             Editar tabla
           </button>
@@ -4117,7 +4166,7 @@
             class="tab-btn tab-btn--tooltip-below tab-btn--create"
             data-tab="createTab"
             data-themes="table word"
-            data-tooltip="Crea nuevas tablas con ayuda de IA y formatos personalizados."
+            data-tooltip="(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados."
           >
             Crear tabla
           </button>
@@ -4127,7 +4176,7 @@
             class="tab-btn tab-btn--triggers"
             data-tab="triggersTab"
             data-themes="table word"
-            data-tooltip="Configura automatizaciones que mantengan tus datos al día."
+            data-tooltip="(Alt + 4) Configura automatizaciones que mantengan tus datos al día."
           >
             Triggers
           </button>
@@ -4135,7 +4184,7 @@
             class="tab-btn tab-btn--actions"
             data-tab="actionsTab"
             data-themes="table word"
-            data-tooltip="Accede y edita reportes, tablas y preguntas guardadas."
+            data-tooltip="(Alt + 5) Accede y edita reportes, tablas y preguntas guardadas."
           >
             Acciones
           </button>
@@ -4160,7 +4209,14 @@
                 <strong>Rango activo:</strong> <span id="rangeLabel">—</span>
               </div>
               <div class="range-actions">
-                <button id="refreshRangeBtn" class="btn-secondary" title="Actualizar rango activo">Actualizar</button>
+                <button
+                  id="refreshRangeBtn"
+                  class="btn-secondary tc-tooltip-target"
+                  title="Actualizar rango activo"
+                  data-tooltip="(Alt + R)"
+                >
+                  Actualizar
+                </button>
               </div>
             </div>
             <label for="rangeInput" style="margin-top:12px;">Rango a utilizar</label>

@@ -1334,14 +1334,30 @@ function openModal(options) {
         overlay.dataset.variant = variant;
         icon.textContent = options.icon || (variant === 'error' ? '⚠️' : variant === 'success' ? '✅' : variant === 'warning' ? '⚠️' : 'ℹ️');
         titleEl.textContent = options.title || defaultTitleForVariant(variant);
-        messageEl.textContent = options.message || '';
+        let contentCleanup = null;
+        if (typeof options.renderContent === 'function') {
+          messageEl.innerHTML = '';
+          try {
+            const maybeCleanup = options.renderContent(messageEl);
+            if (typeof maybeCleanup === 'function') {
+              contentCleanup = maybeCleanup;
+            }
+          } catch (err) {
+            console.log('No se pudo renderizar el contenido personalizado del modal.', err);
+            messageEl.textContent = options.message || '';
+          }
+        } else if (Object.prototype.hasOwnProperty.call(options, 'messageHtml')) {
+          messageEl.innerHTML = options.messageHtml || '';
+        } else {
+          messageEl.textContent = options.message || '';
+        }
 
         primaryBtn.textContent = options.primaryText || 'Aceptar';
-        secondaryBtn.textContent = options.secondaryText || 'Cancelar';
-
         if (options.secondaryText) {
+          secondaryBtn.textContent = options.secondaryText;
           secondaryBtn.style.display = 'inline-flex';
         } else {
+          secondaryBtn.textContent = 'Cancelar';
           secondaryBtn.style.display = 'none';
         }
 
@@ -1349,11 +1365,34 @@ function openModal(options) {
 
         return new Promise(function(resolve) {
           function cleanup(result) {
+            if (typeof contentCleanup === 'function') {
+              try {
+                contentCleanup();
+              } catch (err) {
+                console.log('No se pudo limpiar el contenido personalizado del modal.', err);
+              }
+            }
+            messageEl.classList.remove('tc-modal-message--form');
+            messageEl.innerHTML = '';
+            messageEl.textContent = '';
             overlay.classList.remove('show');
             overlay.setAttribute('aria-hidden', 'true');
             document.removeEventListener('keydown', keyListener, true);
             primaryBtn.removeEventListener('click', primaryHandler);
             secondaryBtn.removeEventListener('click', secondaryHandler);
+            if (typeof options.onClose === 'function') {
+              try {
+                options.onClose({
+                  result: result,
+                  overlay: overlay,
+                  primaryBtn: primaryBtn,
+                  secondaryBtn: secondaryBtn,
+                  messageEl: messageEl
+                });
+              } catch (err) {
+                console.log('No se pudo ejecutar onClose del modal.', err);
+              }
+            }
             if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
               previouslyFocused.focus();
             }
@@ -1400,6 +1439,19 @@ function openModal(options) {
           primaryBtn.addEventListener('click', primaryHandler);
           secondaryBtn.addEventListener('click', secondaryHandler);
 
+          if (typeof options.onOpen === 'function') {
+            try {
+              options.onOpen({
+                overlay: overlay,
+                primaryBtn: primaryBtn,
+                secondaryBtn: secondaryBtn,
+                messageEl: messageEl
+              });
+            } catch (err) {
+              console.log('No se pudo ejecutar onOpen del modal.', err);
+            }
+          }
+
           requestAnimationFrame(function() {
             primaryBtn.focus();
           });
@@ -1436,6 +1488,369 @@ function showConfirmModal(message, opts) {
         return openModal(options).then(function(result) {
           return result === 'primary';
         });
+      }
+
+
+
+
+
+
+async function promptFavoriteName(options) {
+        const opts = options || {};
+        const defaultValue = opts.defaultValue ? String(opts.defaultValue).trim() : '';
+        const labelText = opts.label || 'Nombre del favorito';
+        const placeholder = opts.placeholder || 'Ej. Favorito personalizado';
+        const title = opts.title || 'Guardar favorito';
+        const confirmText = opts.confirmText || 'Guardar';
+        const cancelText = opts.cancelText === '' ? '' : opts.cancelText || 'Cancelar';
+        const allowEscape = opts.allowEscape !== false;
+        const maxLength = typeof opts.maxLength === 'number' && opts.maxLength > 0 ? opts.maxLength : 120;
+        let latestValue = defaultValue;
+        let inputEl = null;
+        let primaryBtnRef = null;
+        let inputListener = null;
+        let keyListener = null;
+
+        function syncPrimaryState() {
+          if (primaryBtnRef) {
+            primaryBtnRef.disabled = latestValue.length === 0;
+          }
+        }
+
+        const result = await openModal({
+          title: title,
+          variant: opts.variant || 'info',
+          primaryText: confirmText,
+          secondaryText: cancelText,
+          allowEscape: allowEscape,
+          renderContent: function(container) {
+            container.textContent = '';
+            container.classList.add('tc-modal-message--form');
+            const inputId = opts.inputId || 'tcFavoriteNameInput';
+            const label = document.createElement('label');
+            label.setAttribute('for', inputId);
+            label.textContent = labelText;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = inputId;
+            input.className = 'tc-modal-input';
+            input.placeholder = placeholder;
+            input.value = defaultValue;
+            input.maxLength = maxLength;
+            container.appendChild(label);
+            container.appendChild(input);
+            inputEl = input;
+
+            inputListener = function() {
+              latestValue = input.value.trim();
+              syncPrimaryState();
+            };
+            input.addEventListener('input', inputListener);
+
+            keyListener = function(evt) {
+              if (evt.key === 'Enter' && !evt.shiftKey) {
+                evt.preventDefault();
+                if (primaryBtnRef && !primaryBtnRef.disabled) {
+                  primaryBtnRef.click();
+                }
+              }
+            };
+            input.addEventListener('keydown', keyListener);
+
+            return function() {
+              container.classList.remove('tc-modal-message--form');
+              if (inputListener) {
+                input.removeEventListener('input', inputListener);
+                inputListener = null;
+              }
+              if (keyListener) {
+                input.removeEventListener('keydown', keyListener);
+                keyListener = null;
+              }
+              inputEl = null;
+            };
+          },
+          onOpen: function(api) {
+            primaryBtnRef = api && api.primaryBtn ? api.primaryBtn : null;
+            syncPrimaryState();
+            if (inputEl) {
+              window.setTimeout(function() {
+                inputEl.focus();
+                inputEl.select();
+              }, 0);
+            }
+          },
+          onClose: function() {
+            primaryBtnRef = null;
+          }
+        });
+
+        if (result === 'primary' && latestValue) {
+          return latestValue;
+        }
+        return null;
+      }
+
+
+
+
+const FAVORITE_METADATA_CONTEXT_RULES = Object.freeze({
+        panelIaReport: { idPrefix: 'AccionesTC', code: '01', typePrefix: 'AccionesTC' },
+        panelIaAsk: { idPrefix: 'AccionesTC', code: '02', typePrefix: 'AccionesTC' },
+        panelIaWordLength: { idPrefix: 'AccionesWC', code: '01', typePrefix: 'AccionesWC' },
+        panelIaWordRewrite: { idPrefix: 'AccionesWC', code: '02', typePrefix: 'AccionesWC' },
+        panelIaWordTone: { idPrefix: 'AccionesWC', code: '03', typePrefix: 'AccionesWC' },
+        panelIaWordSummary: { idPrefix: 'AccionesWC', code: '04', typePrefix: 'AccionesWC' },
+        crearTabla: { idPrefix: 'CrearTablaTC', typePrefix: 'CrearTablaTC' },
+        editarTabla: { idPrefix: 'EditarTablaTC', typePrefix: 'EditarTablaTC' },
+        crearTexto: { idPrefix: 'CrearTextoWC', typePrefix: 'CrearTextoWC' },
+        editarTexto: { idPrefix: 'EditarTextoWC', typePrefix: 'EditarTextoWC' }
+      });
+
+function generateMetadataGuidSuffix(reference) {
+        const raw = reference ? String(reference).trim() : '';
+        if (raw) {
+          const delimiterIndex = raw.indexOf(':');
+          if (delimiterIndex !== -1 && delimiterIndex < raw.length - 1) {
+            const candidate = raw.substring(delimiterIndex + 1).trim();
+            if (candidate) {
+              return candidate;
+            }
+          }
+          const uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+          if (uuidMatch && uuidMatch[0]) {
+            return uuidMatch[0];
+          }
+        }
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).slice(2, 12);
+        return (timestamp + random).replace(/[^a-z0-9-]/gi, '').slice(0, 32) || timestamp;
+      }
+
+function normalizeFavoriteMetadataContextKey(context) {
+        if (!context) {
+          return '';
+        }
+        const text = String(context).trim();
+        if (!text) {
+          return '';
+        }
+        const normalized = text.toLowerCase();
+        if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('report') !== -1) {
+          return 'panelIaReport';
+        }
+        if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('ask') !== -1) {
+          return 'panelIaAsk';
+        }
+        if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('length') !== -1 || normalized.indexOf('longitud') !== -1)) {
+          return 'panelIaWordLength';
+        }
+        if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('rewrite') !== -1 || normalized.indexOf('reformula') !== -1)) {
+          return 'panelIaWordRewrite';
+        }
+        if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('tono') !== -1) {
+          return 'panelIaWordTone';
+        }
+        if (normalized.indexOf('panelia') !== -1 && (normalized.indexOf('summary') !== -1 || normalized.indexOf('resumen') !== -1)) {
+          return 'panelIaWordSummary';
+        }
+        if (normalized.indexOf('edit') !== -1 && normalized.indexOf('tabla') !== -1) {
+          return 'editarTabla';
+        }
+        if (normalized.indexOf('create') !== -1 && normalized.indexOf('tabla') !== -1) {
+          return 'crearTabla';
+        }
+        if (normalized.indexOf('edit') !== -1 && normalized.indexOf('texto') !== -1) {
+          return 'editarTexto';
+        }
+        if (normalized.indexOf('crear') !== -1 && normalized.indexOf('texto') !== -1) {
+          return 'crearTexto';
+        }
+        if (normalized.indexOf('panelia') !== -1 && normalized.indexOf('texto') !== -1) {
+          return 'panelIaWordRewrite';
+        }
+        return text;
+      }
+
+function resolveFavoriteMetadataRule(tabId, extras) {
+        const normalizedTab = tabId ? String(tabId).trim() : '';
+        const action = extras && extras.action ? String(extras.action).trim() : '';
+        const contextHint = extras && extras.context ? String(extras.context).trim() : '';
+        const sourceType = extras && extras.sourceType ? String(extras.sourceType).trim() : '';
+        const theme = extras && extras.theme ? String(extras.theme).trim() : '';
+        const normalizedContext = normalizeFavoriteMetadataContextKey(contextHint);
+        if (normalizedContext && FAVORITE_METADATA_CONTEXT_RULES[normalizedContext]) {
+          return { key: normalizedContext, rule: FAVORITE_METADATA_CONTEXT_RULES[normalizedContext] };
+        }
+        if (normalizedTab === 'aiTab') {
+          if (action === 'reportFavorite' || sourceType === 'report') {
+            return { key: 'panelIaReport', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaReport };
+          }
+          if (action === 'ask') {
+            return { key: 'panelIaAsk', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaAsk };
+          }
+          if (action === 'word-length') {
+            return { key: 'panelIaWordLength', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaWordLength };
+          }
+          if (action === 'word-rewrite') {
+            return { key: 'panelIaWordRewrite', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaWordRewrite };
+          }
+          if (action === 'word-tone') {
+            return { key: 'panelIaWordTone', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaWordTone };
+          }
+          if (action === 'word-summary') {
+            return { key: 'panelIaWordSummary', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaWordSummary };
+          }
+          if (theme === 'word' || sourceType === 'wordFavorite') {
+            return { key: 'panelIaWordRewrite', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaWordRewrite };
+          }
+          return { key: 'panelIaReport', rule: FAVORITE_METADATA_CONTEXT_RULES.panelIaReport };
+        }
+        if (normalizedTab === 'editTab') {
+          if (action === 'tableEditFavorite' || sourceType === 'tableEdit') {
+            return { key: 'editarTabla', rule: FAVORITE_METADATA_CONTEXT_RULES.editarTabla };
+          }
+          if (action === 'wordFavorite' || sourceType === 'wordFavorite') {
+            return { key: 'editarTexto', rule: FAVORITE_METADATA_CONTEXT_RULES.editarTexto };
+          }
+          return { key: 'editarTabla', rule: FAVORITE_METADATA_CONTEXT_RULES.editarTabla };
+        }
+        if (normalizedTab === 'createTab') {
+          if (action === 'tableFavorite' || sourceType === 'table') {
+            return { key: 'crearTabla', rule: FAVORITE_METADATA_CONTEXT_RULES.crearTabla };
+          }
+          if (action === 'wordFavorite' || sourceType === 'wordFavorite' || theme === 'word') {
+            return { key: 'crearTexto', rule: FAVORITE_METADATA_CONTEXT_RULES.crearTexto };
+          }
+          return { key: 'crearTabla', rule: FAVORITE_METADATA_CONTEXT_RULES.crearTabla };
+        }
+        if (normalizedContext && FAVORITE_METADATA_CONTEXT_RULES[normalizedContext]) {
+          return { key: normalizedContext, rule: FAVORITE_METADATA_CONTEXT_RULES[normalizedContext] };
+        }
+        return { key: '', rule: null };
+      }
+
+function applyMetadataRule(metadata, ruleInfo, extras) {
+        if (!ruleInfo || !ruleInfo.rule) {
+          return metadata;
+        }
+        const result = metadata;
+        const rule = ruleInfo.rule;
+        const prefix = rule.idPrefix;
+        const typePrefix = rule.typePrefix || prefix;
+        const idPrefixWithDelimiter = prefix ? prefix + ':' : '';
+        const typePrefixWithDelimiter = typePrefix ? typePrefix + ':' : '';
+        let suffix = '';
+        if (rule.code) {
+          suffix = rule.code;
+        } else if (result.id && prefix && result.id.indexOf(idPrefixWithDelimiter) === 0) {
+          const existing = result.id.substring(idPrefixWithDelimiter.length);
+          suffix = existing || generateMetadataGuidSuffix(result.id);
+        } else if (prefix) {
+          const sourceId = extras && extras.sourceId ? extras.sourceId : '';
+          const favoriteId = extras && extras.favoriteId ? extras.favoriteId : '';
+          const fallback = sourceId || favoriteId || Date.now();
+          suffix = generateMetadataGuidSuffix(fallback);
+        }
+        if (prefix) {
+          result.id = idPrefixWithDelimiter + suffix;
+        }
+        if (typePrefix) {
+          if (!suffix && result.type && result.type.indexOf(typePrefixWithDelimiter) === 0) {
+            suffix = result.type.substring(typePrefixWithDelimiter.length) || suffix;
+          }
+          const normalizedSuffix = suffix || generateMetadataGuidSuffix(result.type || result.id || '');
+          result.type = typePrefixWithDelimiter + normalizedSuffix;
+        }
+        if (ruleInfo.key) {
+          result.context = ruleInfo.key;
+        }
+        return result;
+      }
+
+function buildFavoriteMetadata(tabId, extras) {
+        const trimmedTabId = tabId ? String(tabId).trim() : '';
+        const metadata = {
+          type: 'tab',
+          id: trimmedTabId
+        };
+        const additional = extras && typeof extras === 'object' ? extras : {};
+        const normalizedExtras = {};
+        Object.keys(additional).forEach(function(key) {
+          const value = additional[key];
+          if (value === null || value === undefined) {
+            return;
+          }
+          normalizedExtras[key] = typeof value === 'string' ? value.trim() : String(value).trim();
+        });
+        if (normalizedExtras.type) {
+          metadata.type = normalizedExtras.type;
+        }
+        if (normalizedExtras.id) {
+          metadata.id = normalizedExtras.id;
+        }
+        if (normalizedExtras.tabId) {
+          metadata.id = normalizedExtras.tabId;
+          metadata.tabId = normalizedExtras.tabId;
+        }
+        if (normalizedExtras.tab && !metadata.tab) {
+          metadata.tab = normalizedExtras.tab;
+        }
+        ['sourceId', 'sourceType', 'action', 'context', 'theme', 'favoriteId'].forEach(function(key) {
+          if (normalizedExtras[key]) {
+            metadata[key] = normalizedExtras[key];
+          }
+        });
+        Object.keys(normalizedExtras).forEach(function(key) {
+          if (
+            key === 'type' ||
+            key === 'id' ||
+            key === 'sourceId' ||
+            key === 'sourceType' ||
+            key === 'action' ||
+            key === 'context' ||
+            key === 'tab' ||
+            key === 'tabId' ||
+            key === 'theme' ||
+            key === 'favoriteId'
+          ) {
+            return;
+          }
+          metadata[key] = normalizedExtras[key];
+        });
+        if (!metadata.type) {
+          metadata.type = 'tab';
+        }
+        if (!metadata.id) {
+          metadata.id = trimmedTabId;
+        }
+        if (!metadata.tabId && metadata.id) {
+          metadata.tabId = metadata.id;
+        }
+        if (!metadata.tab && metadata.id) {
+          metadata.tab = metadata.id;
+        }
+        const ruleInfo = resolveFavoriteMetadataRule(trimmedTabId, normalizedExtras);
+        applyMetadataRule(metadata, ruleInfo, normalizedExtras);
+        if (!metadata.context && ruleInfo && ruleInfo.key) {
+          metadata.context = ruleInfo.key;
+        }
+        return metadata;
+      }
+
+function formatFavoriteMetadataLabel(metadata) {
+        if (!metadata || typeof metadata !== 'object') {
+          return '';
+        }
+        const id = metadata.id ? String(metadata.id).trim() : '';
+        const type = metadata.type ? String(metadata.type).trim() : '';
+        if (id && type && id !== type) {
+          return type + ' • ' + id;
+        }
+        return id || type || '';
       }
 
 
@@ -3386,29 +3801,29 @@ function playSidebarAnimation() {
           if (tabButtonRefs.edit) {
             tabButtonRefs.edit.textContent = isWord ? 'Editar Texto' : 'Editar tabla';
             tabButtonRefs.edit.dataset.tooltip = isWord
-              ? 'Modifica textos guardados y ajusta su estilo.'
-              : 'Modifica tablas guardadas y ajusta sus estilos.';
+              ? '(Alt + 2) Modifica textos guardados y ajusta su estilo.'
+              : '(Alt + 2) Modifica tablas guardadas y ajusta sus estilos.';
           }
           if (tabButtonRefs.create) {
             tabButtonRefs.create.textContent = isWord ? 'Crear Texto' : 'Crear tabla';
             tabButtonRefs.create.dataset.tooltip = isWord
-              ? 'Genera nuevos textos con apoyo de IA y plantillas personalizadas.'
-              : 'Crea nuevas tablas con ayuda de IA y formatos personalizados.';
+              ? '(Alt + 3)\nGenera nuevos textos con apoyo de IA y plantillas personalizadas.'
+              : '(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados.';
           }
           if (tabButtonRefs.triggers) {
             tabButtonRefs.triggers.dataset.tooltip = isWord
-              ? 'Configura automatizaciones que mantengan tus contenidos al día.'
-              : 'Configura automatizaciones que mantengan tus datos al día.';
+              ? '(Alt + 4) Configura automatizaciones que mantengan tus contenidos al día.'
+              : '(Alt + 4) Configura automatizaciones que mantengan tus datos al día.';
           }
           if (tabButtonRefs.actions) {
             tabButtonRefs.actions.dataset.tooltip = isWord
-              ? 'Accede y edita reportes y textos guardados.'
-              : 'Accede y edita reportes, tablas y preguntas guardadas.';
+              ? '(Alt + 5) Accede y edita reportes y textos guardados.'
+              : '(Alt + 5) Accede y edita reportes, tablas y preguntas guardadas.';
           }
           if (tabButtonRefs.ai) {
             tabButtonRefs.ai.dataset.tooltip = isWord
-              ? 'Gestiona consultas, resúmenes y ediciones asistidas por IA.'
-              : 'Gestiona consultas, reportes y contactos asistidos por IA.';
+              ? '(Alt + 1) Gestiona consultas, resúmenes y ediciones asistidas por IA.'
+              : '(Alt + 1) Gestiona consultas, reportes y contactos asistidos por IA.';
           }
         }
 
@@ -3491,6 +3906,88 @@ function playSidebarAnimation() {
           applyTheme(themeToggle.checked, { animate: true });
         });
 
+        const tabShortcutMap = {
+          Digit1: 'aiTab',
+          Digit2: 'editTab',
+          Digit3: 'createTab',
+          Digit4: 'triggersTab',
+          Digit5: 'actionsTab'
+        };
+
+        const shortcutHandledFlag = '__tcShortcutHandled';
+        const handleGlobalShortcut = function(event) {
+          if (!event || event[shortcutHandledFlag]) {
+            return;
+          }
+          if (!event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) {
+            return;
+          }
+          event[shortcutHandledFlag] = true;
+
+          const targetTab = tabShortcutMap[event.code];
+          if (targetTab) {
+            event.preventDefault();
+            attemptTabChange(targetTab);
+            return;
+          }
+
+          if (event.code === 'KeyR') {
+            const bodyEl = document.body;
+            const isTableThemeActive =
+              currentTheme === 'table' ||
+              (!currentTheme && bodyEl && bodyEl.classList.contains('theme-tablecrafter'));
+            if (isTableThemeActive && currentTab === 'createTab') {
+              const refreshBtn = document.getElementById('refreshRangeBtn');
+              if (refreshBtn && !refreshBtn.disabled) {
+                event.preventDefault();
+                refreshBtn.click();
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'Enter') {
+            event.preventDefault();
+            themeToggle.checked = !themeToggle.checked;
+            themeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        };
+
+        const shortcutTargets = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+        const registerShortcutTarget = function(target) {
+          if (!target || typeof target.addEventListener !== 'function') {
+            return;
+          }
+          if (shortcutTargets && shortcutTargets.has(target)) {
+            return;
+          }
+          try {
+            target.addEventListener('keydown', handleGlobalShortcut, true);
+            if (shortcutTargets) {
+              shortcutTargets.add(target);
+            }
+          } catch (err) {}
+        };
+
+        registerShortcutTarget(document);
+        registerShortcutTarget(window);
+        try {
+          if (window.parent && window.parent !== window) {
+            registerShortcutTarget(window.parent);
+            if (window.parent.document) {
+              registerShortcutTarget(window.parent.document);
+            }
+          }
+        } catch (err) {}
+        try {
+          if (window.top && window.top !== window) {
+            registerShortcutTarget(window.top);
+            if (window.top.document) {
+              registerShortcutTarget(window.top.document);
+            }
+          }
+        } catch (err) {}
+
         fetchWelcomePreference();
         applyTheme(themeToggle.checked, { forceSync: true });
       });
@@ -3500,9 +3997,15 @@ const TableCrafterCore = Object.freeze({
         findFirstTabForTheme: findFirstTabForTheme,
         updateTabVisibilityForTheme: updateTabVisibilityForTheme,
         showMessageModal: showMessageModal,
-        showConfirmModal: showConfirmModal
+        showConfirmModal: showConfirmModal,
+        promptFavoriteName: promptFavoriteName,
+        buildFavoriteMetadata: buildFavoriteMetadata,
+        formatFavoriteMetadataLabel: formatFavoriteMetadataLabel
       });
 
 window.TableCrafterCore = TableCrafterCore;
+window.promptFavoriteName = promptFavoriteName;
+window.buildFavoriteMetadata = buildFavoriteMetadata;
+window.formatFavoriteMetadataLabel = formatFavoriteMetadataLabel;
 
 </script>
