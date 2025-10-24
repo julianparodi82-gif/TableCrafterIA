@@ -5022,24 +5022,34 @@
               <input type="color" id="colorAlt2" />
             </div>
             <div class="toggle-group">
-              <label><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
-              <label><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
+              <label title="Alt + N"><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
+              <label title="Alt + B"><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
             </div>
           </div>
           <div class="word-action-buttons is-word-only" data-themes="word">
-            <button id="wordFavoriteBtn" class="ai-report-favorite-btn word-favorite-btn" type="button">
+            <button
+              id="wordFavoriteBtn"
+              class="ai-report-favorite-btn word-favorite-btn"
+              type="button"
+              title="Alt + F"
+            >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
             <button id="wordGenerateBtn" class="btn-primary" type="button">Generar y Guardar Texto</button>
           </div>
           <div class="action-buttons is-table-only" data-themes="table">
-            <button id="tableFavoriteBtn" class="ai-report-favorite-btn table-favorite-btn" type="button">
+            <button
+              id="tableFavoriteBtn"
+              class="ai-report-favorite-btn table-favorite-btn"
+              type="button"
+              title="Alt + F"
+            >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
-            <button id="applyFormatBtn" class="btn-primary">Aplicar formato</button>
-            <button id="saveTableBtn" class="btn-secondary">Guardar tabla</button>
+            <button id="applyFormatBtn" class="btn-primary" title="Alt + A">Aplicar formato</button>
+            <button id="saveTableBtn" class="btn-secondary" title="Alt + G">Guardar tabla</button>
           </div>
         </div>
       </div>
@@ -5112,8 +5122,8 @@
             <input type="color" id="editColorAlt2" />
           </div>
           <div class="toggle-group">
-            <label><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
-            <label><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
+            <label title="Alt + N"><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
+            <label title="Alt + B"><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
           </div>
           <div id="editActionsRow" class="action-buttons action-buttons--balanced" style="display:none;">
             <button
@@ -5121,11 +5131,12 @@
               class="ai-report-favorite-btn table-favorite-btn is-table-only"
               data-themes="table"
               type="button"
+              title="Alt + F"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a favoritos</span>
             </button>
-            <button id="editSaveTableBtn" class="btn-primary" disabled>Guardar tabla</button>
+            <button id="editSaveTableBtn" class="btn-primary" disabled title="Alt + G">Guardar tabla</button>
             <button id="editDeleteTableBtn" class="btn-danger" disabled>Borrar tabla</button>
           </div>
         </div>
@@ -7689,6 +7700,7 @@
                 aria-haspopup="dialog"
                 aria-expanded="false"
                 aria-controls="aiFavoriteModalOverlay"
+                title="Alt + F"
               >
                 <span class="ai-favorite-icon" aria-hidden="true">★</span>
                 <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a favoritos</span>
