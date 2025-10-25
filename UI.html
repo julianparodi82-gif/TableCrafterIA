@@ -3081,37 +3081,58 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 360px;
+        max-width: 380px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+      }
+      .tc-trigger-calendar-heading {
+        width: 100%;
+        text-align: center;
+      }
+      .tc-trigger-calendar-wrapper {
+        width: 100%;
       }
       .tc-trigger-calendar {
         width: 100%;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
-        padding: 12px;
+        padding: 16px;
         background-color: #FFFFFF;
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
       }
       .tc-trigger-calendar-header {
-        display: flex;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 12px;
+        margin-bottom: 12px;
       }
       .tc-trigger-calendar-controls {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 10px;
+        justify-self: center;
       }
       .tc-trigger-calendar-controls select {
         border: 1px solid var(--tc-border);
         border-radius: 8px;
-        padding: 6px 10px;
+        padding: 6px 16px;
+        min-width: 120px;
         font-size: 13px;
         font-weight: 600;
         color: var(--tc-text);
         background-color: #FFFFFF;
         cursor: pointer;
+      }
+      #triggerCalendarMonth {
+        min-width: 120px;
+      }
+      #triggerCalendarYear {
+        min-width: 140px;
+        font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:focus {
         outline: none;
@@ -3119,13 +3140,13 @@
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
       }
       .tc-trigger-calendar-nav {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
         border: none;
         background-color: var(--tc-primary-soft);
         color: var(--tc-primary);
-        font-size: 18px;
+        font-size: 14px;
         line-height: 1;
         display: flex;
         align-items: center;
@@ -3148,7 +3169,7 @@
         text-align: center;
       }
       .tc-trigger-calendar-days {
-        margin-top: 10px;
+        margin-top: 12px;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 6px;
@@ -3186,33 +3207,48 @@
         color: #FFFFFF;
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
       }
-      .tc-trigger-calendar-day.is-range {
-        background-color: rgba(59, 130, 246, 0.15);
+      .tc-trigger-calendar-day.is-scheduled {
+        background-color: rgba(59, 130, 246, 0.18);
         color: var(--tc-primary-dark);
+        font-weight: 700;
       }
-      .tc-trigger-calendar-day.is-range-edge {
-        background-color: var(--tc-primary);
-        color: #FFFFFF;
+      .tc-trigger-calendar-day.is-anchor {
+        border: 1px solid var(--tc-primary);
       }
       .tc-trigger-date-range {
+        width: 100%;
         display: flex;
-        align-items: flex-end;
+        flex-direction: column;
+        align-items: center;
         gap: 12px;
-        margin-top: 12px;
+        margin-top: -4px;
       }
       .tc-trigger-date-range-field {
-        flex: 1 1 0;
         display: flex;
         flex-direction: column;
         gap: 6px;
+        width: 100%;
+        max-width: 220px;
+        align-items: center;
+      }
+      .tc-trigger-date-range-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--tc-muted);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .tc-trigger-date-range-field.is-hidden {
+        display: none;
       }
       .tc-trigger-date-range-field input[type='date'] {
         width: 100%;
         border-radius: 8px;
         border: 1px solid var(--tc-border);
-        padding: 8px 10px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 13px;
         color: var(--tc-text);
+        text-align: center;
       }
       .tc-trigger-date-range-field input[type='date']:focus {
         outline: none;
@@ -3231,6 +3267,56 @@
       }
       .tc-trigger-calendar-field label + .tc-trigger-calendar {
         margin-top: 8px;
+      }
+      .tc-trigger-schedule-field {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tc-trigger-weekly-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        gap: 6px;
+      }
+      .tc-trigger-weekly-button {
+        border: 1px solid var(--tc-border);
+        border-radius: 20px;
+        padding: 6px 10px;
+        background-color: #FFFFFF;
+        color: var(--tc-text);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      .tc-trigger-weekly-button.is-selected {
+        background-color: var(--tc-primary);
+        border-color: var(--tc-primary);
+        color: #FFFFFF;
+      }
+      .tc-trigger-biweekly-inputs {
+        display: flex;
+        gap: 8px;
+      }
+      .tc-trigger-biweekly-inputs input[type='number'] {
+        flex: 1 1 0;
+        border-radius: 8px;
+        border: 1px solid var(--tc-border);
+        padding: 8px 10px;
+        font-size: 14px;
+        color: var(--tc-text);
+      }
+      .tc-trigger-biweekly-inputs input[type='number']:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-schedule-summary {
+        width: 100%;
+        font-size: 13px;
+        color: var(--tc-muted);
+        text-align: center;
       }
       .tc-trigger-calendar-field input[type='hidden'] {
         display: none;
@@ -8170,57 +8256,85 @@
               />
             </div>
             <div class="tc-form-field tc-trigger-calendar-field">
-              <label for="triggerStartDate">Fecha de inicio</label>
-              <div
-                id="triggerStartCalendar"
-                class="tc-trigger-calendar"
-                role="application"
-                aria-label="Calendario de fecha de inicio"
-              >
-                <div class="tc-trigger-calendar-header">
-                  <button
-                    type="button"
-                    id="triggerCalendarPrev"
-                    class="tc-trigger-calendar-nav"
-                    aria-label="Mes anterior"
-                  >
-                    ‹
-                  </button>
-                  <div class="tc-trigger-calendar-controls">
-                    <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
-                    <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+              <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de inicio</label>
+              <div class="tc-trigger-calendar-wrapper">
+                <div
+                  id="triggerStartCalendar"
+                  class="tc-trigger-calendar"
+                  role="application"
+                  aria-label="Calendario de fecha de inicio"
+                >
+                  <div class="tc-trigger-calendar-header">
+                    <button
+                      type="button"
+                      id="triggerCalendarPrev"
+                      class="tc-trigger-calendar-nav"
+                      aria-label="Mes anterior"
+                    >
+                      ‹
+                    </button>
+                    <div class="tc-trigger-calendar-controls">
+                      <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
+                      <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+                    </div>
+                    <button
+                      type="button"
+                      id="triggerCalendarNext"
+                      class="tc-trigger-calendar-nav"
+                      aria-label="Mes siguiente"
+                    >
+                      ›
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    id="triggerCalendarNext"
-                    class="tc-trigger-calendar-nav"
-                    aria-label="Mes siguiente"
-                  >
-                    ›
-                  </button>
+                  <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
+                    <span>Lu</span>
+                    <span>Ma</span>
+                    <span>Mi</span>
+                    <span>Ju</span>
+                    <span>Vi</span>
+                    <span>Sa</span>
+                    <span>Do</span>
+                  </div>
+                  <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
                 </div>
-                <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
-                  <span>Lu</span>
-                  <span>Ma</span>
-                  <span>Mi</span>
-                  <span>Ju</span>
-                  <span>Vi</span>
-                  <span>Sa</span>
-                  <span>Do</span>
-                </div>
-                <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
               </div>
-              <div class="tc-trigger-date-range">
-                <div class="tc-trigger-date-range-field">
-                  <label for="triggerDateFrom">Desde</label>
+              <div id="triggerDateRange" class="tc-trigger-date-range">
+                <div id="triggerDateFromContainer" class="tc-trigger-date-range-field">
+                  <span id="triggerDateFromLabel" class="tc-trigger-date-range-label">Desde</span>
                   <input type="date" id="triggerDateFrom" />
                 </div>
-                <div class="tc-trigger-date-range-field">
-                  <label for="triggerDateTo">Hasta</label>
+                <div id="triggerDateToContainer" class="tc-trigger-date-range-field">
+                  <span id="triggerDateToLabel" class="tc-trigger-date-range-label">Hasta</span>
                   <input type="date" id="triggerDateTo" />
                 </div>
               </div>
+              <div id="triggerWeeklyField" class="tc-trigger-schedule-field ai-hidden" aria-live="polite">
+                <label class="tc-trigger-date-range-label" for="triggerWeeklyOptions">Día de la semana</label>
+                <div
+                  id="triggerWeeklyOptions"
+                  class="tc-trigger-weekly-options"
+                  role="group"
+                  aria-label="Seleccionar día de la semana"
+                >
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="0">Lun</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="1">Mar</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="2">Mié</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="3">Jue</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="4">Vie</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="5">Sáb</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="6">Dom</button>
+                </div>
+              </div>
+              <div id="triggerBiweeklyField" class="tc-trigger-schedule-field ai-hidden" aria-live="polite">
+                <label class="tc-trigger-date-range-label" for="triggerBiweeklyDay1">Días del mes</label>
+                <div class="tc-trigger-biweekly-inputs">
+                  <input type="number" id="triggerBiweeklyDay1" min="1" max="31" placeholder="Día 1" />
+                  <input type="number" id="triggerBiweeklyDay2" min="1" max="31" placeholder="Día 2" />
+                </div>
+              </div>
+              <div id="triggerScheduleSummary" class="tc-trigger-schedule-summary ai-hidden" aria-live="polite"></div>
               <input type="hidden" id="triggerStartDate" />
+              <input type="hidden" id="triggerSelectedDates" />
             </div>
             <div class="tc-form-field tc-form-field--compact">
               <label for="triggerStartTime">Hora de ejecución</label>
