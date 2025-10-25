@@ -3129,10 +3129,7 @@
         margin-bottom: 4px;
       }
       .tc-trigger-card {
-        transition: opacity var(--tc-transition-duration) ease;
-      }
-      .tc-trigger-card.is-inactive {
-        opacity: 0.55;
+        transition: max-height var(--tc-transition-duration) ease;
       }
       .tc-trigger-heading {
         display: flex;
@@ -3154,15 +3151,12 @@
         text-decoration: underline;
       }
       .tc-trigger-section-toggle input[type='checkbox'] {
-        width: 18px;
-        height: 18px;
+        width: 15px;
+        height: 15px;
         margin: 0;
         border-radius: 4px;
-        border: 1px solid var(--tc-border-strong);
-        accent-color: var(--tc-primary);
-      }
-      .tc-trigger-card.is-inactive .tc-trigger-section-toggle {
-        opacity: 0.75;
+        border: 1px solid rgba(46, 163, 125, 0.35);
+        accent-color: rgba(46, 163, 125, 0.65);
       }
       .tc-trigger-section-fieldset {
         border: none;
@@ -8332,14 +8326,14 @@
               <label
                 for="triggerSectionToggle"
                 class="tc-trigger-section-toggle tc-tooltip-target"
-                data-tooltip="Activa o desactiva la configuración del nuevo trigger."
+                data-tooltip="Activa o desactiva la configuración del trigger a crear."
               >
                 <input type="checkbox" id="triggerSectionToggle" checked />
-                <span class="tc-trigger-section-label">Nuevo Trigger</span>
+                <span class="tc-trigger-section-label">Crear Trigger</span>
               </label>
             </h3>
             <fieldset id="triggerSectionFieldset" class="tc-trigger-section-fieldset">
-              <legend class="tc-visually-hidden">Configuración del nuevo trigger</legend>
+              <legend class="tc-visually-hidden">Configuración del trigger a crear</legend>
               <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
               <div class="tc-form-grid">
                 <div class="tc-form-field">
