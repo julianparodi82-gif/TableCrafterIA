@@ -3177,11 +3177,13 @@
       .tc-trigger-section-fieldset.is-collapsed {
         display: none;
       }
-      .tc-trigger-card .tc-form-grid {
+      .tc-trigger-section-group {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
         width: 100%;
         max-width: 520px;
         margin: 0 auto;
-        gap: 14px;
       }
       .tc-trigger-card .tc-form-field {
         align-items: stretch;
@@ -8380,145 +8382,150 @@
             <fieldset id="triggerSectionFieldset" class="tc-trigger-section-fieldset">
               <legend class="tc-visually-hidden">Configuración del trigger a crear</legend>
               <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
-              <div class="tc-form-grid">
+              <div class="tc-trigger-section-group">
                 <div class="tc-form-field">
                   <label for="triggerActionToggle">Acción a ejecutar</label>
                   <div id="triggerActionPicker" class="tc-trigger-picker" data-empty="true">
                     <button
                       type="button"
-                    id="triggerActionToggle"
-                    class="tc-trigger-picker-toggle"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                    aria-controls="triggerActionMenu"
-                  >
-                    <span id="triggerActionToggleLabel">Seleccionar...</span>
-                    <span class="tc-trigger-picker-icon" aria-hidden="true"></span>
-                  </button>
-                  <div
-                    id="triggerActionMenu"
-                    class="tc-trigger-picker-menu"
-                    role="menu"
-                    aria-labelledby="triggerActionToggle"
-                  >
-                    <div id="triggerActionList" class="ai-multi-list" role="presentation"></div>
+                      id="triggerActionToggle"
+                      class="tc-trigger-picker-toggle"
+                      aria-haspopup="true"
+                      aria-expanded="false"
+                      aria-controls="triggerActionMenu"
+                    >
+                      <span id="triggerActionToggleLabel">Seleccionar...</span>
+                      <span class="tc-trigger-picker-icon" aria-hidden="true"></span>
+                    </button>
+                    <div
+                      id="triggerActionMenu"
+                      class="tc-trigger-picker-menu"
+                      role="menu"
+                      aria-labelledby="triggerActionToggle"
+                    >
+                      <div id="triggerActionList" class="ai-multi-list" role="presentation"></div>
+                    </div>
+                    <input type="hidden" id="triggerActionSelect" value="" />
                   </div>
-                  <input type="hidden" id="triggerActionSelect" value="" />
+                  <p class="tc-field-note">Se mostrarán las tablas y textos guardados así como las acciones favoritas.</p>
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y textos guardados así como las acciones favoritas.</p>
+                <div class="tc-form-field">
+                  <label for="triggerFrequencySelect">Frecuencia</label>
+                  <select id="triggerFrequencySelect">
+                    <option value="">Seleccionar frecuencia</option>
+                    <option value="custom">Varias veces</option>
+                    <option value="once">Solo 1 vez</option>
+                    <option value="daily">Diario</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="biweekly">Quincenal</option>
+                    <option value="monthly">Mensual</option>
+                  </select>
+                  <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
+                </div>
               </div>
-              <div class="tc-form-field">
-                <label for="triggerFrequencySelect">Frecuencia</label>
-                <select id="triggerFrequencySelect">
-                  <option value="">Seleccionar frecuencia</option>
-                  <option value="custom">Varias veces</option>
-                  <option value="once">Solo 1 vez</option>
-                  <option value="daily">Diario</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="biweekly">Quincenal</option>
-                  <option value="monthly">Mensual</option>
-                </select>
-                <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
+              <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
+                <label for="triggerFrequencyCount">Cantidad de repeticiones</label>
+                <input
+                  type="number"
+                  id="triggerFrequencyCount"
+                  class="tc-trigger-frequency-count"
+                  min="2"
+                  max="20"
+                  step="1"
+                  placeholder="Ej: 5"
+                />
               </div>
-            </div>
-            <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
-              <label for="triggerFrequencyCount">Cantidad de repeticiones</label>
-              <input
-                type="number"
-                id="triggerFrequencyCount"
-                class="tc-trigger-frequency-count"
-                min="2"
-                max="20"
-                step="1"
-                placeholder="Ej: 5"
-              />
-            </div>
-            <div class="tc-form-field tc-trigger-calendar-field">
-              <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de inicio</label>
-              <div class="tc-trigger-calendar-wrapper">
-                <div
-                  id="triggerStartCalendar"
-                  class="tc-trigger-calendar"
-                  role="application"
-                  aria-label="Calendario de fecha de inicio"
-                >
-                  <div class="tc-trigger-calendar-header">
-                    <div class="tc-trigger-calendar-controls">
-                      <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
-                      <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+                <div class="tc-form-field tc-trigger-calendar-field">
+                  <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de inicio</label>
+                  <div class="tc-trigger-calendar-wrapper">
+                    <div
+                      id="triggerStartCalendar"
+                      class="tc-trigger-calendar"
+                      role="application"
+                      aria-label="Calendario de fecha de inicio"
+                    >
+                      <div class="tc-trigger-calendar-header">
+                        <div class="tc-trigger-calendar-controls">
+                          <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
+                          <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+                        </div>
+                      </div>
+                      <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
+                        <span>Lu</span>
+                        <span>Ma</span>
+                        <span>Mi</span>
+                        <span>Ju</span>
+                        <span>Vi</span>
+                        <span>Sa</span>
+                        <span>Do</span>
+                      </div>
+                      <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
                     </div>
                   </div>
-                  <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
-                    <span>Lu</span>
-                    <span>Ma</span>
-                    <span>Mi</span>
-                    <span>Ju</span>
-                    <span>Vi</span>
-                    <span>Sa</span>
-                    <span>Do</span>
+                  <div id="triggerDateRange" class="tc-trigger-date-range">
+                    <div id="triggerDateFromContainer" class="tc-trigger-date-range-field">
+                      <span id="triggerDateFromLabel" class="tc-trigger-date-range-label">Desde</span>
+                      <input type="date" id="triggerDateFrom" />
+                    </div>
+                    <div id="triggerDateToContainer" class="tc-trigger-date-range-field">
+                      <span id="triggerDateToLabel" class="tc-trigger-date-range-label">Hasta</span>
+                      <input type="date" id="triggerDateTo" />
+                    </div>
                   </div>
-                  <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
+                  <div id="triggerWeeklyField" class="tc-trigger-schedule-field ai-hidden" aria-live="polite">
+                    <label class="tc-trigger-date-range-label" for="triggerWeeklyOptions">Día de la semana</label>
+                    <div
+                      id="triggerWeeklyOptions"
+                      class="tc-trigger-weekly-options"
+                      role="group"
+                      aria-label="Seleccionar día de la semana"
+                    >
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="0">Lun</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="1">Mar</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="2">Mié</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="3">Jue</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="4">Vie</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="5">Sáb</button>
+                      <button type="button" class="tc-trigger-weekly-button" data-weekday="6">Dom</button>
+                    </div>
+                  </div>
+                  <div id="triggerScheduleSummary" class="tc-trigger-schedule-summary ai-hidden" aria-live="polite"></div>
+                  <input type="hidden" id="triggerStartDate" />
+                  <input type="hidden" id="triggerSelectedDates" />
                 </div>
-              </div>
-              <div id="triggerDateRange" class="tc-trigger-date-range">
-                <div id="triggerDateFromContainer" class="tc-trigger-date-range-field">
-                  <span id="triggerDateFromLabel" class="tc-trigger-date-range-label">Desde</span>
-                  <input type="date" id="triggerDateFrom" />
+                <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
+                  <label for="triggerStartTime">Hora de ejecución</label>
+                  <div
+                    id="triggerStartTimeControl"
+                    class="tc-trigger-time-input"
+                    role="button"
+                    tabindex="0"
+                    aria-haspopup="dialog"
+                    aria-controls="triggerStartTime"
+                  >
+                    <span
+                      id="triggerStartTimeDisplay"
+                      class="tc-trigger-time-display"
+                      aria-hidden="true"
+                      data-state="empty"
+                    >
+                      --:-- --
+                    </span>
+                    <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+                  </div>
                 </div>
-                <div id="triggerDateToContainer" class="tc-trigger-date-range-field">
-                  <span id="triggerDateToLabel" class="tc-trigger-date-range-label">Hasta</span>
-                  <input type="date" id="triggerDateTo" />
+                <div class="tc-card-actions">
+                  <button
+                    type="button"
+                    id="triggerCreateBtn"
+                    class="btn-primary tc-tooltip-target"
+                    data-tooltip="(Alt + G)"
+                    accesskey="g"
+                    aria-keyshortcuts="Alt+G"
+                  >
+                    <span class="shortcut-accesskey">G</span>uardar Trigger
+                  </button>
                 </div>
-              </div>
-              <div id="triggerWeeklyField" class="tc-trigger-schedule-field ai-hidden" aria-live="polite">
-                <label class="tc-trigger-date-range-label" for="triggerWeeklyOptions">Día de la semana</label>
-                <div
-                  id="triggerWeeklyOptions"
-                  class="tc-trigger-weekly-options"
-                  role="group"
-                  aria-label="Seleccionar día de la semana"
-                >
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="0">Lun</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="1">Mar</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="2">Mié</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="3">Jue</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="4">Vie</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="5">Sáb</button>
-                  <button type="button" class="tc-trigger-weekly-button" data-weekday="6">Dom</button>
-                </div>
-              </div>
-              <div id="triggerScheduleSummary" class="tc-trigger-schedule-summary ai-hidden" aria-live="polite"></div>
-              <input type="hidden" id="triggerStartDate" />
-              <input type="hidden" id="triggerSelectedDates" />
-            </div>
-            <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
-              <label for="triggerStartTime">Hora de ejecución</label>
-              <div
-                id="triggerStartTimeControl"
-                class="tc-trigger-time-input"
-                role="button"
-                tabindex="0"
-                aria-haspopup="dialog"
-                aria-controls="triggerStartTime"
-              >
-                <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
-                  --:-- --
-                </span>
-                <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
-              </div>
-            </div>
-            <div class="tc-card-actions">
-                <button
-                  type="button"
-                  id="triggerCreateBtn"
-                  class="btn-primary tc-tooltip-target"
-                  data-tooltip="(Alt + G)"
-                  accesskey="g"
-                  aria-keyshortcuts="Alt+G"
-                >
-                  <span class="shortcut-accesskey">G</span>uardar Trigger
-                </button>
-              </div>
             </fieldset>
           </div>
         </div>
