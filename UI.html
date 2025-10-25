@@ -3125,11 +3125,11 @@
         gap: 4px;
       }
       .tc-trigger-calendar-controls select {
-        border: 1px solid rgba(59, 130, 246, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.26);
         border-radius: 6px;
-        padding: 2px 8px;
-        min-width: 70px;
-        font-size: 10px;
+        padding: 2px 6px;
+        min-width: 64px;
+        font-size: 9px;
         font-weight: 500;
         color: var(--tc-text);
         background-color: rgba(59, 130, 246, 0.06);
@@ -3138,10 +3138,10 @@
         text-align: center;
       }
       #triggerCalendarMonth {
-        min-width: 74px;
+        min-width: 68px;
       }
       #triggerCalendarYear {
-        min-width: 68px;
+        min-width: 60px;
         font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:hover {
@@ -3182,6 +3182,7 @@
         color: var(--tc-muted);
         text-align: center;
         justify-items: center;
+        justify-content: center;
       }
       .tc-trigger-calendar-days {
         width: 100%;
@@ -3190,6 +3191,8 @@
         grid-template-columns: repeat(7, 1fr);
         gap: 6px;
         justify-items: center;
+        justify-content: center;
+        align-items: center;
       }
       .tc-trigger-calendar-day {
         width: 100%;
@@ -3338,6 +3341,7 @@
         padding: 0;
         cursor: pointer;
         background: transparent;
+        pointer-events: none;
       }
       .tc-trigger-time-display {
         font-weight: 600;
@@ -3347,6 +3351,21 @@
       }
       .tc-trigger-time-display[data-state='empty'] {
         color: var(--tc-muted);
+      }
+      .tc-trigger-calendar-field.is-disabled {
+        opacity: 0.55;
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar {
+        pointer-events: none;
+        filter: grayscale(0.65);
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-heading,
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-date-range-label {
+        color: var(--tc-muted);
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-days,
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-weekdays {
+        filter: grayscale(1);
       }
       .tc-trigger-calendar-field label + .tc-trigger-calendar {
         margin-top: 8px;
@@ -8398,7 +8417,14 @@
             </div>
             <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
               <label for="triggerStartTime">Hora de ejecución</label>
-              <div id="triggerStartTimeControl" class="tc-trigger-time-input">
+              <div
+                id="triggerStartTimeControl"
+                class="tc-trigger-time-input"
+                role="button"
+                tabindex="0"
+                aria-haspopup="dialog"
+                aria-controls="triggerStartTime"
+              >
                 <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
                   --:-- --
                 </span>
