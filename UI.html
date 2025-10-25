@@ -3099,10 +3099,10 @@
       }
       .tc-trigger-calendar {
         width: 100%;
-        max-width: 340px;
+        max-width: 320px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
-        padding: 16px;
+        padding: 14px;
         background-color: #FFFFFF;
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
         display: flex;
@@ -3116,32 +3116,32 @@
         grid-template-columns: auto 1fr auto;
         align-items: center;
         justify-items: center;
-        gap: 10px;
-        margin-bottom: 4px;
+        gap: 8px;
+        margin-bottom: 2px;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
       .tc-trigger-calendar-controls select {
-        border: 1px solid rgba(59, 130, 246, 0.35);
-        border-radius: 7px;
-        padding: 3px 10px;
-        min-width: 84px;
-        font-size: 11px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 6px;
+        padding: 2px 8px;
+        min-width: 70px;
+        font-size: 10px;
         font-weight: 500;
         color: var(--tc-text);
-        background-color: rgba(59, 130, 246, 0.08);
+        background-color: rgba(59, 130, 246, 0.06);
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         text-align: center;
       }
       #triggerCalendarMonth {
-        min-width: 88px;
+        min-width: 74px;
       }
       #triggerCalendarYear {
-        min-width: 94px;
+        min-width: 68px;
         font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:hover {
@@ -3153,13 +3153,13 @@
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
       }
       .tc-trigger-calendar-nav {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         border-radius: 6px;
         border: none;
         background-color: var(--tc-primary-soft);
         color: var(--tc-primary);
-        font-size: 12px;
+        font-size: 11px;
         line-height: 1;
         display: flex;
         align-items: center;
@@ -3181,6 +3181,7 @@
         text-transform: uppercase;
         color: var(--tc-muted);
         text-align: center;
+        justify-items: center;
       }
       .tc-trigger-calendar-days {
         width: 100%;
@@ -3188,19 +3189,21 @@
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         gap: 6px;
+        justify-items: center;
       }
       .tc-trigger-calendar-day {
-        height: 36px;
+        width: 100%;
+        height: 34px;
         border-radius: 8px;
         border: none;
         background-color: transparent;
         color: var(--tc-text);
         font-weight: 600;
         font-size: 13px;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        cursor: pointer;
         transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       }
       .tc-trigger-calendar-day:hover,
@@ -3237,6 +3240,9 @@
         align-items: center;
         gap: 12px;
         margin-top: -4px;
+      }
+      .tc-trigger-date-range.is-hidden {
+        display: none;
       }
       .tc-trigger-date-range-field {
         display: flex;
@@ -3297,31 +3303,50 @@
         text-align: center;
         width: 100%;
       }
-      .tc-form-field--compact input[type='time'] {
-        width: 10.5ch;
-        min-width: 0;
-        border-radius: 8px;
+      .tc-trigger-time-input {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 10.5ch;
         padding: 8px 12px;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        text-align: center;
-        background-color: rgba(59, 130, 246, 0.12);
+        border-radius: 8px;
         border: 1px solid rgba(59, 130, 246, 0.28);
-        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        background-color: #FFFFFF;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
       }
-      .tc-form-field--compact input[type='time']:hover {
-        background-color: rgba(59, 130, 246, 0.18);
-        border-color: rgba(59, 130, 246, 0.4);
+      .tc-trigger-time-input:hover {
+        border-color: rgba(59, 130, 246, 0.45);
+        box-shadow: 0 3px 10px rgba(59, 130, 246, 0.18);
       }
-      .tc-form-field--compact input[type='time']:active {
-        background-color: rgba(59, 130, 246, 0.24);
-        border-color: rgba(59, 130, 246, 0.5);
+      .tc-trigger-time-input:active {
+        background-color: rgba(59, 130, 246, 0.05);
       }
-      .tc-form-field--compact input[type='time']:focus {
-        outline: none;
+      .tc-trigger-time-input:focus-within {
         border-color: var(--tc-primary);
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
-        background-color: rgba(59, 130, 246, 0.26);
+      }
+      .tc-trigger-time-input input[type='time'] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        border: none;
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        background: transparent;
+      }
+      .tc-trigger-time-display {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--tc-text);
+        letter-spacing: 0.02em;
+      }
+      .tc-trigger-time-display[data-state='empty'] {
+        color: var(--tc-muted);
       }
       .tc-trigger-calendar-field label + .tc-trigger-calendar {
         margin-top: 8px;
@@ -8373,7 +8398,12 @@
             </div>
             <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
               <label for="triggerStartTime">Hora de ejecución</label>
-              <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+              <div id="triggerStartTimeControl" class="tc-trigger-time-input">
+                <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
+                  --:-- --
+                </span>
+                <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+              </div>
             </div>
             <div class="tc-card-actions">
               <button

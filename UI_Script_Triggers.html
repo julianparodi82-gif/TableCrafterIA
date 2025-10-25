@@ -1503,6 +1503,7 @@ function updateTriggerFrequencyFields() {
   const frequencySelect = document.getElementById('triggerFrequencySelect');
   const customField = document.getElementById('triggerFrequencyCustomField');
   const countInput = document.getElementById('triggerFrequencyCount');
+  const dateRange = document.getElementById('triggerDateRange');
   const dateToInput = document.getElementById('triggerDateTo');
   const fromInput = document.getElementById('triggerDateFrom');
   const fromLabel = document.getElementById('triggerDateFromLabel');
@@ -1532,12 +1533,27 @@ function updateTriggerFrequencyFields() {
       countInput.value = '';
     }
   }
-  const showToField = frequency === 'custom' || frequency === 'weekly';
+  const showFromField = frequency !== 'custom';
+  const showToField = frequency === 'weekly';
+  if (fromContainer) {
+    if (showFromField) {
+      fromContainer.classList.remove('is-hidden');
+    } else {
+      fromContainer.classList.add('is-hidden');
+    }
+  }
   if (toContainer) {
     if (showToField) {
       toContainer.classList.remove('is-hidden');
     } else {
       toContainer.classList.add('is-hidden');
+    }
+  }
+  if (dateRange) {
+    if (!showFromField && !showToField) {
+      dateRange.classList.add('is-hidden');
+    } else {
+      dateRange.classList.remove('is-hidden');
     }
   }
   if (dateToInput) {
@@ -1571,9 +1587,6 @@ function updateTriggerFrequencyFields() {
     } else {
       fromInput.placeholder = '';
     }
-  }
-  if (fromContainer) {
-    fromContainer.classList.remove('is-hidden');
   }
   if (weeklyField) {
     if (frequency === 'weekly') {
@@ -1667,6 +1680,45 @@ function renderTriggerList() {
     }
     list.appendChild(item);
   });
+}
+
+function formatTriggerTimeDisplay(value) {
+  if (!value) {
+    return '--:-- --';
+  }
+  const parts = String(value).split(':');
+  if (parts.length < 2) {
+    return '--:-- --';
+  }
+  let hours = parseInt(parts[0], 10);
+  if (isNaN(hours)) {
+    return '--:-- --';
+  }
+  const minutes = parts[1] !== undefined ? parts[1] : '00';
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) {
+    hours = 12;
+  }
+  const paddedHours = String(hours).padStart(2, '0');
+  const paddedMinutes = String(minutes).padStart(2, '0');
+  return paddedHours + ':' + paddedMinutes + ' ' + period;
+}
+
+function updateTriggerStartTimeDisplay() {
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const display = document.getElementById('triggerStartTimeDisplay');
+  if (!display) {
+    return;
+  }
+  const value = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
+  if (value) {
+    display.textContent = formatTriggerTimeDisplay(value);
+    display.setAttribute('data-state', 'filled');
+  } else {
+    display.textContent = '--:-- --';
+    display.setAttribute('data-state', 'empty');
+  }
 }
 
 function updateTriggerFormState() {
@@ -1892,6 +1944,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const createBtn = document.getElementById('triggerCreateBtn');
   const refreshBtn = document.getElementById('triggerRefreshBtn');
   const startTimeInput = document.getElementById('triggerStartTime');
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
 
   if (frequencySelect) {
     frequencySelect.addEventListener('change', updateTriggerFrequencyFields);
@@ -1918,6 +1971,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     };
+    if (startTimeControl) {
+      startTimeControl.addEventListener('click', function() {
+        startTimeInput.focus();
+        openTimePicker();
+      });
+    }
     startTimeInput.addEventListener('focus', function() {
       openTimePicker();
     });
@@ -1939,8 +1998,12 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       event.preventDefault();
     });
-    startTimeInput.addEventListener('input', updateTriggerFormState);
-    startTimeInput.addEventListener('change', updateTriggerFormState);
+    const handleTimeChange = function() {
+      updateTriggerStartTimeDisplay();
+      updateTriggerFormState();
+    };
+    startTimeInput.addEventListener('input', handleTimeChange);
+    startTimeInput.addEventListener('change', handleTimeChange);
   }
   document.addEventListener('keydown', function(event) {
     if (
@@ -1975,6 +2038,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   updateTriggerFrequencyFields();
   updateTriggerFormState();
+  updateTriggerStartTimeDisplay();
   renderTriggerList();
 });
 
