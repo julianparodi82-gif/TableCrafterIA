@@ -2,20 +2,659 @@
 /* -------------------------------------------------------------------------- */
 /*  TableCrafter Triggers Tab State                                          */
 /* -------------------------------------------------------------------------- */
+const TRIGGER_CATEGORY_DEFS = Object.freeze({
+  tableCreate: { key: 'tableCreate', label: 'Crear Tabla', group: 'table' },
+  tableEdit: { key: 'tableEdit', label: 'Editar Tabla', group: 'table' },
+  tableDelete: { key: 'tableDelete', label: 'Borrar Tabla', group: 'table' },
+  tableIa: { key: 'tableIa', label: 'Panel IA TC', group: 'table' },
+  wordCreate: { key: 'wordCreate', label: 'Crear Texto', group: 'word' },
+  wordEdit: { key: 'wordEdit', label: 'Editar Texto', group: 'word' },
+  wordDelete: { key: 'wordDelete', label: 'Borrar Texto', group: 'word' },
+  wordIa: { key: 'wordIa', label: 'Panel IA WC', group: 'word' }
+});
+const TRIGGER_GROUP_ORDER = Object.freeze([
+  { key: 'table', label: 'TableCrafter', categories: ['tableCreate', 'tableEdit', 'tableDelete', 'tableIa'] },
+  { key: 'word', label: 'Wordcrafter', categories: ['wordCreate', 'wordEdit', 'wordDelete', 'wordIa'] }
+]);
+
 let triggerEntries = [];
 let triggerIdCounter = 0;
+let triggerActionCache = [];
+let triggerActionGroupCache = [];
+let triggerActionMap = Object.create(null);
+let triggerActionPickerInitialized = false;
+let triggerActionMenuOpen = false;
+let triggerActionDocumentEventsBound = false;
 
-function getTriggerFrequencyLabel(value) {
+function normalizeTriggerSearchText(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  let text = String(value).trim();
+  if (!text) {
+    return '';
+  }
+  if (typeof text.normalize === 'function') {
+    try {
+      text = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    } catch (err) {
+      // ignore normalization errors
+    }
+  }
+  return text.toLowerCase();
+}
+
+function collectTriggerTokenCandidates(action) {
+  const tokens = [];
+  if (!action) {
+    return tokens;
+  }
+  const metadata = action.metadata && typeof action.metadata === 'object' ? action.metadata : {};
+  const metadataKeys = [
+    'context',
+    'tabId',
+    'tab',
+    'origin',
+    'action',
+    'favoriteKind',
+    'recordType',
+    'sourceType',
+    'theme',
+    'id',
+    'type',
+    'scope'
+  ];
+  metadataKeys.forEach(function(key) {
+    const value = metadata[key];
+    if (value === null || value === undefined) {
+      return;
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+      tokens.push(value);
+    }
+  });
+  if (Array.isArray(metadata.tags)) {
+    metadata.tags.forEach(function(tag) {
+      if (tag !== null && tag !== undefined && tag !== '') {
+        tokens.push(tag);
+      }
+    });
+  }
+  if (action.id) {
+    tokens.push(action.id);
+  }
+  if (action.name) {
+    tokens.push(action.name);
+  }
+  if (action.description) {
+    tokens.push(action.description);
+  }
+  if (action.type) {
+    tokens.push(action.type);
+  }
+  return tokens;
+}
+
+function resolveTriggerActionTheme(action, resolvedType, normalizedTokens) {
+  const tokens = Array.isArray(normalizedTokens) ? normalizedTokens : [];
+  if (typeof isWordcrafterActionFavorite === 'function') {
+    try {
+      if (isWordcrafterActionFavorite(action, resolvedType)) {
+        return 'word';
+      }
+    } catch (err) {
+      // ignore failures
+    }
+  }
+  const typeText = normalizeTriggerSearchText(resolvedType);
+  if (typeText === 'wordfavorite') {
+    return 'word';
+  }
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (!token) {
+      continue;
+    }
+    if (
+      token.indexOf('word') !== -1 ||
+      token.indexOf('texto') !== -1 ||
+      token.indexOf('accioneswc') !== -1 ||
+      token.indexOf('paneliaword') !== -1 ||
+      token.indexOf('paneliawc') !== -1 ||
+      token.indexOf('wordcrafter') !== -1
+    ) {
+      return 'word';
+    }
+  }
+  return 'table';
+}
+
+function resolveTriggerActionCategoryKey(action, resolvedType, normalizedTokens) {
+  const tokens = Array.isArray(normalizedTokens) ? normalizedTokens : [];
+  const theme = resolveTriggerActionTheme(action, resolvedType, tokens);
+  const fallback = theme === 'word' ? 'wordCreate' : 'tableCreate';
+
+  function hasToken(keyword) {
+    if (!keyword) {
+      return false;
+    }
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i] && tokens[i].indexOf(keyword) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (hasToken('borrartabla') || hasToken('eliminartabla') || hasToken('deletetable') || hasToken('borrartc')) {
+    return 'tableDelete';
+  }
+  if (hasToken('borrartexto') || hasToken('eliminartexto') || hasToken('deletetext') || hasToken('deleteword')) {
+    return 'wordDelete';
+  }
+  if (hasToken('paneliawc') || hasToken('accioneswc') || hasToken('paneliaword') || hasToken('paneliawordrewrite')) {
+    return 'wordIa';
+  }
+  if (hasToken('paneliareport') || hasToken('paneliaask') || hasToken('paneliatc') || hasToken('accionestc')) {
+    return 'tableIa';
+  }
+  if (hasToken('panelia') && theme === 'word') {
+    return 'wordIa';
+  }
+  if (hasToken('panelia') && theme === 'table') {
+    return 'tableIa';
+  }
+  if (hasToken('creartablatc') || hasToken('creartabla') || hasToken('createtable')) {
+    return 'tableCreate';
+  }
+  if (hasToken('creartextowc') || hasToken('creartexto') || hasToken('createtext') || hasToken('createtexto')) {
+    return 'wordCreate';
+  }
+  if (hasToken('editartablatc') || hasToken('editartabla') || hasToken('edittable') || hasToken('tablaeditar')) {
+    return 'tableEdit';
+  }
+  if (hasToken('editartextowc') || hasToken('editartexto') || hasToken('edittext') || hasToken('editword')) {
+    return 'wordEdit';
+  }
+  if (hasToken('tablapanelia')) {
+    return 'tableIa';
+  }
+  const metadata = action && action.metadata && typeof action.metadata === 'object' ? action.metadata : {};
+  const tabId = normalizeTriggerSearchText(metadata.tabId || metadata.tab || '');
+  if (tabId === 'edittab') {
+    return theme === 'word' ? 'wordEdit' : 'tableEdit';
+  }
+  if (tabId === 'createtab') {
+    return theme === 'word' ? 'wordCreate' : 'tableCreate';
+  }
+  const resolved = normalizeTriggerSearchText(resolvedType);
+  if (resolved === 'tableeditfavorite') {
+    return 'tableEdit';
+  }
+  if (resolved === 'tablefavorite' || resolved === 'table') {
+    return 'tableCreate';
+  }
+  if (resolved === 'wordfavorite') {
+    if (hasToken('editar') || hasToken('edit')) {
+      return 'wordEdit';
+    }
+    return 'wordCreate';
+  }
+  if (resolved === 'reportfavorite') {
+    return theme === 'word' ? 'wordIa' : 'tableIa';
+  }
+  if (theme === 'word') {
+    if (hasToken('edit')) {
+      return 'wordEdit';
+    }
+    return 'wordCreate';
+  }
+  return fallback;
+}
+
+function getTriggerActionDisplayLabel(action) {
+  if (!action) {
+    return '';
+  }
+  const label = action.name ? String(action.name) : 'Favorito sin nombre';
+  const typeLabel = typeof getActionTypeLabel === 'function' ? getActionTypeLabel(action.type) : '';
+  return typeLabel ? label + ' • ' + typeLabel : label;
+}
+
+function buildTriggerActionGroups(actions) {
+  const groups = TRIGGER_GROUP_ORDER.map(function(groupDef) {
+    return {
+      key: groupDef.key,
+      label: groupDef.label,
+      categories: groupDef.categories.map(function(categoryKey) {
+        const categoryDef = TRIGGER_CATEGORY_DEFS[categoryKey];
+        return {
+          key: categoryKey,
+          label: categoryDef ? categoryDef.label : categoryKey,
+          items: []
+        };
+      })
+    };
+  });
+  const categoryIndex = Object.create(null);
+  groups.forEach(function(group) {
+    group.categories.forEach(function(category) {
+      categoryIndex[category.key] = category;
+    });
+  });
+  const map = Object.create(null);
+  const list = Array.isArray(actions) ? actions.slice() : [];
+  list.forEach(function(action) {
+    if (!action || action.id === null || action.id === undefined) {
+      return;
+    }
+    const id = String(action.id);
+    if (!id) {
+      return;
+    }
+    const resolvedType =
+      typeof resolveFavoriteTypeFromEntry === 'function' ? resolveFavoriteTypeFromEntry(action) : action.type || '';
+    const tokenCandidates = collectTriggerTokenCandidates(action);
+    const normalizedTokens = tokenCandidates.map(normalizeTriggerSearchText).filter(Boolean);
+    const categoryKey = resolveTriggerActionCategoryKey(action, resolvedType, normalizedTokens);
+    const category = categoryIndex[categoryKey];
+    if (!category) {
+      return;
+    }
+    const label = action.name ? String(action.name) : 'Favorito sin nombre';
+    const meta = typeof getActionTypeLabel === 'function' ? getActionTypeLabel(action.type) : '';
+    const tooltip = typeof buildSavedActionTooltip === 'function' ? buildSavedActionTooltip(action) : '';
+    const displayLabel = getTriggerActionDisplayLabel(action);
+    category.items.push({
+      value: id,
+      label: label,
+      meta: meta,
+      displayLabel: displayLabel,
+      tooltip: tooltip,
+      sortLabel: normalizeTriggerSearchText(label),
+      action: action
+    });
+    if (!map[id]) {
+      map[id] = {
+        action: action,
+        displayLabel: displayLabel,
+        label: label,
+        meta: meta,
+        tooltip: tooltip,
+        category: categoryKey
+      };
+    }
+  });
+  groups.forEach(function(group) {
+    group.categories.forEach(function(category) {
+      category.items.sort(function(a, b) {
+        return a.sortLabel.localeCompare(b.sortLabel);
+      });
+    });
+  });
+  return { groups: groups, map: map };
+}
+
+function updateTriggerActionSelectionVisual(selectedId) {
+  const listElement = document.getElementById('triggerActionList');
+  if (!listElement) {
+    return;
+  }
+  const buttons = listElement.querySelectorAll('.ai-multi-item');
+  for (let i = 0; i < buttons.length; i++) {
+    const button = buttons[i];
+    const isSelected = selectedId && button.dataset.value === selectedId;
+    if (isSelected) {
+      button.classList.add('selected');
+      button.setAttribute('aria-checked', 'true');
+    } else {
+      button.classList.remove('selected');
+      button.setAttribute('aria-checked', 'false');
+    }
+  }
+}
+
+function updateTriggerActionToggleLabel(selectedId) {
+  const toggleLabel = document.getElementById('triggerActionToggleLabel');
+  const picker = document.getElementById('triggerActionPicker');
+  if (!toggleLabel || !picker) {
+    return;
+  }
+  if (selectedId && triggerActionMap[selectedId]) {
+    const entry = triggerActionMap[selectedId];
+    const label = entry.displayLabel || entry.label || 'Favorito seleccionado';
+    toggleLabel.textContent = label;
+    picker.dataset.empty = 'false';
+  } else {
+    toggleLabel.textContent = 'Seleccionar...';
+  }
+}
+
+function handleTriggerActionSelection(value) {
+  const hiddenInput = document.getElementById('triggerActionSelect');
+  if (!hiddenInput) {
+    return;
+  }
+  const normalizedValue = value === null || value === undefined ? '' : String(value);
+  if (!normalizedValue || !triggerActionMap[normalizedValue]) {
+    hiddenInput.value = '';
+    updateTriggerActionSelectionVisual('');
+    updateTriggerActionToggleLabel('');
+    closeTriggerActionMenu({ focusToggle: true });
+    updateTriggerFormState();
+    return;
+  }
+  hiddenInput.value = normalizedValue;
+  updateTriggerActionSelectionVisual(normalizedValue);
+  updateTriggerActionToggleLabel(normalizedValue);
+  closeTriggerActionMenu({ focusToggle: true });
+  updateTriggerFormState();
+}
+
+function renderTriggerActionMenu() {
+  const listElement = document.getElementById('triggerActionList');
+  const picker = document.getElementById('triggerActionPicker');
+  const toggle = document.getElementById('triggerActionToggle');
+  const toggleLabel = document.getElementById('triggerActionToggleLabel');
+  const hiddenInput = document.getElementById('triggerActionSelect');
+  if (!listElement || !picker || !toggle || !toggleLabel || !hiddenInput) {
+    return;
+  }
+  listElement.innerHTML = '';
+  const groups = Array.isArray(triggerActionGroupCache) ? triggerActionGroupCache : [];
+  let hasItems = false;
+  groups.forEach(function(group) {
+    const groupContainer = document.createElement('div');
+    groupContainer.className = 'tc-trigger-picker-group';
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'tc-trigger-picker-group-label';
+    groupLabel.textContent = group.label;
+    groupContainer.appendChild(groupLabel);
+    group.categories.forEach(function(category) {
+      const categoryContainer = document.createElement('div');
+      categoryContainer.className = 'tc-trigger-picker-category';
+      const categoryLabel = document.createElement('div');
+      categoryLabel.className = 'tc-trigger-picker-category-label';
+      categoryLabel.textContent = category.label;
+      categoryContainer.appendChild(categoryLabel);
+      if (!category.items || category.items.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'tc-trigger-picker-empty';
+        empty.textContent = 'No hay favoritos guardados.';
+        categoryContainer.appendChild(empty);
+      } else {
+        hasItems = true;
+        category.items.forEach(function(itemData) {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'ai-multi-item';
+          item.setAttribute('role', 'menuitemradio');
+          item.setAttribute('aria-checked', 'false');
+          item.dataset.value = itemData.value;
+          item.dataset.label = itemData.displayLabel;
+          if (itemData.tooltip) {
+            item.classList.add('tc-tooltip-target');
+            item.dataset.tooltip = itemData.tooltip;
+          }
+          const labelSpan = document.createElement('span');
+          labelSpan.className = 'ai-label';
+          labelSpan.textContent = itemData.label;
+          if (itemData.meta) {
+            const metaSpan = document.createElement('span');
+            metaSpan.className = 'ai-label-meta';
+            metaSpan.textContent = itemData.meta;
+            labelSpan.appendChild(metaSpan);
+          }
+          const check = document.createElement('span');
+          check.className = 'ai-check';
+          check.setAttribute('aria-hidden', 'true');
+          item.appendChild(labelSpan);
+          item.appendChild(check);
+          item.addEventListener('click', function() {
+            handleTriggerActionSelection(itemData.value);
+          });
+          item.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleTriggerActionSelection(itemData.value);
+            }
+          });
+          categoryContainer.appendChild(item);
+        });
+      }
+      groupContainer.appendChild(categoryContainer);
+    });
+    listElement.appendChild(groupContainer);
+  });
+  picker.dataset.empty = hasItems ? 'false' : 'true';
+  toggle.disabled = !hasItems;
+  if (!hasItems) {
+    toggleLabel.textContent = 'Sin favoritos disponibles';
+    hiddenInput.value = '';
+    closeTriggerActionMenu();
+  } else {
+    const currentValue = hiddenInput.value;
+    if (!currentValue || !triggerActionMap[currentValue]) {
+      hiddenInput.value = '';
+    }
+    updateTriggerActionToggleLabel(hiddenInput.value);
+    updateTriggerActionSelectionVisual(hiddenInput.value);
+  }
+  updateTriggerFormState();
+}
+
+function openTriggerActionMenu() {
+  const picker = document.getElementById('triggerActionPicker');
+  const toggle = document.getElementById('triggerActionToggle');
+  const listElement = document.getElementById('triggerActionList');
+  if (!picker || !toggle || !listElement || toggle.disabled) {
+    return;
+  }
+  picker.classList.add('open');
+  toggle.setAttribute('aria-expanded', 'true');
+  triggerActionMenuOpen = true;
+  const selected = listElement.querySelector('.ai-multi-item.selected');
+  const focusTarget = selected || listElement.querySelector('.ai-multi-item');
+  if (focusTarget) {
+    focusTarget.focus();
+  }
+}
+
+function closeTriggerActionMenu(options) {
+  const picker = document.getElementById('triggerActionPicker');
+  const toggle = document.getElementById('triggerActionToggle');
+  if (!picker || !toggle) {
+    triggerActionMenuOpen = false;
+    return;
+  }
+  if (!triggerActionMenuOpen && !picker.classList.contains('open')) {
+    return;
+  }
+  picker.classList.remove('open');
+  toggle.setAttribute('aria-expanded', 'false');
+  triggerActionMenuOpen = false;
+  const opts = options || {};
+  if (opts.focusToggle && !toggle.disabled) {
+    toggle.focus();
+  }
+}
+
+function handleTriggerPickerToggle(event) {
+  event.preventDefault();
+  if (triggerActionMenuOpen) {
+    closeTriggerActionMenu();
+  } else {
+    openTriggerActionMenu();
+  }
+}
+
+function handleTriggerPickerKeydown(event) {
+  const key = event.key;
+  if (key === 'ArrowDown' || key === 'ArrowUp') {
+    event.preventDefault();
+    if (!triggerActionMenuOpen) {
+      openTriggerActionMenu();
+    }
+    const listElement = document.getElementById('triggerActionList');
+    if (!listElement) {
+      return;
+    }
+    const items = listElement.querySelectorAll('.ai-multi-item');
+    if (!items.length) {
+      return;
+    }
+    const target = key === 'ArrowUp' ? items[items.length - 1] : items[0];
+    if (target) {
+      target.focus();
+    }
+    return;
+  }
+  if (key === 'Enter' || key === ' ') {
+    event.preventDefault();
+    if (triggerActionMenuOpen) {
+      closeTriggerActionMenu();
+    } else {
+      openTriggerActionMenu();
+    }
+  }
+}
+
+function handleTriggerActionMenuNavigation(event) {
+  if (!triggerActionMenuOpen) {
+    return;
+  }
+  const key = event.key;
+  if (key === 'Escape') {
+    event.preventDefault();
+    closeTriggerActionMenu({ focusToggle: true });
+    return;
+  }
+  if (key !== 'ArrowDown' && key !== 'ArrowUp') {
+    return;
+  }
+  const listElement = document.getElementById('triggerActionList');
+  if (!listElement) {
+    return;
+  }
+  const items = Array.prototype.slice.call(listElement.querySelectorAll('.ai-multi-item'));
+  if (!items.length) {
+    return;
+  }
+  const currentIndex = items.indexOf(document.activeElement);
+  let nextIndex = 0;
+  if (key === 'ArrowDown') {
+    nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % items.length;
+  } else {
+    nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+  }
+  const target = items[nextIndex];
+  if (target) {
+    event.preventDefault();
+    target.focus();
+  }
+}
+
+function handleTriggerActionDocumentClick(event) {
+  if (!triggerActionMenuOpen) {
+    return;
+  }
+  const picker = document.getElementById('triggerActionPicker');
+  if (!picker) {
+    return;
+  }
+  if (picker.contains(event.target)) {
+    return;
+  }
+  closeTriggerActionMenu();
+}
+
+function handleTriggerActionDocumentFocus(event) {
+  if (!triggerActionMenuOpen) {
+    return;
+  }
+  const picker = document.getElementById('triggerActionPicker');
+  if (!picker) {
+    return;
+  }
+  if (picker.contains(event.target)) {
+    return;
+  }
+  closeTriggerActionMenu();
+}
+
+function initializeTriggerActionPicker() {
+  if (triggerActionPickerInitialized) {
+    return;
+  }
+  const picker = document.getElementById('triggerActionPicker');
+  const toggle = document.getElementById('triggerActionToggle');
+  const menu = document.getElementById('triggerActionMenu');
+  if (!picker || !toggle || !menu) {
+    return;
+  }
+  triggerActionPickerInitialized = true;
+  toggle.addEventListener('click', handleTriggerPickerToggle);
+  toggle.addEventListener('keydown', handleTriggerPickerKeydown);
+  if (!triggerActionDocumentEventsBound) {
+    document.addEventListener('click', handleTriggerActionDocumentClick);
+    document.addEventListener('keydown', handleTriggerActionMenuNavigation, true);
+    document.addEventListener('focusin', handleTriggerActionDocumentFocus);
+    triggerActionDocumentEventsBound = true;
+  }
+}
+
+function populateTriggerActionSelect(actions) {
+  initializeTriggerActionPicker();
+  triggerActionCache = Array.isArray(actions) ? actions.slice() : [];
+  const buildResult = buildTriggerActionGroups(triggerActionCache);
+  triggerActionGroupCache = buildResult.groups;
+  triggerActionMap = buildResult.map;
+  renderTriggerActionMenu();
+}
+
+function getTriggerFrequencyLabel(value, options) {
+  const opts = options || {};
   switch (value) {
+    case 'once':
+      return 'Solo 1 vez';
+    case 'custom':
+      if (opts.count && opts.count > 0) {
+        return 'Varias veces (' + opts.count + ')';
+      }
+      return 'Varias veces';
+    case 'daily':
+      return 'Diario';
+    case 'weekly':
+      return 'Semanal';
+    case 'biweekly':
+      return 'Quincenal';
+    case 'monthly':
+      return 'Mensual';
     case 'hourly':
       return 'Cada hora';
-    case 'daily':
-      return 'Cada día';
-    case 'weekly':
-      return 'Cada semana';
     default:
-      return 'Personalizado';
+      return '';
   }
+}
+
+function updateTriggerFrequencyFields() {
+  const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const customField = document.getElementById('triggerFrequencyCustomField');
+  const countInput = document.getElementById('triggerFrequencyCount');
+  if (!frequencySelect || !customField) {
+    return;
+  }
+  if (frequencySelect.value === 'custom') {
+    customField.classList.remove('ai-hidden');
+    customField.removeAttribute('aria-hidden');
+  } else {
+    customField.classList.add('ai-hidden');
+    customField.setAttribute('aria-hidden', 'true');
+    if (countInput) {
+      countInput.value = '';
+    }
+  }
+  updateTriggerFormState();
 }
 
 function updateTriggerEmptyState(hasItems) {
@@ -36,12 +675,13 @@ function renderTriggerList() {
     return;
   }
   list.innerHTML = '';
-  if (!Array.isArray(triggerEntries) || triggerEntries.length === 0) {
+  const entries = Array.isArray(triggerEntries) ? triggerEntries : [];
+  if (!entries.length) {
     updateTriggerEmptyState(false);
     return;
   }
   updateTriggerEmptyState(true);
-  triggerEntries.forEach(function(entry) {
+  entries.forEach(function(entry) {
     if (!entry) {
       return;
     }
@@ -57,6 +697,11 @@ function renderTriggerList() {
       frequency.className = 'tc-badge';
       frequency.textContent = entry.frequencyLabel;
       meta.appendChild(frequency);
+    }
+    if (entry.customCount && entry.frequency === 'custom') {
+      const custom = document.createElement('span');
+      custom.textContent = 'Repeticiones: ' + entry.customCount;
+      meta.appendChild(custom);
     }
     if (entry.actionLabel) {
       const action = document.createElement('span');
@@ -78,94 +723,22 @@ function renderTriggerList() {
   });
 }
 
-function populateTriggerActionSelect(actions) {
-  const select = document.getElementById('triggerActionSelect');
-  if (!select) {
-    return;
-  }
-  const previous = select.value;
-  select.innerHTML = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Seleccionar...';
-  select.appendChild(placeholder);
-  const list = Array.isArray(actions) ? actions.slice() : [];
-  const tooltipMap = Object.create(null);
-  list
-    .sort(function(a, b) {
-      const nameA = (a && a.name ? a.name : '').toLowerCase();
-      const nameB = (b && b.name ? b.name : '').toLowerCase();
-      if (nameA < nameB) {
-        return -1;
-      }
-      if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    })
-    .forEach(function(action) {
-      if (!action || !action.id) {
-        return;
-      }
-      const option = document.createElement('option');
-      option.value = action.id;
-      const label = action.name ? action.name : 'Favorito sin nombre';
-      option.textContent = label + ' • ' + getActionTypeLabel(action.type);
-      const tooltip = typeof buildSavedActionTooltip === 'function' ? buildSavedActionTooltip(action) : '';
-      if (tooltip) {
-        option.title = tooltip;
-        tooltipMap[action.id] = tooltip;
-      }
-      select.appendChild(option);
-    });
-  let fallbackTooltipUpdater = null;
-  if (typeof bindSelectTooltipWithMap === 'function') {
-    bindSelectTooltipWithMap(select, tooltipMap);
-  } else {
-    fallbackTooltipUpdater = function() {
-      const tip = tooltipMap[select.value] || '';
-      if (tip) {
-        select.dataset.tooltip = tip;
-        select.setAttribute('title', tip);
-        select.classList.add('tc-tooltip-target');
-      } else {
-        select.removeAttribute('data-tooltip');
-        select.removeAttribute('title');
-      }
-    };
-    fallbackTooltipUpdater();
-    if (!select.dataset.tooltipBound) {
-      select.addEventListener('change', fallbackTooltipUpdater);
-      select.addEventListener('focus', fallbackTooltipUpdater);
-      select.addEventListener('mouseenter', fallbackTooltipUpdater);
-      select.dataset.tooltipBound = 'true';
-    }
-  }
-  if (previous) {
-    const exists = Array.prototype.find.call(select.options, function(option) {
-      return option && option.value === previous;
-    });
-    if (exists) {
-      select.value = previous;
-    }
-  }
-  if (typeof updateSelectTooltip === 'function') {
-    updateSelectTooltip(select, tooltipMap);
-  } else if (fallbackTooltipUpdater) {
-    fallbackTooltipUpdater();
-  }
-  updateTriggerFormState();
-}
-
 function updateTriggerFormState() {
-  const actionSelect = document.getElementById('triggerActionSelect');
+  const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const countInput = document.getElementById('triggerFrequencyCount');
   const createBtn = document.getElementById('triggerCreateBtn');
   if (!createBtn) {
     return;
   }
-  const ready = !!(actionSelect && actionSelect.value && frequencySelect && frequencySelect.value);
-  createBtn.disabled = !ready;
+  const actionReady = !!(actionInput && actionInput.value);
+  const frequencyValue = frequencySelect ? frequencySelect.value : '';
+  let frequencyReady = !!frequencyValue;
+  if (frequencyValue === 'custom') {
+    const parsed = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
+    frequencyReady = !isNaN(parsed) && parsed > 0;
+  }
+  createBtn.disabled = !(actionReady && frequencyReady);
 }
 
 function buildTriggerTitle(actionLabel, frequencyLabel) {
@@ -180,13 +753,21 @@ function buildTriggerTitle(actionLabel, frequencyLabel) {
 }
 
 function handleTriggerPreview() {
-  const actionSelect = document.getElementById('triggerActionSelect');
+  const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const countInput = document.getElementById('triggerFrequencyCount');
   const startDateInput = document.getElementById('triggerStartDate');
-  const actionOption = actionSelect && actionSelect.options ? actionSelect.options[actionSelect.selectedIndex] : null;
-  const actionLabel = actionOption ? actionOption.textContent : '';
-  const frequencyLabel = getTriggerFrequencyLabel(frequencySelect ? frequencySelect.value : '');
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const actionId = actionInput ? actionInput.value : '';
+  const actionEntry = actionId && triggerActionMap[actionId] ? triggerActionMap[actionId] : null;
+  const actionLabel = actionEntry ? actionEntry.displayLabel || actionEntry.label : '';
+  const frequencyValue = frequencySelect ? frequencySelect.value : '';
+  const rawCount = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
+  const customCount =
+    frequencyValue === 'custom' && !isNaN(rawCount) && rawCount > 0 ? rawCount : 0;
+  const frequencyLabel = getTriggerFrequencyLabel(frequencyValue, { count: customCount });
   const startDate = startDateInput && startDateInput.value ? startDateInput.value : '';
+  const startTime = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
   const lines = [];
   if (actionLabel) {
     lines.push('Favorito: ' + actionLabel);
@@ -194,7 +775,21 @@ function handleTriggerPreview() {
   if (frequencyLabel) {
     lines.push('Frecuencia: ' + frequencyLabel);
   }
-  lines.push('Inicio: ' + (startDate || 'Al guardar'));
+  if (frequencyValue === 'custom' && customCount) {
+    lines.push('Repeticiones: ' + customCount);
+  }
+  if (startDate || startTime) {
+    const startParts = [];
+    if (startDate) {
+      startParts.push('Fecha ' + startDate);
+    }
+    if (startTime) {
+      startParts.push('Hora ' + startTime);
+    }
+    lines.push('Inicio: ' + startParts.join(' • '));
+  } else {
+    lines.push('Inicio: Al guardar');
+  }
   showMessageModal(lines.join('\n'), {
     title: 'Vista previa del trigger',
     variant: 'info'
@@ -202,13 +797,15 @@ function handleTriggerPreview() {
 }
 
 function handleTriggerCreate() {
-  const actionSelect = document.getElementById('triggerActionSelect');
+  const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const countInput = document.getElementById('triggerFrequencyCount');
   const startDateInput = document.getElementById('triggerStartDate');
-  if (!actionSelect || !frequencySelect) {
+  const startTimeInput = document.getElementById('triggerStartTime');
+  if (!actionInput || !frequencySelect) {
     return;
   }
-  const actionId = actionSelect.value;
+  const actionId = actionInput.value;
   const frequency = frequencySelect.value;
   if (!actionId || !frequency) {
     showMessageModal('Seleccioná un favorito y una frecuencia para guardar el trigger.', {
@@ -217,18 +814,40 @@ function handleTriggerCreate() {
     });
     return;
   }
-  const actionOption = actionSelect.options[actionSelect.selectedIndex];
-  const actionLabel = actionOption ? actionOption.textContent : '';
-  const frequencyLabel = getTriggerFrequencyLabel(frequency);
+  let customCount = 0;
+  if (frequency === 'custom') {
+    const parsed = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
+    if (isNaN(parsed) || parsed <= 0) {
+      showMessageModal('Indicá cuántas veces querés ejecutar el trigger.', {
+        title: 'Falta indicar repeticiones',
+        variant: 'warning'
+      });
+      return;
+    }
+    customCount = parsed;
+  }
+  const actionEntry = triggerActionMap[actionId];
+  const actionLabel = actionEntry ? actionEntry.displayLabel || actionEntry.label : '';
+  const frequencyLabel = getTriggerFrequencyLabel(frequency, { count: customCount });
   const startDate = startDateInput && startDateInput.value ? startDateInput.value : '';
+  const startTime = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
+  const startParts = [];
+  if (startDate) {
+    startParts.push('Fecha: ' + startDate);
+  }
+  if (startTime) {
+    startParts.push('Hora: ' + startTime);
+  }
   const entry = {
-    id: 'localTrigger:' + (++triggerIdCounter),
+    id: 'localTrigger:' + ++triggerIdCounter,
     actionId: actionId,
     actionLabel: actionLabel,
     frequency: frequency,
     frequencyLabel: frequencyLabel,
+    customCount: frequency === 'custom' ? customCount : 0,
     startDate: startDate,
-    startsAtLabel: startDate ? 'Inicia: ' + startDate : 'Inicia al guardar',
+    startTime: startTime,
+    startsAtLabel: startParts.length ? 'Inicio: ' + startParts.join(' • ') : 'Inicia al guardar',
     title: buildTriggerTitle(actionLabel, frequencyLabel)
   };
   triggerEntries.push(entry);
@@ -240,17 +859,19 @@ function handleTriggerCreate() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const actionSelect = document.getElementById('triggerActionSelect');
+  initializeTriggerActionPicker();
   const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const countInput = document.getElementById('triggerFrequencyCount');
   const createBtn = document.getElementById('triggerCreateBtn');
   const previewBtn = document.getElementById('triggerPreviewBtn');
   const refreshBtn = document.getElementById('triggerRefreshBtn');
 
-  if (actionSelect) {
-    actionSelect.addEventListener('change', updateTriggerFormState);
-  }
   if (frequencySelect) {
-    frequencySelect.addEventListener('change', updateTriggerFormState);
+    frequencySelect.addEventListener('change', updateTriggerFrequencyFields);
+  }
+  if (countInput) {
+    countInput.addEventListener('input', updateTriggerFormState);
+    countInput.addEventListener('change', updateTriggerFormState);
   }
   if (createBtn) {
     createBtn.addEventListener('click', handleTriggerCreate);
@@ -277,15 +898,18 @@ document.addEventListener('DOMContentLoaded', function() {
       populateTriggerActionSelect([]);
     });
   }
+
+  updateTriggerFrequencyFields();
   updateTriggerFormState();
   renderTriggerList();
 });
+
 const TableCrafterTriggersTab = Object.freeze({
-        renderList: renderTriggerList,
-        updateFormState: updateTriggerFormState,
-        previewTrigger: handleTriggerPreview,
-        createTrigger: handleTriggerCreate
-      });
+  renderList: renderTriggerList,
+  updateFormState: updateTriggerFormState,
+  previewTrigger: handleTriggerPreview,
+  createTrigger: handleTriggerCreate
+});
 
 window.TableCrafterTriggersTab = TableCrafterTriggersTab;
 

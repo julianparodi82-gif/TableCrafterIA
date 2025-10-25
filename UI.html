@@ -2969,6 +2969,13 @@
         font-size: 14px;
         color: var(--tc-text);
       }
+      .ai-multi-item .ai-label-meta {
+        display: block;
+        margin-top: 2px;
+        font-weight: 500;
+        font-size: 12px;
+        color: var(--tc-muted);
+      }
       .ai-multi-item .ai-check {
         width: 24px;
         height: 24px;
@@ -2999,6 +3006,126 @@
       }
       .ai-hidden-select {
         display: none;
+      }
+      .tc-trigger-picker {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tc-trigger-picker[data-empty='true'] .tc-trigger-picker-toggle {
+        color: var(--tc-muted);
+      }
+      .tc-trigger-picker-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--tc-border);
+        background-color: #FFFFFF;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--tc-text);
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .tc-trigger-picker-toggle:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-picker-toggle[disabled] {
+        cursor: not-allowed;
+        background-color: #F3F4F6;
+        color: var(--tc-muted);
+      }
+      .tc-trigger-picker-toggle[disabled] .tc-trigger-picker-icon {
+        opacity: 0.5;
+      }
+      .tc-trigger-picker-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--tc-primary-soft);
+        color: var(--tc-primary);
+        font-size: 12px;
+        line-height: 1;
+      }
+      .tc-trigger-picker-icon::before {
+        content: '\25BC';
+        display: block;
+      }
+      .tc-trigger-picker.open .tc-trigger-picker-icon::before {
+        content: '\25B2';
+      }
+      .tc-trigger-picker-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        border-radius: 10px;
+        border: 1px solid var(--tc-border);
+        background-color: #FFFFFF;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+        padding: 10px 0;
+      }
+      .tc-trigger-picker.open .tc-trigger-picker-menu {
+        display: block;
+      }
+      .tc-trigger-picker-menu .ai-multi-list {
+        max-height: 320px;
+      }
+      .tc-trigger-picker-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tc-trigger-picker-group + .tc-trigger-picker-group {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      .tc-trigger-picker-group-label {
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--tc-muted-strong, #475569);
+        padding: 0 20px;
+      }
+      .tc-trigger-picker-category {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tc-trigger-picker-category-label {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--tc-text);
+        padding: 0 20px;
+      }
+      .tc-trigger-picker-empty {
+        padding: 4px 20px 6px;
+        font-size: 13px;
+        color: var(--tc-muted);
+      }
+      @media (max-width: 720px) {
+        .tc-trigger-picker-menu {
+          position: fixed;
+          left: 16px;
+          right: 16px;
+          top: auto;
+          bottom: 16px;
+          max-height: 60vh;
+        }
       }
       .toggle-group {
         display: flex;
@@ -7826,26 +7953,62 @@
             <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
             <div class="tc-form-grid">
               <div class="tc-form-field">
-                <label for="triggerActionSelect">Acción a ejecutar</label>
-                <select id="triggerActionSelect">
-                  <option value="">Seleccionar...</option>
-                </select>
+                <label for="triggerActionToggle">Acción a ejecutar</label>
+                <div id="triggerActionPicker" class="tc-trigger-picker" data-empty="true">
+                  <button
+                    type="button"
+                    id="triggerActionToggle"
+                    class="tc-trigger-picker-toggle"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="triggerActionMenu"
+                  >
+                    <span id="triggerActionToggleLabel">Seleccionar...</span>
+                    <span class="tc-trigger-picker-icon" aria-hidden="true"></span>
+                  </button>
+                  <div
+                    id="triggerActionMenu"
+                    class="tc-trigger-picker-menu"
+                    role="menu"
+                    aria-labelledby="triggerActionToggle"
+                  >
+                    <div id="triggerActionList" class="ai-multi-list" role="presentation"></div>
+                  </div>
+                  <input type="hidden" id="triggerActionSelect" value="" />
+                </div>
                 <p class="tc-field-note">Se mostrarán las tablas y reportes favoritos disponibles.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
                 <select id="triggerFrequencySelect">
                   <option value="">Seleccionar frecuencia</option>
-                  <option value="hourly">Cada hora</option>
-                  <option value="daily">Cada día</option>
-                  <option value="weekly">Cada semana</option>
+                  <option value="once">Solo 1 vez</option>
+                  <option value="custom">Varias veces</option>
+                  <option value="daily">Diario</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="biweekly">Quincenal</option>
+                  <option value="monthly">Mensual</option>
                 </select>
                 <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
               </div>
             </div>
+            <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
+              <label for="triggerFrequencyCount">Cantidad de repeticiones</label>
+              <input
+                type="number"
+                id="triggerFrequencyCount"
+                min="2"
+                step="1"
+                placeholder="Ej: 5"
+              />
+            </div>
             <div class="tc-form-field">
               <label for="triggerStartDate">Fecha de inicio</label>
               <input type="date" id="triggerStartDate" />
+            </div>
+            <div class="tc-form-field">
+              <label for="triggerStartTime">Hora de ejecución</label>
+              <input type="time" id="triggerStartTime" />
             </div>
             <div class="tc-card-actions">
               <button type="button" id="triggerPreviewBtn" class="btn-secondary">Vista previa</button>
