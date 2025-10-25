@@ -59,6 +59,7 @@ const TRIGGER_WEEKDAY_SHORT_LABELS = Object.freeze([
   'Sáb',
   'Dom'
 ]);
+const TRIGGER_SCHEDULE_DAY_MS = 24 * 60 * 60 * 1000;
 let triggerCalendarState = {
   activeYear: null,
   activeMonth: null,
@@ -393,10 +394,10 @@ function updateTriggerCalendarSelectionLimit() {
   if (frequency === 'custom') {
     const limit = getTriggerCustomSelectionLimit();
     triggerCalendarState.selectionLimit = limit > 0 ? limit : 0;
-  } else if (frequency === 'biweekly') {
-    triggerCalendarState.selectionLimit = 2;
   } else if (frequency === 'weekly') {
     triggerCalendarState.selectionLimit = 0;
+  } else if (frequency === 'biweekly') {
+    triggerCalendarState.selectionLimit = 1;
   } else {
     triggerCalendarState.selectionLimit = 1;
   }
@@ -420,7 +421,8 @@ function syncTriggerSelectedInputs(options) {
     listInput.value = triggerCalendarState.selectedDates.join(',');
   }
   const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || 'once';
-  const shouldSyncFromInput = !opts.skipFrom && (frequency === 'once' || frequency === 'daily' || frequency === 'monthly');
+  const shouldSyncFromInput =
+    !opts.skipFrom && (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly');
   if (fromInput && shouldSyncFromInput) {
     fromInput.value = triggerCalendarState.selectedDates.length ? triggerCalendarState.selectedDates[0] : '';
   }
@@ -612,26 +614,16 @@ function updateTriggerScheduleSummary() {
       message = 'Elegí un día de la semana para programar el trigger.';
     }
   } else if (frequency === 'biweekly') {
-    if (triggerCalendarState.biweeklyDays && triggerCalendarState.biweeklyDays.length) {
-      message =
-        'Días del mes seleccionados: ' +
-        triggerCalendarState.biweeklyDays
-          .slice()
-          .sort(function(a, b) {
-            return a - b;
-          })
-          .join(' y ');
-      if (startReference) {
-        message += ' desde ' + startReference;
-      }
-      message += '.';
+    if (startReference) {
+      message = 'Se ejecuta cada 15 días desde ' + startReference + '.';
     } else {
-      message = 'Indicá los dos días del mes en los que se ejecutará.';
+      message = 'Seleccioná una fecha para comenzar la ejecución quincenal.';
     }
   } else if (frequency === 'monthly') {
     if (startReference) {
-      const anchorDate = parseTriggerDateString(startReference);
-      message = anchorDate ? 'Se repetirá el día ' + anchorDate.day + ' de cada mes.' : '';
+      message = 'Se ejecuta cada 30 días desde ' + startReference + '.';
+    } else {
+      message = 'Seleccioná una fecha para iniciar la ejecución mensual.';
     }
   } else {
     message = '';
@@ -649,6 +641,7 @@ function isTriggerScheduleReady(frequency) {
   switch (frequency) {
     case 'once':
     case 'daily':
+    case 'biweekly':
     case 'monthly':
       return triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length > 0;
     case 'custom': {
@@ -663,8 +656,6 @@ function isTriggerScheduleReady(frequency) {
     }
     case 'weekly':
       return typeof triggerCalendarState.weeklyDay === 'number';
-    case 'biweekly':
-      return triggerCalendarState.biweeklyDays && triggerCalendarState.biweeklyDays.length === 2;
     default:
       return true;
   }
@@ -774,21 +765,19 @@ function renderTriggerCalendar() {
         }
         break;
       case 'biweekly':
-        if (
-          Array.isArray(state.biweeklyDays) &&
-          state.biweeklyDays.indexOf(currentParts.day) !== -1 &&
-          isWithinWindow(currentTime)
-        ) {
-          isScheduled = true;
+        if (!isNaN(effectiveStartTime) && currentTime >= effectiveStartTime && isWithinWindow(currentTime)) {
+          const diffDays = Math.round((currentTime - effectiveStartTime) / TRIGGER_SCHEDULE_DAY_MS);
+          if (diffDays % 15 === 0) {
+            isScheduled = true;
+          }
         }
         break;
       case 'monthly':
-        if (
-          anchorParts &&
-          anchorParts.day === currentParts.day &&
-          isWithinWindow(currentTime)
-        ) {
-          isScheduled = true;
+        if (!isNaN(effectiveStartTime) && currentTime >= effectiveStartTime && isWithinWindow(currentTime)) {
+          const diffDays = Math.round((currentTime - effectiveStartTime) / TRIGGER_SCHEDULE_DAY_MS);
+          if (diffDays % 30 === 0) {
+            isScheduled = true;
+          }
         }
         break;
       default:
@@ -816,15 +805,11 @@ function renderTriggerCalendar() {
 function applyTriggerDateSelection(dateString, options) {
   const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || 'once';
   if (!dateString) {
-    if (frequency === 'custom' || frequency === 'weekly' || frequency === 'biweekly') {
+    if (frequency === 'custom' || frequency === 'weekly') {
       setTriggerSelectedDates([], { skipFrom: true });
       if (frequency === 'weekly') {
         triggerCalendarState.weeklyDay = null;
         updateTriggerWeeklyButtons();
-      }
-      if (frequency === 'biweekly') {
-        triggerCalendarState.biweeklyDays = [];
-        updateTriggerBiweeklyInputs();
       }
     } else {
       setTriggerSingleDate('', options);
@@ -852,12 +837,12 @@ function applyTriggerDateSelection(dateString, options) {
       fromInput.value = dateString;
     }
     setTriggerWeeklyDay(weekday, { anchorDate: dateString });
-  } else if (frequency === 'biweekly') {
+  } else if (frequency === 'biweekly' || frequency === 'monthly') {
     const fromInput = document.getElementById('triggerDateFrom');
     if (fromInput) {
       fromInput.value = dateString;
     }
-    toggleTriggerBiweeklyDay(parsed.day, dateString);
+    setTriggerSingleDate(dateString, { skipFrom: true });
   } else {
     setTriggerSingleDate(dateString, options);
   }
@@ -923,9 +908,9 @@ function handleTriggerDateFromChange() {
   }
   const value = fromInput.value || '';
   const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || 'once';
-  if (frequency === 'once' || frequency === 'daily' || frequency === 'monthly') {
+  if (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly') {
     setTriggerSingleDate(value, { skipFrom: true });
-  } else if (frequency === 'weekly' || frequency === 'biweekly') {
+  } else if (frequency === 'weekly') {
     if (value) {
       setTriggerSelectedDates([value], { skipFrom: true });
     } else {
@@ -1547,7 +1532,7 @@ function updateTriggerFrequencyFields() {
       countInput.value = '';
     }
   }
-  const showToField = frequency !== 'once' && frequency !== 'daily';
+  const showToField = frequency === 'custom' || frequency === 'weekly';
   if (toContainer) {
     if (showToField) {
       toContainer.classList.remove('is-hidden');
@@ -1566,7 +1551,9 @@ function updateTriggerFrequencyFields() {
     }
   }
   if (fromLabel) {
-    fromLabel.textContent = frequency === 'once' || frequency === 'daily' ? 'Fecha' : 'Desde';
+    const useFechaLabel =
+      frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly';
+    fromLabel.textContent = useFechaLabel ? 'Fecha' : 'Desde';
   }
   if (toLabel) {
     toLabel.textContent = 'Hasta';
@@ -1581,8 +1568,6 @@ function updateTriggerFrequencyFields() {
     }
     if (frequency === 'weekly') {
       fromInput.placeholder = 'Próxima ejecución (opcional)';
-    } else if (frequency === 'biweekly') {
-      fromInput.placeholder = 'Fecha de inicio (opcional)';
     } else {
       fromInput.placeholder = '';
     }
@@ -1599,17 +1584,16 @@ function updateTriggerFrequencyFields() {
       weeklyField.setAttribute('aria-hidden', 'true');
     }
   }
+  triggerCalendarState.biweeklyDays = [];
   if (biweeklyField) {
-    if (frequency === 'biweekly') {
-      biweeklyField.classList.remove('ai-hidden');
-      biweeklyField.removeAttribute('aria-hidden');
-    } else {
-      biweeklyField.classList.add('ai-hidden');
-      biweeklyField.setAttribute('aria-hidden', 'true');
-    }
+    biweeklyField.classList.add('ai-hidden');
+    biweeklyField.setAttribute('aria-hidden', 'true');
   }
   updateTriggerCalendarSelectionLimit();
-  if (frequency !== 'custom' && (frequency === 'once' || frequency === 'daily' || frequency === 'monthly')) {
+  if (
+    frequency !== 'custom' &&
+    (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly')
+  ) {
     syncTriggerSelectedInputs();
   }
   updateTriggerWeeklyButtons();
@@ -1728,6 +1712,7 @@ function getTriggerScheduleData() {
   switch (frequency) {
     case 'once':
     case 'daily':
+    case 'biweekly':
     case 'monthly':
       data.startDate = data.selectedDates.length ? data.selectedDates[0] : '';
       break;
@@ -1738,7 +1723,6 @@ function getTriggerScheduleData() {
       }
       break;
     case 'weekly':
-    case 'biweekly':
       data.startDate = fromInput && fromInput.value ? fromInput.value : data.selectedDates.length ? data.selectedDates[0] : '';
       break;
     default:
@@ -1801,20 +1785,8 @@ function buildTriggerScheduleSummary(scheduleData) {
       }
       break;
     case 'biweekly':
-      if (scheduleData.biweeklyDays && scheduleData.biweeklyDays.length) {
-        segments.push(
-          'Días del mes ' +
-            scheduleData.biweeklyDays
-              .slice()
-              .sort(function(a, b) {
-                return a - b;
-              })
-              .join(' y ') +
-            ' de cada mes'
-        );
-      }
       if (scheduleData.startDate) {
-        segments.push('Desde ' + scheduleData.startDate);
+        segments.push('Cada 15 días desde ' + scheduleData.startDate);
       }
       if (scheduleData.endDate) {
         segments.push('Hasta ' + scheduleData.endDate);
@@ -1822,12 +1794,7 @@ function buildTriggerScheduleSummary(scheduleData) {
       break;
     case 'monthly': {
       if (scheduleData.startDate) {
-        const anchor = parseTriggerDateString(scheduleData.startDate);
-        if (anchor) {
-          segments.push('Día ' + anchor.day + ' de cada mes');
-        } else {
-          segments.push('Desde ' + scheduleData.startDate);
-        }
+        segments.push('Cada 30 días desde ' + scheduleData.startDate);
       }
       if (scheduleData.endDate) {
         segments.push('Hasta ' + scheduleData.endDate);
