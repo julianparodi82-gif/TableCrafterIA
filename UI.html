@@ -3092,7 +3092,8 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 360px;
+        width: 100%;
+        max-width: 680px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
@@ -3130,6 +3131,9 @@
       }
       .tc-trigger-card {
         transition: max-height var(--tc-transition-duration) ease;
+        width: 100%;
+        max-width: 780px;
+        margin: 0 auto;
       }
       .tc-trigger-heading {
         display: flex;
@@ -3160,11 +3164,24 @@
       }
       .tc-trigger-section-fieldset {
         border: none;
-        margin: 0;
+        margin: 0 auto;
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        width: 100%;
+        max-width: 680px;
       }
       .tc-trigger-section-fieldset.is-collapsed {
         display: none;
+      }
+      .tc-trigger-card .tc-form-grid {
+        width: 100%;
+        max-width: 680px;
+        margin: 0 auto;
+      }
+      .tc-trigger-card .tc-form-field {
+        align-items: stretch;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
