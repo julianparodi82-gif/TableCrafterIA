@@ -37,11 +37,16 @@ function shouldDisplayActionForTheme(action, theme) {
   if (!action) {
     return false;
   }
-  if (theme === 'word') {
-    const resolvedType = resolveFavoriteTypeFromEntry(action);
-    if (resolvedType === 'table' || resolvedType === 'tableFavorite' || resolvedType === 'tableEditFavorite') {
-      return false;
+  const resolvedType = resolveFavoriteTypeFromEntry(action);
+  const normalizedTheme = theme === 'word' ? 'word' : 'table';
+  if (normalizedTheme === 'word') {
+    if (resolvedType === 'wordFavorite') {
+      return true;
     }
+    return isWordcrafterActionFavorite(action, resolvedType);
+  }
+  if (resolvedType === 'wordFavorite' && normalizedTheme === 'table') {
+    return false;
   }
   return true;
 }
@@ -51,17 +56,40 @@ function filterSavedActionsForTheme(actions, theme) {
     return [];
   }
   const normalizedTheme = theme === 'word' ? 'word' : 'table';
-  if (normalizedTheme === 'table') {
-    return actions.slice();
-  }
   return actions.filter(function(action) {
     return shouldDisplayActionForTheme(action, normalizedTheme);
   });
 }
 
-function isWordcrafterActionFavorite(action) {
-  if (!action || action.type !== 'wordFavorite') {
+function isWordcrafterActionFavorite(action, resolvedTypeHint) {
+  if (!action) {
     return false;
+  }
+  const directType = normalizeFavoriteTypeCandidate(action.type);
+  if (directType === 'wordFavorite') {
+    return true;
+  }
+  const resolvedType = resolvedTypeHint || resolveFavoriteTypeFromEntry(action);
+  if (resolvedType === 'wordFavorite') {
+    return true;
+  }
+  const metadata = action.metadata && typeof action.metadata === 'object' ? action.metadata : null;
+  if (metadata) {
+    const metadataType = normalizeFavoriteTypeCandidate(
+      metadata.type || metadata.kind || metadata.favoriteKind || metadata.recordType || metadata.sourceType
+    );
+    if (metadataType === 'wordFavorite') {
+      return true;
+    }
+    const metadataContext = metadata.context ? String(metadata.context).toLowerCase() : '';
+    if (
+      metadataContext &&
+      (metadataContext.indexOf('wordcrafter') !== -1 ||
+        metadataContext.indexOf('word') !== -1 ||
+        metadataContext.indexOf('texto') !== -1)
+    ) {
+      return true;
+    }
   }
   const idText = action.id ? String(action.id).toLowerCase() : '';
   if (!idText) {
@@ -1263,11 +1291,6 @@ function renderSavedActionsList(actions, selectedId, options) {
   const list = Array.isArray(actions) ? actions : [];
   const theme = getActiveThemeForActions();
   let filteredList = filterSavedActionsForTheme(list, theme);
-  if (theme === 'word') {
-    filteredList = filteredList.filter(function(entry) {
-      return isWordcrafterActionFavorite(entry);
-    });
-  }
   listElement.innerHTML = '';
   listElement.setAttribute('aria-multiselectable', 'false');
   listElement.classList.remove('ai-hidden');
@@ -2342,4 +2365,15 @@ const TableCrafterActionsTab = Object.freeze({
 
 window.TableCrafterActionsTab = TableCrafterActionsTab;
 
+const WordCrafterActionsTab = Object.freeze({
+        initialize: initSavedActionsPanel,
+        mountEditor: mountReportEditorInActions,
+        exitEditor: exitReportFavoriteEditor,
+        notifyTabChanged: notifyActionsTabChanged,
+        refreshSavedActions: requestSavedActionsRefresh
+      });
+
+window.WordCrafterActionsTab = WordCrafterActionsTab;
+
 </script>
+

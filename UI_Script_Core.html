@@ -52,6 +52,26 @@ function getFavoriteButtonLabelTarget(button) {
         return label || button;
       }
 
+function setFavoriteLabelContent(target, text) {
+        if (!target) {
+          return;
+        }
+        const normalized = typeof text === 'string' ? text.trim() : '';
+        if (!normalized) {
+          target.textContent = '';
+          return;
+        }
+        if (
+          target.classList &&
+          target.classList.contains('ai-favorite-label') &&
+          normalized.toLowerCase() === 'agregar a favoritos'
+        ) {
+          target.innerHTML = 'Agregar a <span class="shortcut-accesskey">F</span>avoritos';
+          return;
+        }
+        target.textContent = normalized;
+      }
+
 function beginFavoriteButtonLoading(button, baseWord) {
         if (!button) {
           return;
@@ -100,9 +120,9 @@ function endFavoriteButtonLoading(button, text) {
         }
         favoriteButtonLoaders.delete(button);
         if (target && text !== undefined) {
-          target.textContent = text;
+          setFavoriteLabelContent(target, text);
         } else if (target && state && state.idleText !== undefined && text === undefined) {
-          target.textContent = state.idleText;
+          setFavoriteLabelContent(target, state.idleText);
         }
         button.classList.remove('is-loading');
         button.removeAttribute('data-loading');
@@ -3906,6 +3926,141 @@ function playSidebarAnimation() {
           applyTheme(themeToggle.checked, { animate: true });
         });
 
+        const favoriteShortcutLabel = '(Alt + F)';
+        const ensureFavoriteShortcutTooltips = function(root) {
+          const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+          const buttons = scope.querySelectorAll('.ai-report-favorite-btn');
+          for (let i = 0; i < buttons.length; i++) {
+            const button = buttons[i];
+            if (!button || button.nodeType !== 1) {
+              continue;
+            }
+            try {
+              if (
+                typeof button.removeAttribute === 'function' &&
+                typeof button.hasAttribute === 'function' &&
+                button.hasAttribute('title')
+              ) {
+                button.removeAttribute('title');
+              }
+            } catch (removeError) {}
+            if (button.classList && typeof button.classList.add === 'function') {
+              button.classList.add('tc-tooltip-target');
+            }
+            if (typeof button.setAttribute === 'function') {
+              button.setAttribute('data-tooltip', favoriteShortcutLabel);
+            }
+          }
+        };
+        ensureFavoriteShortcutTooltips(document);
+        if (typeof MutationObserver !== 'undefined') {
+          try {
+            const favoriteShortcutObserver = new MutationObserver(function(mutations) {
+              for (let i = 0; i < mutations.length; i++) {
+                const mutation = mutations[i];
+                if (!mutation.addedNodes || mutation.addedNodes.length === 0) {
+                  continue;
+                }
+                for (let j = 0; j < mutation.addedNodes.length; j++) {
+                  const node = mutation.addedNodes[j];
+                  if (node && node.nodeType === 1) {
+                    ensureFavoriteShortcutTooltips(node);
+                  }
+                }
+              }
+            });
+            if (document.body) {
+              favoriteShortcutObserver.observe(document.body, { childList: true, subtree: true });
+            }
+          } catch (observerError) {}
+        }
+
+        const isShortcutTargetVisible = function(element) {
+          if (!element || typeof element.getClientRects !== 'function') {
+            return false;
+          }
+          const rects = element.getClientRects();
+          if (!rects || rects.length === 0) {
+            return false;
+          }
+          if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            const style = window.getComputedStyle(element);
+            if (
+              style &&
+              (style.visibility === 'hidden' ||
+                style.display === 'none' ||
+                style.opacity === '0' ||
+                style.pointerEvents === 'none')
+            ) {
+              return false;
+            }
+          }
+          return true;
+        };
+
+        const normalizeShortcutTargets = function(targets) {
+          if (!targets) {
+            return [];
+          }
+          if (Array.isArray(targets)) {
+            return targets.slice();
+          }
+          if (typeof targets.length === 'number' && typeof targets !== 'string') {
+            try {
+              return Array.prototype.slice.call(targets);
+            } catch (err) {
+              const result = [];
+              for (let i = 0; i < targets.length; i++) {
+                result.push(targets[i]);
+              }
+              return result;
+            }
+          }
+          return [targets];
+        };
+
+        const clickShortcutTarget = function(element) {
+          if (!element) {
+            return false;
+          }
+          if (element.disabled || element.getAttribute('aria-disabled') === 'true') {
+            return false;
+          }
+          if (!isShortcutTargetVisible(element)) {
+            return false;
+          }
+          if (typeof element.focus === 'function') {
+            try {
+              element.focus({ preventScroll: true });
+            } catch (focusErr) {
+              try {
+                element.focus();
+              } catch (fallbackFocusErr) {}
+            }
+          }
+          element.click();
+          return true;
+        };
+
+        const activateShortcutByIds = function(targets) {
+          const list = normalizeShortcutTargets(targets);
+          for (let i = 0; i < list.length; i++) {
+            const entry = list[i];
+            const element = typeof entry === 'string' ? document.getElementById(entry) : entry;
+            if (clickShortcutTarget(element)) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        const activateFavoriteShortcut = function(root) {
+          if (!root || typeof root.querySelectorAll !== 'function') {
+            return false;
+          }
+          return activateShortcutByIds(root.querySelectorAll('.ai-report-favorite-btn'));
+        };
+
         const tabShortcutMap = {
           Digit1: 'aiTab',
           Digit2: 'editTab',
@@ -3931,16 +4086,147 @@ function playSidebarAnimation() {
             return;
           }
 
-          if (event.code === 'KeyR') {
-            const bodyEl = document.body;
-            const isTableThemeActive =
-              currentTheme === 'table' ||
-              (!currentTheme && bodyEl && bodyEl.classList.contains('theme-tablecrafter'));
-            if (isTableThemeActive && currentTab === 'createTab') {
-              const refreshBtn = document.getElementById('refreshRangeBtn');
-              if (refreshBtn && !refreshBtn.disabled) {
+          const bodyEl = document.body;
+          const isTableThemeActive =
+            currentTheme === 'table' ||
+            (!currentTheme && bodyEl && bodyEl.classList.contains('theme-tablecrafter'));
+          const isWordThemeActive =
+            currentTheme === 'word' ||
+            (!currentTheme && bodyEl && bodyEl.classList.contains('theme-wordcrafter'));
+
+          if (event.code === 'KeyN') {
+            if (isTableThemeActive) {
+              const toggled = activateShortcutByIds(
+                currentTab === 'editTab'
+                  ? ['editToggleBorder', 'toggleBorder']
+                  : ['toggleBorder', 'editToggleBorder']
+              );
+              if (toggled) {
                 event.preventDefault();
-                refreshBtn.click();
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'KeyB') {
+            if (isTableThemeActive) {
+              const toggled = activateShortcutByIds(
+                currentTab === 'editTab'
+                  ? ['editToggleBold', 'toggleBold']
+                  : ['toggleBold', 'editToggleBold']
+              );
+              if (toggled) {
+                event.preventDefault();
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'KeyA') {
+            if (isTableThemeActive && currentTab === 'createTab') {
+              if (activateShortcutByIds(['applyFormatBtn'])) {
+                event.preventDefault();
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'KeyG') {
+            let handled = false;
+            if (isTableThemeActive) {
+              if (currentTab === 'aiTab') {
+                const generateBtn = document.getElementById('aiReportGenerateBtn');
+                if (generateBtn && !generateBtn.disabled) {
+                  generateBtn.click();
+                  handled = true;
+                }
+              }
+              if (!handled) {
+                handled = activateShortcutByIds(
+                  currentTab === 'editTab'
+                    ? ['editSaveTableBtn', 'saveTableBtn']
+                    : ['saveTableBtn', 'editSaveTableBtn']
+                );
+              }
+            }
+            if (!handled && isWordThemeActive && currentTab === 'createTab') {
+              const wordGenerateBtn = document.getElementById('wordGenerateBtn');
+              if (wordGenerateBtn && !wordGenerateBtn.disabled) {
+                wordGenerateBtn.click();
+                handled = true;
+              }
+            }
+            if (handled) {
+              event.preventDefault();
+            }
+            return;
+          }
+
+          if (event.code === 'KeyF') {
+            let handled = false;
+            if (currentTab) {
+              const activeContent = document.getElementById(currentTab);
+              if (activeContent) {
+                handled = activateFavoriteShortcut(activeContent);
+              }
+            }
+            if (!handled) {
+              handled = activateFavoriteShortcut(document);
+            }
+            if (handled) {
+              event.preventDefault();
+            }
+            return;
+          }
+
+          if (event.code === 'KeyR') {
+            let handled = false;
+            if (currentTab === 'actionsTab') {
+              const actionsRefreshBtn = document.getElementById('aiSavedActionsRefreshBtn');
+              if (actionsRefreshBtn && !actionsRefreshBtn.disabled) {
+                event.preventDefault();
+                actionsRefreshBtn.click();
+                handled = true;
+              }
+            }
+            if (!handled && isTableThemeActive) {
+              if (currentTab === 'editTab') {
+                const editRefreshBtn = document.getElementById('editRefreshApplyBtn');
+                if (editRefreshBtn && !editRefreshBtn.disabled) {
+                  event.preventDefault();
+                  editRefreshBtn.click();
+                  return;
+                }
+              }
+              if (currentTab === 'createTab') {
+                const refreshBtn = document.getElementById('refreshRangeBtn');
+                if (refreshBtn && !refreshBtn.disabled) {
+                  event.preventDefault();
+                  refreshBtn.click();
+                }
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'KeyS') {
+            if (isWordThemeActive && currentTab === 'createTab') {
+              const rangeToggle = document.getElementById('wordUseRangeToggle');
+              if (rangeToggle && !rangeToggle.disabled) {
+                event.preventDefault();
+                rangeToggle.checked = !rangeToggle.checked;
+                rangeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'Delete' || event.code === 'Backspace') {
+            if (isTableThemeActive && currentTab === 'editTab') {
+              const deleteBtn = document.getElementById('editDeleteTableBtn');
+              if (deleteBtn && !deleteBtn.disabled) {
+                event.preventDefault();
+                deleteBtn.click();
               }
             }
             return;

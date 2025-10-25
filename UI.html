@@ -1910,12 +1910,12 @@
       .ai-report-favorite-row {
         margin-top: 16px;
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
       }
       .ai-report-generate-row {
         margin-top: 12px;
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
       }
       .ai-report-favorite-btn {
         display: inline-flex;
@@ -1930,6 +1930,9 @@
         font-weight: 600;
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease;
+        width: 100%;
+        max-width: 360px;
+        justify-content: center;
       }
       .ai-report-favorite-btn:hover {
         background-color: #F3F4F6;
@@ -1958,6 +1961,18 @@
       }
       .ai-report-favorite-btn .ai-favorite-label {
         line-height: 1;
+      }
+      .shortcut-accesskey {
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .ai-report-generate-btn {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        max-width: 360px;
       }
       .ai-report-favorite-notice {
         margin-top: 10px;
@@ -2954,6 +2969,13 @@
         font-size: 14px;
         color: var(--tc-text);
       }
+      .ai-multi-item .ai-label-meta {
+        display: block;
+        margin-top: 2px;
+        font-weight: 500;
+        font-size: 12px;
+        color: var(--tc-muted);
+      }
       .ai-multi-item .ai-check {
         width: 24px;
         height: 24px;
@@ -2984,6 +3006,293 @@
       }
       .ai-hidden-select {
         display: none;
+      }
+      .tc-trigger-picker {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tc-trigger-picker[data-empty='true'] .tc-trigger-picker-toggle {
+        color: var(--tc-muted);
+      }
+      .tc-trigger-picker-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--tc-border);
+        background-color: #FFFFFF;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--tc-text);
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .tc-trigger-picker-toggle:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-picker-toggle[disabled] {
+        cursor: not-allowed;
+        background-color: #F3F4F6;
+        color: var(--tc-muted);
+      }
+      .tc-trigger-picker-toggle[disabled] .tc-trigger-picker-icon {
+        opacity: 0.5;
+      }
+      .tc-trigger-picker-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--tc-primary-soft);
+        color: var(--tc-primary);
+        font-size: 12px;
+        line-height: 1;
+      }
+      .tc-trigger-picker-icon::before {
+        content: '\25BC';
+        display: block;
+      }
+      .tc-trigger-picker.open .tc-trigger-picker-icon::before {
+        content: '\25B2';
+      }
+      .tc-trigger-picker-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        border-radius: 10px;
+        border: 1px solid var(--tc-border);
+        background-color: #FFFFFF;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+        padding: 10px 0;
+      }
+      .tc-trigger-picker.open .tc-trigger-picker-menu {
+        display: block;
+      }
+      .tc-trigger-calendar-field {
+        max-width: 360px;
+      }
+      .tc-trigger-calendar {
+        width: 100%;
+        border: 1px solid var(--tc-border);
+        border-radius: 12px;
+        padding: 12px;
+        background-color: #FFFFFF;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+      }
+      .tc-trigger-calendar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .tc-trigger-calendar-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tc-trigger-calendar-controls select {
+        border: 1px solid var(--tc-border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--tc-text);
+        background-color: #FFFFFF;
+        cursor: pointer;
+      }
+      .tc-trigger-calendar-controls select:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-calendar-nav {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        background-color: var(--tc-primary-soft);
+        color: var(--tc-primary);
+        font-size: 18px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease;
+      }
+      .tc-trigger-calendar-nav:hover {
+        background-color: var(--tc-primary);
+        color: #FFFFFF;
+      }
+      .tc-trigger-calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--tc-muted);
+        text-align: center;
+      }
+      .tc-trigger-calendar-days {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+      }
+      .tc-trigger-calendar-day {
+        height: 36px;
+        border-radius: 8px;
+        border: none;
+        background-color: transparent;
+        color: var(--tc-text);
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .tc-trigger-calendar-day:hover,
+      .tc-trigger-calendar-day:focus {
+        outline: none;
+        background-color: var(--tc-primary-soft);
+        box-shadow: 0 0 0 2px var(--tc-primary-ring);
+      }
+      .tc-trigger-calendar-day.is-placeholder {
+        pointer-events: none;
+        cursor: default;
+        background-color: transparent;
+      }
+      .tc-trigger-calendar-day.is-today {
+        border: 1px solid var(--tc-primary);
+      }
+      .tc-trigger-calendar-day.is-selected {
+        background-color: var(--tc-primary);
+        color: #FFFFFF;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+      }
+      .tc-trigger-calendar-day.is-range {
+        background-color: rgba(59, 130, 246, 0.15);
+        color: var(--tc-primary-dark);
+      }
+      .tc-trigger-calendar-day.is-range-edge {
+        background-color: var(--tc-primary);
+        color: #FFFFFF;
+      }
+      .tc-trigger-date-range {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .tc-trigger-date-range-field {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tc-trigger-date-range-field input[type='date'] {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid var(--tc-border);
+        padding: 8px 10px;
+        font-size: 14px;
+        color: var(--tc-text);
+      }
+      .tc-trigger-date-range-field input[type='date']:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-date-range-field input[type='date'][disabled] {
+        background-color: #F3F4F6;
+        color: var(--tc-muted);
+        cursor: not-allowed;
+      }
+      .tc-form-field--compact input[type='time'] {
+        max-width: 220px;
+        width: 100%;
+        border-radius: 8px;
+      }
+      .tc-trigger-calendar-field label + .tc-trigger-calendar {
+        margin-top: 8px;
+      }
+      .tc-trigger-calendar-field input[type='hidden'] {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        .tc-trigger-calendar-field {
+          max-width: 100%;
+        }
+        .tc-trigger-date-range {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .tc-form-field--compact input[type='time'] {
+          max-width: 100%;
+        }
+      }
+      .tc-trigger-picker-menu .ai-multi-list {
+        max-height: 320px;
+      }
+      .tc-trigger-picker-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tc-trigger-picker-group + .tc-trigger-picker-group {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      .tc-trigger-picker-group-label {
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--tc-muted-strong, #475569);
+        padding: 0 20px;
+      }
+      .tc-trigger-picker-category {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .tc-trigger-picker-category-label {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--tc-text);
+        padding: 0 20px;
+      }
+      .tc-trigger-picker-empty {
+        padding: 4px 20px 6px;
+        font-size: 13px;
+        color: var(--tc-muted);
+      }
+      @media (max-width: 720px) {
+        .tc-trigger-picker-menu {
+          position: fixed;
+          left: 16px;
+          right: 16px;
+          top: auto;
+          bottom: 16px;
+          max-height: 60vh;
+        }
       }
       .toggle-group {
         display: flex;
@@ -3088,6 +3397,16 @@
         gap: 8px;
         font-weight: 600;
         color: var(--tc-text);
+      }
+      .word-range-toggle-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .word-custom-detail-input {
+        margin-top: 8px;
+        width: 100%;
+        display: block;
       }
       .word-range-info {
         background: rgba(13, 107, 90, 0.08);
@@ -4193,7 +4512,7 @@
             data-themes="table word"
             data-tooltip="(Alt + 2) Modifica tablas guardadas y ajusta sus estilos."
           >
-            Editar tabla
+            Editar Tabla
           </button>
           <button
             class="tab-btn tab-btn--tooltip-below tab-btn--create"
@@ -4201,7 +4520,7 @@
             data-themes="table word"
             data-tooltip="(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados."
           >
-            Crear tabla
+            Crear Tabla
           </button>
         </div>
         <div class="tab-nav-primary-bottom">
@@ -4233,7 +4552,7 @@
               data-tooltip="Selecciona un rango específico para combinarlo y pegar allí el texto generado. Si está desactivado, se usará la posición actual del cursor."
             >
               <input type="checkbox" id="wordUseRangeToggle" />
-              Seleccionar rango
+              <span class="word-range-toggle-text"><span class="shortcut-accesskey">S</span>eleccionar rango</span>
             </label>
           </div>
           <div id="wordRangeFields">
@@ -4686,6 +5005,14 @@
                       <option value="extensa">Extensa (más de 800 palabras)</option>
                       <option value="personalizada">Personalizada (descríbela en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyLengthCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe la longitud deseada…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4722,6 +5049,14 @@
                       <option value="Alemán">Alemán</option>
                       <option value="Otro (descríbelo en el contexto)">Otro (descríbelo en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyLanguageCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el idioma deseado…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4757,6 +5092,14 @@
                       <option value="analitico">Analítico</option>
                       <option value="otro">Otro</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyToneCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el tono deseado…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4791,6 +5134,14 @@
                       <option value="Periodista de negocios">Periodista de negocios</option>
                       <option value="Otro (descríbelo en el contexto)">Otro (descríbelo en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyProfileCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el perfil profesional…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -5022,24 +5373,41 @@
               <input type="color" id="colorAlt2" />
             </div>
             <div class="toggle-group">
-              <label><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
-              <label><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
+              <label class="tc-tooltip-target" data-tooltip="(Alt + N)"><input type="checkbox" id="toggleBorder" checked /> Bordes negros</label>
+              <label class="tc-tooltip-target" data-tooltip="(Alt + B)"><input type="checkbox" id="toggleBold" checked /> Encabezado en negrita</label>
             </div>
           </div>
           <div class="word-action-buttons is-word-only" data-themes="word">
-            <button id="wordFavoriteBtn" class="ai-report-favorite-btn word-favorite-btn" type="button">
+            <button
+              id="wordFavoriteBtn"
+              class="ai-report-favorite-btn word-favorite-btn tc-tooltip-target"
+              type="button"
+              data-tooltip="(Alt + F)"
+            >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="wordGenerateBtn" class="btn-primary" type="button">Generar y Guardar Texto</button>
+            <button
+              id="wordGenerateBtn"
+              class="btn-primary tc-tooltip-target"
+              type="button"
+              data-tooltip="(Alt + G)"
+            >
+              <span class="shortcut-accesskey">G</span>enerar y Guardar Texto
+            </button>
           </div>
           <div class="action-buttons is-table-only" data-themes="table">
-            <button id="tableFavoriteBtn" class="ai-report-favorite-btn table-favorite-btn" type="button">
+            <button
+              id="tableFavoriteBtn"
+              class="ai-report-favorite-btn table-favorite-btn tc-tooltip-target"
+              type="button"
+              data-tooltip="(Alt + F)"
+            >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="applyFormatBtn" class="btn-primary">Aplicar formato</button>
-            <button id="saveTableBtn" class="btn-secondary">Guardar tabla</button>
+            <button id="applyFormatBtn" class="btn-primary tc-tooltip-target" data-tooltip="(Alt + A)"><span class="shortcut-accesskey">A</span>plicar Formato</button>
+            <button id="saveTableBtn" class="btn-secondary tc-tooltip-target" data-tooltip="(Alt + G)"><span class="shortcut-accesskey">G</span>uardar Tabla</button>
           </div>
         </div>
       </div>
@@ -5067,11 +5435,11 @@
             <div class="range-actions range-actions--stacked">
               <button
                 id="editRefreshApplyBtn"
-                class="btn-secondary"
-                title="Actualizar rango y aplicar formato"
+                class="btn-secondary tc-tooltip-target"
+                data-tooltip="(Alt + R)"
                 disabled
               >
-                Actualizar rango y formato
+                Actualizar <span class="shortcut-accesskey">R</span>ango y Formato
               </button>
             </div>
           </div>
@@ -5087,7 +5455,7 @@
           <label for="editRangeInput" style="margin-top:12px;">Rango a utilizar</label>
           <input type="text" id="editRangeInput" placeholder="Ej: Hoja1!A1:D10" />
           <div class="small-text" style="margin-top:4px;">
-            Puede escribir el rango manualmente o usar "Actualizar rango y formato" para tomar la selección activa.
+            Puede escribir el rango manualmente o usar "Actualizar Rango y Formato" para tomar la selección activa.
           </div>
         </div>
         <div id="editMetaSection" class="section" style="display:none;">
@@ -5112,21 +5480,29 @@
             <input type="color" id="editColorAlt2" />
           </div>
           <div class="toggle-group">
-            <label><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
-            <label><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
+            <label class="tc-tooltip-target" data-tooltip="(Alt + N)"><input type="checkbox" id="editToggleBorder" /> Bordes negros</label>
+            <label class="tc-tooltip-target" data-tooltip="(Alt + B)"><input type="checkbox" id="editToggleBold" /> Encabezado en negrita</label>
           </div>
           <div id="editActionsRow" class="action-buttons action-buttons--balanced" style="display:none;">
             <button
               id="editFavoriteBtn"
-              class="ai-report-favorite-btn table-favorite-btn is-table-only"
+              class="ai-report-favorite-btn table-favorite-btn is-table-only tc-tooltip-target"
               data-themes="table"
               type="button"
+              data-tooltip="(Alt + F)"
             >
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
-              <span class="ai-favorite-label">Agregar a favoritos</span>
+              <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="editSaveTableBtn" class="btn-primary" disabled>Guardar tabla</button>
-            <button id="editDeleteTableBtn" class="btn-danger" disabled>Borrar tabla</button>
+            <button id="editSaveTableBtn" class="btn-primary tc-tooltip-target" disabled data-tooltip="(Alt + G)"><span class="shortcut-accesskey">G</span>uardar Tabla</button>
+            <button
+              id="editDeleteTableBtn"
+              class="btn-danger tc-tooltip-target"
+              disabled
+              data-tooltip="(Alt + Supr)"
+            >
+              Borrar tabla
+            </button>
           </div>
         </div>
       </div>
@@ -7685,13 +8061,14 @@
               <button
                 type="button"
                 id="aiReportFavoriteBtn"
-                class="ai-report-favorite-btn"
+                class="ai-report-favorite-btn tc-tooltip-target"
                 aria-haspopup="dialog"
                 aria-expanded="false"
                 aria-controls="aiFavoriteModalOverlay"
+                data-tooltip="(Alt + F)"
               >
                 <span class="ai-favorite-icon" aria-hidden="true">★</span>
-                <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a favoritos</span>
+                <span id="aiReportFavoriteBtnLabel" class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
               </button>
             </div>
             <div
@@ -7708,8 +8085,13 @@
               </button>
             </div>
             <div class="ai-report-generate-row">
-              <button type="button" id="aiReportGenerateBtn" class="btn-primary ai-report-generate-btn">
-                Generar y enviar reporte
+              <button
+                type="button"
+                id="aiReportGenerateBtn"
+                class="btn-primary ai-report-generate-btn tc-tooltip-target"
+                data-tooltip="(Alt + G)"
+              >
+                <span class="shortcut-accesskey">G</span>enerar y Enviar Reporte
               </button>
             </div>
           </div>
@@ -7738,26 +8120,111 @@
             <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
             <div class="tc-form-grid">
               <div class="tc-form-field">
-                <label for="triggerActionSelect">Acción a ejecutar</label>
-                <select id="triggerActionSelect">
-                  <option value="">Seleccionar...</option>
-                </select>
+                <label for="triggerActionToggle">Acción a ejecutar</label>
+                <div id="triggerActionPicker" class="tc-trigger-picker" data-empty="true">
+                  <button
+                    type="button"
+                    id="triggerActionToggle"
+                    class="tc-trigger-picker-toggle"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="triggerActionMenu"
+                  >
+                    <span id="triggerActionToggleLabel">Seleccionar...</span>
+                    <span class="tc-trigger-picker-icon" aria-hidden="true"></span>
+                  </button>
+                  <div
+                    id="triggerActionMenu"
+                    class="tc-trigger-picker-menu"
+                    role="menu"
+                    aria-labelledby="triggerActionToggle"
+                  >
+                    <div id="triggerActionList" class="ai-multi-list" role="presentation"></div>
+                  </div>
+                  <input type="hidden" id="triggerActionSelect" value="" />
+                </div>
                 <p class="tc-field-note">Se mostrarán las tablas y reportes favoritos disponibles.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
                 <select id="triggerFrequencySelect">
                   <option value="">Seleccionar frecuencia</option>
-                  <option value="hourly">Cada hora</option>
-                  <option value="daily">Cada día</option>
-                  <option value="weekly">Cada semana</option>
+                  <option value="once">Solo 1 vez</option>
+                  <option value="custom">Varias veces</option>
+                  <option value="daily">Diario</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="biweekly">Quincenal</option>
+                  <option value="monthly">Mensual</option>
                 </select>
                 <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
               </div>
             </div>
-            <div class="tc-form-field">
+            <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
+              <label for="triggerFrequencyCount">Cantidad de repeticiones</label>
+              <input
+                type="number"
+                id="triggerFrequencyCount"
+                min="2"
+                step="1"
+                placeholder="Ej: 5"
+              />
+            </div>
+            <div class="tc-form-field tc-trigger-calendar-field">
               <label for="triggerStartDate">Fecha de inicio</label>
-              <input type="date" id="triggerStartDate" />
+              <div
+                id="triggerStartCalendar"
+                class="tc-trigger-calendar"
+                role="application"
+                aria-label="Calendario de fecha de inicio"
+              >
+                <div class="tc-trigger-calendar-header">
+                  <button
+                    type="button"
+                    id="triggerCalendarPrev"
+                    class="tc-trigger-calendar-nav"
+                    aria-label="Mes anterior"
+                  >
+                    ‹
+                  </button>
+                  <div class="tc-trigger-calendar-controls">
+                    <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
+                    <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+                  </div>
+                  <button
+                    type="button"
+                    id="triggerCalendarNext"
+                    class="tc-trigger-calendar-nav"
+                    aria-label="Mes siguiente"
+                  >
+                    ›
+                  </button>
+                </div>
+                <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
+                  <span>Lu</span>
+                  <span>Ma</span>
+                  <span>Mi</span>
+                  <span>Ju</span>
+                  <span>Vi</span>
+                  <span>Sa</span>
+                  <span>Do</span>
+                </div>
+                <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
+              </div>
+              <div class="tc-trigger-date-range">
+                <div class="tc-trigger-date-range-field">
+                  <label for="triggerDateFrom">Desde</label>
+                  <input type="date" id="triggerDateFrom" />
+                </div>
+                <div class="tc-trigger-date-range-field">
+                  <label for="triggerDateTo">Hasta</label>
+                  <input type="date" id="triggerDateTo" />
+                </div>
+              </div>
+              <input type="hidden" id="triggerStartDate" />
+            </div>
+            <div class="tc-form-field tc-form-field--compact">
+              <label for="triggerStartTime">Hora de ejecución</label>
+              <input type="time" id="triggerStartTime" />
             </div>
             <div class="tc-card-actions">
               <button type="button" id="triggerPreviewBtn" class="btn-secondary">Vista previa</button>
@@ -7803,7 +8270,14 @@
             </div>
             <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">
-              <button type="button" id="aiSavedActionsRefreshBtn" class="btn-secondary">Actualizar</button>
+              <button
+                type="button"
+                id="aiSavedActionsRefreshBtn"
+                class="btn-secondary tc-tooltip-target"
+                data-tooltip="(Alt + R)"
+              >
+                Actualizar
+              </button>
             </div>
           </div>
             <div class="tc-card">
