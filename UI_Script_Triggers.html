@@ -72,6 +72,104 @@ let triggerCalendarState = {
   todayParts: null
 };
 
+function refreshTriggerTodayParts() {
+  const parts = getTriggerCalendarTodayParts();
+  triggerCalendarState.todayParts = parts;
+  return parts;
+}
+
+function getTriggerTodayDateString() {
+  const parts = refreshTriggerTodayParts();
+  return formatTriggerDateParts(parts.year, parts.month, parts.day);
+}
+
+function isTriggerDateInPast(parts) {
+  if (!parts || !parts.date) {
+    return false;
+  }
+  const todayParts = triggerCalendarState.todayParts || refreshTriggerTodayParts();
+  const todayTime = new Date(todayParts.year, todayParts.month, todayParts.day).getTime();
+  return parts.date.getTime() < todayTime;
+}
+
+function isTriggerDateStringInPast(dateString) {
+  if (!dateString) {
+    return false;
+  }
+  const parsed = parseTriggerDateString(dateString);
+  if (!parsed) {
+    return false;
+  }
+  return isTriggerDateInPast(parsed);
+}
+
+function isTriggerSectionEnabled() {
+  const toggle = document.getElementById('triggerSectionToggle');
+  return !toggle || toggle.checked;
+}
+
+function getCurrentTimeValue() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return hours + ':' + minutes;
+}
+
+function isTriggerStartToday() {
+  if (!isTriggerSectionEnabled()) {
+    return false;
+  }
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    return false;
+  }
+  const todayString = getTriggerTodayDateString();
+  if (!todayString) {
+    return false;
+  }
+  if (frequency === 'custom') {
+    return Array.isArray(triggerCalendarState.selectedDates)
+      ? triggerCalendarState.selectedDates.indexOf(todayString) !== -1
+      : false;
+  }
+  if (frequency === 'weekly') {
+    const fromInput = document.getElementById('triggerDateFrom');
+    return !!(fromInput && fromInput.value === todayString);
+  }
+  if (Array.isArray(triggerCalendarState.selectedDates) && triggerCalendarState.selectedDates.length) {
+    return triggerCalendarState.selectedDates[0] === todayString;
+  }
+  const fromInput = document.getElementById('triggerDateFrom');
+  return !!(fromInput && fromInput.value === todayString);
+}
+
+function applyTriggerTimeConstraints() {
+  const startTimeInput = document.getElementById('triggerStartTime');
+  if (!startTimeInput) {
+    return false;
+  }
+  const fieldset = document.getElementById('triggerSectionFieldset');
+  const sectionActive = isTriggerSectionEnabled() && (!fieldset || !fieldset.disabled);
+  if (!sectionActive || startTimeInput.disabled) {
+    if (startTimeInput.min) {
+      startTimeInput.min = '';
+    }
+    return false;
+  }
+  if (isTriggerStartToday()) {
+    const currentValue = getCurrentTimeValue();
+    startTimeInput.min = currentValue;
+    if (!startTimeInput.value || startTimeInput.value < currentValue) {
+      startTimeInput.value = currentValue;
+      updateTriggerStartTimeDisplay();
+      return true;
+    }
+  } else if (startTimeInput.min) {
+    startTimeInput.min = '';
+  }
+  return false;
+}
+
 function normalizeTriggerSearchText(value) {
   if (value === null || value === undefined) {
     return '';
@@ -371,25 +469,37 @@ function trimTriggerSelectedDates() {
   if (!Array.isArray(triggerCalendarState.selectedDates)) {
     triggerCalendarState.selectedDates = [];
   }
-  const unique = [];
+  const original = triggerCalendarState.selectedDates.slice();
+  const todayParts = triggerCalendarState.todayParts || refreshTriggerTodayParts();
+  const todayTime = new Date(todayParts.year, todayParts.month, todayParts.day).getTime();
   const seen = Object.create(null);
-  triggerCalendarState.selectedDates.forEach(function(dateString) {
+  const filtered = [];
+  original.forEach(function(dateString) {
     if (!dateString || seen[dateString]) {
       return;
     }
+    const parsed = parseTriggerDateString(dateString);
+    if (!parsed || !parsed.date || parsed.date.getTime() < todayTime) {
+      return;
+    }
     seen[dateString] = true;
-    unique.push(dateString);
+    filtered.push(dateString);
   });
-  if (triggerCalendarState.selectionLimit > 0 && unique.length > triggerCalendarState.selectionLimit) {
-    triggerCalendarState.selectedDates = unique.slice(0, triggerCalendarState.selectionLimit);
-  } else {
-    triggerCalendarState.selectedDates = unique;
+  let finalDates = filtered;
+  if (triggerCalendarState.selectionLimit > 0 && finalDates.length > triggerCalendarState.selectionLimit) {
+    finalDates = finalDates.slice(0, triggerCalendarState.selectionLimit);
   }
-  if (triggerCalendarState.selectedDates.length) {
-    triggerCalendarState.selectedDate = triggerCalendarState.selectedDates[0];
-  } else {
-    triggerCalendarState.selectedDate = '';
+  triggerCalendarState.selectedDates = finalDates;
+  triggerCalendarState.selectedDate = finalDates.length ? finalDates[0] : '';
+  if (finalDates.length !== original.length) {
+    return true;
   }
+  for (let i = 0; i < finalDates.length; i++) {
+    if (finalDates[i] !== original[i]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isBiweeklyScheduledDate(anchorParts, startTime, currentParts, windowCheck) {
@@ -483,7 +593,9 @@ function updateTriggerCalendarSelectionLimit() {
     triggerCalendarState.selectedDate = '';
     syncTriggerSelectedInputs({ skipFrom: true });
   }
-  trimTriggerSelectedDates();
+  if (trimTriggerSelectedDates()) {
+    syncTriggerSelectedInputs();
+  }
 }
 
 function syncTriggerSelectedInputs(options) {
@@ -523,6 +635,9 @@ function setTriggerSingleDate(dateString, options) {
 
 function toggleTriggerCustomDate(dateString) {
   if (!dateString) {
+    return;
+  }
+  if (isTriggerDateStringInPast(dateString)) {
     return;
   }
   if (!Array.isArray(triggerCalendarState.selectedDates)) {
@@ -756,7 +871,13 @@ function renderTriggerCalendar() {
   ensureTriggerCalendarDefaults();
   updateTriggerCalendarSelectionLimit();
   const state = triggerCalendarState;
-  const todayParts = state.todayParts || getTriggerCalendarTodayParts();
+  const trimmed = trimTriggerSelectedDates();
+  if (trimmed) {
+    syncTriggerSelectedInputs();
+    updateTriggerScheduleSummary();
+    updateTriggerFormState();
+  }
+  const todayParts = refreshTriggerTodayParts();
   populateTriggerCalendarMonthOptions(monthSelect);
   populateTriggerCalendarYearOptions(yearSelect, state.activeYear);
   monthSelect.value = String(state.activeMonth);
@@ -771,10 +892,9 @@ function renderTriggerCalendar() {
   let startWeekday = firstOfMonth.getDay();
   startWeekday = (startWeekday + 6) % 7;
   const daysInMonth = new Date(state.activeYear, state.activeMonth + 1, 0).getDate();
-  const selectedSet = isFrequencyDisabled
-    ? new Set()
-    : new Set(Array.isArray(state.selectedDates) ? state.selectedDates : []);
-  if (state.selectedDate && !selectedSet.has(state.selectedDate)) {
+  const selectedDates = Array.isArray(state.selectedDates) ? state.selectedDates.slice() : [];
+  const selectedSet = isFrequencyDisabled ? new Set() : new Set(selectedDates);
+  if (!isFrequencyDisabled && state.selectedDate && !selectedSet.has(state.selectedDate)) {
     selectedSet.add(state.selectedDate);
   }
   const fromInput = document.getElementById('triggerDateFrom');
@@ -832,6 +952,7 @@ function renderTriggerCalendar() {
     if (currentTime === todayTime) {
       classes.push('is-today');
     }
+    const isPast = currentTime < todayTime;
 
     const weekdayIndex = (currentParts.date.getDay() + 6) % 7;
     const isSelected = selectedSet.has(dateString);
@@ -886,12 +1007,24 @@ function renderTriggerCalendar() {
     if (isAnchor && classes.indexOf('is-anchor') === -1) {
       classes.push('is-anchor');
     }
+    if (isPast) {
+      classes.push('is-disabled');
+    }
+    const shouldDisable = isFrequencyDisabled || isPast;
+    if (shouldDisable) {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+    } else {
+      button.disabled = false;
+      button.removeAttribute('aria-disabled');
+    }
     button.className = classes.join(' ');
     const pressed = isSelected || isScheduled;
     button.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     button.setAttribute('aria-selected', pressed ? 'true' : 'false');
     daysContainer.appendChild(button);
   }
+  applyTriggerTimeConstraints();
 }
 
 function applyTriggerDateSelection(dateString, options) {
@@ -917,6 +1050,9 @@ function applyTriggerDateSelection(dateString, options) {
 
   const parsed = parseTriggerDateString(dateString);
   if (!parsed) {
+    return;
+  }
+  if (isTriggerDateInPast(parsed)) {
     return;
   }
 
@@ -986,7 +1122,15 @@ function handleTriggerCalendarNav(direction) {
 
 function handleTriggerCalendarDayClick(event) {
   const target = event && event.target ? event.target : null;
-  if (!target || !target.classList || !target.classList.contains('tc-trigger-calendar-day') || target.classList.contains('is-placeholder')) {
+  if (
+    !target ||
+    !target.classList ||
+    !target.classList.contains('tc-trigger-calendar-day') ||
+    target.classList.contains('is-placeholder')
+  ) {
+    return;
+  }
+  if (!isTriggerSectionEnabled() || target.disabled || target.getAttribute('aria-disabled') === 'true') {
     return;
   }
   const dateString = target.getAttribute('data-date');
@@ -1000,6 +1144,12 @@ function handleTriggerDateFromChange() {
   const fromInput = document.getElementById('triggerDateFrom');
   if (!fromInput) {
     return;
+  }
+  if (!isTriggerSectionEnabled()) {
+    return;
+  }
+  if (fromInput.value && isTriggerDateStringInPast(fromInput.value)) {
+    fromInput.value = getTriggerTodayDateString();
   }
   const value = fromInput.value || '';
   const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
@@ -1024,6 +1174,9 @@ function handleTriggerDateToChange() {
   const fromInput = document.getElementById('triggerDateFrom');
   const toInput = document.getElementById('triggerDateTo');
   if (!toInput) {
+    return;
+  }
+  if (!isTriggerSectionEnabled()) {
     return;
   }
   const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
@@ -1123,6 +1276,9 @@ function initializeTriggerCalendar() {
       initialDates = [fallback];
     }
   }
+  initialDates = initialDates.filter(function(dateString) {
+    return !isTriggerDateStringInPast(dateString);
+  });
   setTriggerSelectedDates(initialDates, { skipFrom: true });
   const parsed = initialDates.length ? parseTriggerDateString(initialDates[0]) : null;
   if (parsed) {
@@ -1900,6 +2056,11 @@ function updateTriggerFormState() {
   if (!createBtn) {
     return;
   }
+  if (!isTriggerSectionEnabled()) {
+    createBtn.disabled = true;
+    createBtn.setAttribute('aria-disabled', 'true');
+    return;
+  }
   const actionReady = !!(actionInput && actionInput.value);
   const frequencyValue = frequencySelect ? frequencySelect.value : '';
   let frequencyReady = !!frequencyValue;
@@ -1911,6 +2072,7 @@ function updateTriggerFormState() {
     ? isTriggerScheduleReady(frequencyValue || triggerCalendarState.frequency || '')
     : false;
   createBtn.disabled = !(actionReady && frequencyReady && scheduleReady);
+  createBtn.setAttribute('aria-disabled', createBtn.disabled ? 'true' : 'false');
 }
 
 function getTriggerScheduleData() {
@@ -2047,6 +2209,10 @@ function handleTriggerCreate() {
   if (!actionInput || !frequencySelect) {
     return;
   }
+  if (!isTriggerSectionEnabled()) {
+    return;
+  }
+  applyTriggerTimeConstraints();
   const actionId = actionInput.value;
   const frequency = frequencySelect.value;
   if (!actionId || !frequency) {
@@ -2107,6 +2273,52 @@ function handleTriggerCreate() {
   });
 }
 
+function applyTriggerSectionState() {
+  const toggle = document.getElementById('triggerSectionToggle');
+  const fieldset = document.getElementById('triggerSectionFieldset');
+  const card = document.getElementById('triggerSectionCard');
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
+  const enabled = !toggle || toggle.checked;
+
+  if (card) {
+    if (enabled) {
+      card.classList.remove('is-inactive');
+    } else {
+      card.classList.add('is-inactive');
+    }
+  }
+
+  if (fieldset) {
+    fieldset.disabled = !enabled;
+    if (enabled) {
+      fieldset.classList.remove('is-collapsed');
+      fieldset.removeAttribute('aria-hidden');
+    } else {
+      fieldset.classList.add('is-collapsed');
+      fieldset.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  if (!enabled) {
+    if (startTimeControl) {
+      startTimeControl.setAttribute('aria-disabled', 'true');
+    }
+    closeTriggerActionMenu({ focusToggle: false });
+    applyTriggerTimeConstraints();
+    updateTriggerFormState();
+    return;
+  }
+
+  if (startTimeControl && !startTimeControl.classList.contains('ai-hidden')) {
+    startTimeControl.removeAttribute('aria-disabled');
+  }
+
+  updateTriggerFrequencyFields();
+  applyTriggerTimeConstraints();
+  updateTriggerStartTimeDisplay();
+  updateTriggerFormState();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   initializeTriggerActionPicker();
   initializeTriggerCalendar();
@@ -2116,6 +2328,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const refreshBtn = document.getElementById('triggerRefreshBtn');
   const startTimeInput = document.getElementById('triggerStartTime');
   const startTimeControl = document.getElementById('triggerStartTimeControl');
+  const sectionToggle = document.getElementById('triggerSectionToggle');
 
   if (frequencySelect) {
     frequencySelect.addEventListener('change', updateTriggerFrequencyFields);
@@ -2134,8 +2347,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if (startTimeInput) {
     if (!startTimeInput.value) {
-      startTimeInput.value = '00:00';
+      startTimeInput.value = getCurrentTimeValue();
     }
+    updateTriggerStartTimeDisplay();
+    applyTriggerTimeConstraints();
     const openTimePicker = function() {
       if (startTimeInput.disabled) {
         return;
@@ -2189,11 +2404,19 @@ document.addEventListener('DOMContentLoaded', function() {
       event.preventDefault();
     });
     const handleTimeChange = function() {
-      updateTriggerStartTimeDisplay();
+      const adjusted = applyTriggerTimeConstraints();
+      if (!adjusted) {
+        updateTriggerStartTimeDisplay();
+      }
       updateTriggerFormState();
     };
     startTimeInput.addEventListener('input', handleTimeChange);
     startTimeInput.addEventListener('change', handleTimeChange);
+  }
+  if (sectionToggle) {
+    sectionToggle.addEventListener('change', function() {
+      applyTriggerSectionState();
+    });
   }
   document.addEventListener('keydown', function(event) {
     if (
@@ -2226,8 +2449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  updateTriggerFrequencyFields();
-  updateTriggerFormState();
+  applyTriggerSectionState();
   updateTriggerStartTimeDisplay();
   renderTriggerList();
 });
