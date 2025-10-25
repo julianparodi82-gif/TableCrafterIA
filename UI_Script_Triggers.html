@@ -361,7 +361,10 @@ function getTriggerCustomSelectionLimit() {
     return 0;
   }
   const parsed = countInput.value ? parseInt(countInput.value, 10) : NaN;
-  return !isNaN(parsed) && parsed > 0 ? parsed : 0;
+  if (isNaN(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return Math.min(parsed, 20);
 }
 
 function trimTriggerSelectedDates() {
@@ -387,6 +390,73 @@ function trimTriggerSelectedDates() {
   } else {
     triggerCalendarState.selectedDate = '';
   }
+}
+
+function isBiweeklyScheduledDate(anchorParts, startTime, currentParts, windowCheck) {
+  if (!anchorParts || !anchorParts.date || !currentParts || !currentParts.date) {
+    return false;
+  }
+  if (isNaN(startTime)) {
+    return false;
+  }
+  const currentTime = currentParts.date.getTime();
+  if (currentTime < startTime) {
+    return false;
+  }
+  if (typeof windowCheck === 'function' && !windowCheck(currentTime)) {
+    return false;
+  }
+  const anchorDay = anchorParts.day;
+  const targetDate = currentParts.date;
+  let occurrence = new Date(anchorParts.date.getTime());
+
+  function computeNext(previous) {
+    const next = new Date(previous.getTime());
+    if (anchorDay === 15 && previous.getDate() === 15) {
+      const monthDays = new Date(previous.getFullYear(), previous.getMonth() + 1, 0).getDate();
+      if (monthDays !== 30) {
+        return new Date(previous.getFullYear(), previous.getMonth(), monthDays);
+      }
+      next.setDate(next.getDate() + 15);
+      return next;
+    }
+    next.setDate(next.getDate() + 15);
+    if (anchorDay === 15 && previous.getDate() !== 15) {
+      const monthDays = new Date(previous.getFullYear(), previous.getMonth() + 1, 0).getDate();
+      if (previous.getDate() === monthDays && monthDays !== 30) {
+        return new Date(previous.getFullYear(), previous.getMonth() + 1, 15);
+      }
+    }
+    return next;
+  }
+
+  let guard = 0;
+  while (occurrence.getTime() < startTime && guard < 400) {
+    const nextOccurrence = computeNext(occurrence);
+    if (nextOccurrence.getTime() <= occurrence.getTime()) {
+      break;
+    }
+    occurrence = nextOccurrence;
+    guard++;
+  }
+
+  guard = 0;
+  while (occurrence.getTime() <= currentTime && guard < 400) {
+    if (
+      occurrence.getFullYear() === targetDate.getFullYear() &&
+      occurrence.getMonth() === targetDate.getMonth() &&
+      occurrence.getDate() === targetDate.getDate()
+    ) {
+      return true;
+    }
+    const nextOccurrence = computeNext(occurrence);
+    if (nextOccurrence.getTime() <= occurrence.getTime()) {
+      break;
+    }
+    occurrence = nextOccurrence;
+    guard++;
+  }
+  return false;
 }
 
 function updateTriggerCalendarSelectionLimit() {
@@ -790,11 +860,8 @@ function renderTriggerCalendar() {
         }
         break;
       case 'biweekly':
-        if (!isNaN(effectiveStartTime) && currentTime >= effectiveStartTime && isWithinWindow(currentTime)) {
-          const diffDays = Math.round((currentTime - effectiveStartTime) / TRIGGER_SCHEDULE_DAY_MS);
-          if (diffDays % 15 === 0) {
-            isScheduled = true;
-          }
+        if (isBiweeklyScheduledDate(anchorParts, effectiveStartTime, currentParts, isWithinWindow)) {
+          isScheduled = true;
         }
         break;
       case 'monthly':
@@ -1016,6 +1083,13 @@ function handleTriggerBiweeklyInputChange() {
 }
 
 function handleTriggerFrequencyCountInput() {
+  const countInput = document.getElementById('triggerFrequencyCount');
+  if (countInput && countInput.value) {
+    const parsed = parseInt(countInput.value, 10);
+    if (!isNaN(parsed) && parsed > 20) {
+      countInput.value = '20';
+    }
+  }
   updateTriggerCalendarSelectionLimit();
   updateTriggerScheduleSummary();
   renderTriggerCalendar();
@@ -1587,7 +1661,7 @@ function updateTriggerFrequencyFields() {
     }
   }
   const showFromField = !isFrequencyEmpty && frequency !== 'custom';
-  const showToField = frequency === 'weekly';
+  const showToField = false;
   if (fromContainer) {
     if (showFromField) {
       fromContainer.classList.remove('is-hidden');
@@ -1620,9 +1694,7 @@ function updateTriggerFrequencyFields() {
     }
   }
   if (fromLabel) {
-    const useFechaLabel =
-      frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly';
-    fromLabel.textContent = useFechaLabel ? 'Fecha' : 'Desde';
+    fromLabel.textContent = showFromField ? 'Fecha' : 'Desde';
   }
   if (toLabel) {
     toLabel.textContent = 'Hasta';

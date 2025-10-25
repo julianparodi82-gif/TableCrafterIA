@@ -3112,64 +3112,43 @@
       }
       .tc-trigger-calendar-header {
         width: 100%;
-        display: grid;
-        grid-template-columns: auto 1fr auto;
+        display: flex;
         align-items: center;
-        justify-items: center;
-        gap: 8px;
-        margin-bottom: 2px;
+        justify-content: center;
+        margin-bottom: 4px;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 10px;
       }
       .tc-trigger-calendar-controls select {
-        border: 1px solid rgba(59, 130, 246, 0.26);
-        border-radius: 6px;
-        padding: 2px 6px;
-        min-width: 64px;
-        font-size: 9px;
-        font-weight: 500;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 8px;
+        padding: 6px 14px;
+        min-width: 96px;
+        font-size: 12px;
+        font-weight: 600;
         color: var(--tc-text);
-        background-color: rgba(59, 130, 246, 0.06);
+        background-color: rgba(59, 130, 246, 0.08);
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         text-align: center;
       }
       #triggerCalendarMonth {
-        min-width: 68px;
+        min-width: 118px;
       }
       #triggerCalendarYear {
-        min-width: 60px;
+        min-width: 96px;
         font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:hover {
-        background-color: rgba(59, 130, 246, 0.12);
+        background-color: rgba(59, 130, 246, 0.16);
       }
       .tc-trigger-calendar-controls select:focus {
         outline: none;
         border-color: var(--tc-primary);
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
-      }
-      .tc-trigger-calendar-nav {
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
-        border: none;
-        background-color: var(--tc-primary-soft);
-        color: var(--tc-primary);
-        font-size: 11px;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.15s ease, color 0.15s ease;
-      }
-      .tc-trigger-calendar-nav:hover {
-        background-color: var(--tc-primary);
-        color: #FFFFFF;
       }
       .tc-trigger-calendar-weekdays {
         width: 100%;
@@ -8314,7 +8293,7 @@
                   </div>
                   <input type="hidden" id="triggerActionSelect" value="" />
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y reportes favoritos disponibles.</p>
+                <p class="tc-field-note">Se mostrarán las tablas y textos guardados así como las acciones favoritas.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
@@ -8337,6 +8316,7 @@
                 id="triggerFrequencyCount"
                 class="tc-trigger-frequency-count"
                 min="2"
+                max="20"
                 step="1"
                 placeholder="Ej: 5"
               />
@@ -8351,26 +8331,10 @@
                   aria-label="Calendario de fecha de inicio"
                 >
                   <div class="tc-trigger-calendar-header">
-                    <button
-                      type="button"
-                      id="triggerCalendarPrev"
-                      class="tc-trigger-calendar-nav"
-                      aria-label="Mes anterior"
-                    >
-                      ‹
-                    </button>
                     <div class="tc-trigger-calendar-controls">
                       <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
                       <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
                     </div>
-                    <button
-                      type="button"
-                      id="triggerCalendarNext"
-                      class="tc-trigger-calendar-nav"
-                      aria-label="Mes siguiente"
-                    >
-                      ›
-                    </button>
                   </div>
                   <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
                     <span>Lu</span>
