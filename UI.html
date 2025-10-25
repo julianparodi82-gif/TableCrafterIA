@@ -3104,6 +3104,16 @@
         font-weight: 600;
         color: var(--tc-text);
       }
+      .word-range-toggle-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .word-custom-detail-input {
+        margin-top: 8px;
+        width: 100%;
+        display: block;
+      }
       .word-range-info {
         background: rgba(13, 107, 90, 0.08);
         border: 1px solid rgba(13, 107, 90, 0.25);
@@ -4248,7 +4258,7 @@
               data-tooltip="Selecciona un rango específico para combinarlo y pegar allí el texto generado. Si está desactivado, se usará la posición actual del cursor."
             >
               <input type="checkbox" id="wordUseRangeToggle" />
-              Seleccionar rango
+              <span class="word-range-toggle-text"><span class="shortcut-accesskey">S</span>eleccionar rango</span>
             </label>
           </div>
           <div id="wordRangeFields">
@@ -4701,6 +4711,14 @@
                       <option value="extensa">Extensa (más de 800 palabras)</option>
                       <option value="personalizada">Personalizada (descríbela en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyLengthCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe la longitud deseada…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4737,6 +4755,14 @@
                       <option value="Alemán">Alemán</option>
                       <option value="Otro (descríbelo en el contexto)">Otro (descríbelo en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyLanguageCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el idioma deseado…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4772,6 +4798,14 @@
                       <option value="analitico">Analítico</option>
                       <option value="otro">Otro</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyToneCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el tono deseado…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -4806,6 +4840,14 @@
                       <option value="Periodista de negocios">Periodista de negocios</option>
                       <option value="Otro (descríbelo en el contexto)">Otro (descríbelo en el contexto)</option>
                     </select>
+                    <input
+                      type="text"
+                      id="wordBodyProfileCustom"
+                      class="word-custom-detail-input"
+                      placeholder="Describe el perfil profesional…"
+                      hidden
+                      aria-hidden="true"
+                    />
                   </div>
                 </div>
               </div>
@@ -5051,7 +5093,14 @@
               <span class="ai-favorite-icon" aria-hidden="true">★</span>
               <span class="ai-favorite-label">Agregar a <span class="shortcut-accesskey">F</span>avoritos</span>
             </button>
-            <button id="wordGenerateBtn" class="btn-primary" type="button">Generar y Guardar Texto</button>
+            <button
+              id="wordGenerateBtn"
+              class="btn-primary tc-tooltip-target"
+              type="button"
+              data-tooltip="(Alt + G)"
+            >
+              <span class="shortcut-accesskey">G</span>enerar y Guardar Texto
+            </button>
           </div>
           <div class="action-buttons is-table-only" data-themes="table">
             <button

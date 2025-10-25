@@ -4090,6 +4090,9 @@ function playSidebarAnimation() {
           const isTableThemeActive =
             currentTheme === 'table' ||
             (!currentTheme && bodyEl && bodyEl.classList.contains('theme-tablecrafter'));
+          const isWordThemeActive =
+            currentTheme === 'word' ||
+            (!currentTheme && bodyEl && bodyEl.classList.contains('theme-wordcrafter'));
 
           if (event.code === 'KeyN') {
             if (isTableThemeActive) {
@@ -4129,23 +4132,32 @@ function playSidebarAnimation() {
           }
 
           if (event.code === 'KeyG') {
+            let handled = false;
             if (isTableThemeActive) {
               if (currentTab === 'aiTab') {
                 const generateBtn = document.getElementById('aiReportGenerateBtn');
                 if (generateBtn && !generateBtn.disabled) {
-                  event.preventDefault();
                   generateBtn.click();
-                  return;
+                  handled = true;
                 }
               }
-              const handled = activateShortcutByIds(
-                currentTab === 'editTab'
-                  ? ['editSaveTableBtn', 'saveTableBtn']
-                  : ['saveTableBtn', 'editSaveTableBtn']
-              );
-              if (handled) {
-                event.preventDefault();
+              if (!handled) {
+                handled = activateShortcutByIds(
+                  currentTab === 'editTab'
+                    ? ['editSaveTableBtn', 'saveTableBtn']
+                    : ['saveTableBtn', 'editSaveTableBtn']
+                );
               }
+            }
+            if (!handled && isWordThemeActive && currentTab === 'createTab') {
+              const wordGenerateBtn = document.getElementById('wordGenerateBtn');
+              if (wordGenerateBtn && !wordGenerateBtn.disabled) {
+                wordGenerateBtn.click();
+                handled = true;
+              }
+            }
+            if (handled) {
+              event.preventDefault();
             }
             return;
           }
@@ -4192,6 +4204,18 @@ function playSidebarAnimation() {
                   event.preventDefault();
                   refreshBtn.click();
                 }
+              }
+            }
+            return;
+          }
+
+          if (event.code === 'KeyS') {
+            if (isWordThemeActive && currentTab === 'createTab') {
+              const rangeToggle = document.getElementById('wordUseRangeToggle');
+              if (rangeToggle && !rangeToggle.disabled) {
+                event.preventDefault();
+                rangeToggle.checked = !rangeToggle.checked;
+                rangeToggle.dispatchEvent(new Event('change', { bubbles: true }));
               }
             }
             return;
