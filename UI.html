@@ -3081,12 +3081,12 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 380px;
+        max-width: 360px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 18px;
+        gap: 16px;
       }
       .tc-trigger-calendar-heading {
         width: 100%;
@@ -3094,9 +3094,12 @@
       }
       .tc-trigger-calendar-wrapper {
         width: 100%;
+        display: flex;
+        justify-content: center;
       }
       .tc-trigger-calendar {
         width: 100%;
+        max-width: 340px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
         padding: 16px;
@@ -3113,25 +3116,25 @@
       .tc-trigger-calendar-controls {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         justify-self: center;
       }
       .tc-trigger-calendar-controls select {
         border: 1px solid var(--tc-border);
         border-radius: 8px;
-        padding: 6px 16px;
-        min-width: 120px;
-        font-size: 13px;
+        padding: 4px 12px;
+        min-width: 96px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--tc-text);
         background-color: #FFFFFF;
         cursor: pointer;
       }
       #triggerCalendarMonth {
-        min-width: 120px;
+        min-width: 100px;
       }
       #triggerCalendarYear {
-        min-width: 140px;
+        min-width: 112px;
         font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:focus {
@@ -3140,13 +3143,13 @@
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
       }
       .tc-trigger-calendar-nav {
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
         border-radius: 6px;
         border: none;
         background-color: var(--tc-primary-soft);
         color: var(--tc-primary);
-        font-size: 14px;
+        font-size: 12px;
         line-height: 1;
         display: flex;
         align-items: center;
@@ -3260,10 +3263,23 @@
         color: var(--tc-muted);
         cursor: not-allowed;
       }
-      .tc-form-field--compact input[type='time'] {
-        max-width: 220px;
+      .tc-trigger-time-field {
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+      }
+      .tc-trigger-time-field label {
+        text-align: center;
         width: 100%;
+      }
+      .tc-form-field--compact input[type='time'] {
+        width: 8.5ch;
+        min-width: 0;
         border-radius: 8px;
+        padding: 8px 10px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
       }
       .tc-trigger-calendar-field label + .tc-trigger-calendar {
         margin-top: 8px;
@@ -8336,13 +8352,21 @@
               <input type="hidden" id="triggerStartDate" />
               <input type="hidden" id="triggerSelectedDates" />
             </div>
-            <div class="tc-form-field tc-form-field--compact">
+            <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
               <label for="triggerStartTime">Hora de ejecución</label>
-              <input type="time" id="triggerStartTime" />
+              <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
             </div>
             <div class="tc-card-actions">
-              <button type="button" id="triggerPreviewBtn" class="btn-secondary">Vista previa</button>
-              <button type="button" id="triggerCreateBtn" class="btn-primary">Guardar trigger</button>
+              <button
+                type="button"
+                id="triggerCreateBtn"
+                class="btn-primary tc-tooltip-target"
+                data-tooltip="(Alt + G)"
+                accesskey="g"
+                aria-keyshortcuts="Alt+G"
+              >
+                <span class="shortcut-accesskey">G</span>uardar Trigger
+              </button>
             </div>
           </div>
         </div>

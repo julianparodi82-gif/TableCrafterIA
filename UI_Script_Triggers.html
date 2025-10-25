@@ -1851,32 +1851,6 @@ function buildTriggerScheduleSummary(scheduleData) {
   return 'Programación: ' + segments.join(' • ');
 }
 
-function handleTriggerPreview() {
-  const actionInput = document.getElementById('triggerActionSelect');
-  const frequencySelect = document.getElementById('triggerFrequencySelect');
-  const actionId = actionInput ? actionInput.value : '';
-  const actionEntry = actionId && triggerActionMap[actionId] ? triggerActionMap[actionId] : null;
-  const actionLabel = actionEntry ? actionEntry.displayLabel || actionEntry.label : '';
-  const frequencyValue = frequencySelect ? frequencySelect.value : '';
-  const scheduleData = getTriggerScheduleData();
-  const frequencyLabel = getTriggerFrequencyLabel(frequencyValue, { count: scheduleData.customCount });
-  const lines = [];
-  if (actionLabel) {
-    lines.push('Favorito: ' + actionLabel);
-  }
-  if (frequencyLabel) {
-    lines.push('Frecuencia: ' + frequencyLabel);
-  }
-  if (frequencyValue === 'custom' && scheduleData.customCount) {
-    lines.push('Repeticiones: ' + scheduleData.customCount);
-  }
-  lines.push(buildTriggerScheduleSummary(scheduleData));
-  showMessageModal(lines.join('\n'), {
-    title: 'Vista previa del trigger',
-    variant: 'info'
-  });
-}
-
 function handleTriggerCreate() {
   const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
@@ -1949,8 +1923,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const frequencySelect = document.getElementById('triggerFrequencySelect');
   const countInput = document.getElementById('triggerFrequencyCount');
   const createBtn = document.getElementById('triggerCreateBtn');
-  const previewBtn = document.getElementById('triggerPreviewBtn');
   const refreshBtn = document.getElementById('triggerRefreshBtn');
+  const startTimeInput = document.getElementById('triggerStartTime');
 
   if (frequencySelect) {
     frequencySelect.addEventListener('change', updateTriggerFrequencyFields);
@@ -1962,14 +1936,61 @@ document.addEventListener('DOMContentLoaded', function() {
   if (createBtn) {
     createBtn.addEventListener('click', handleTriggerCreate);
   }
-  if (previewBtn) {
-    previewBtn.addEventListener('click', handleTriggerPreview);
-  }
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function() {
       renderTriggerList();
     });
   }
+  if (startTimeInput) {
+    const openTimePicker = function() {
+      if (typeof startTimeInput.showPicker === 'function') {
+        try {
+          startTimeInput.showPicker();
+        } catch (err) {
+          // ignore showPicker failures when unsupported
+        }
+      }
+    };
+    startTimeInput.addEventListener('focus', function() {
+      openTimePicker();
+    });
+    startTimeInput.addEventListener('click', function() {
+      openTimePicker();
+    });
+    startTimeInput.addEventListener('keydown', function(event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (event.key === 'Tab' || event.key === 'Escape') {
+        return;
+      }
+      const pickerKeys = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      if (pickerKeys.indexOf(event.key) !== -1) {
+        event.preventDefault();
+        openTimePicker();
+        return;
+      }
+      event.preventDefault();
+    });
+    startTimeInput.addEventListener('input', updateTriggerFormState);
+    startTimeInput.addEventListener('change', updateTriggerFormState);
+  }
+  document.addEventListener('keydown', function(event) {
+    if (
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey &&
+      event.key &&
+      event.key.toLowerCase() === 'g'
+    ) {
+      const targetBtn = document.getElementById('triggerCreateBtn');
+      if (targetBtn && !targetBtn.disabled) {
+        event.preventDefault();
+        targetBtn.click();
+      }
+    }
+  });
 
   document.addEventListener('tc:savedActionsUpdated', function(event) {
     const actions = event && event.detail && Array.isArray(event.detail.actions) ? event.detail.actions : [];
@@ -1993,7 +2014,6 @@ document.addEventListener('DOMContentLoaded', function() {
 const TableCrafterTriggersTab = Object.freeze({
   renderList: renderTriggerList,
   updateFormState: updateTriggerFormState,
-  previewTrigger: handleTriggerPreview,
   createTrigger: handleTriggerCreate
 });
 
