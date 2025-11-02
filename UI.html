@@ -8643,18 +8643,23 @@
               <button type="button" id="triggerRefreshBtn" class="btn-secondary">Actualizar</button>
             </div>
           </div>
-          <div class="tc-card tc-trigger-card" id="triggerSectionCard">
+          <div class="tc-card tc-trigger-card is-inactive" id="triggerSectionCard">
             <h3 class="tc-card-heading tc-trigger-heading">
               <label
                 for="triggerSectionToggle"
                 class="tc-trigger-section-toggle tc-tooltip-target"
                 data-tooltip="Activa o desactiva la configuración del trigger a crear."
               >
-                <input type="checkbox" id="triggerSectionToggle" checked />
+                <input type="checkbox" id="triggerSectionToggle" />
                 <span class="tc-trigger-section-label">Crear Trigger</span>
               </label>
             </h3>
-            <fieldset id="triggerSectionFieldset" class="tc-trigger-section-fieldset">
+            <fieldset
+              id="triggerSectionFieldset"
+              class="tc-trigger-section-fieldset is-collapsed"
+              disabled
+              aria-hidden="true"
+            >
               <legend class="tc-visually-hidden">Configuración del trigger a crear</legend>
               <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
               <div class="tc-form-grid">
@@ -8778,6 +8783,7 @@
                 aria-haspopup="dialog"
                 aria-controls="triggerStartTimePopover"
                 aria-label="Editar hora de ejecución"
+                aria-disabled="true"
                 aria-expanded="false"
               >
                 <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
@@ -8847,9 +8853,9 @@
               <div class="tc-card-title">
                 <span class="tc-card-icon tc-card-icon--favorite" aria-hidden="true">★</span>
                 <div>
-                  <h3 class="tc-card-heading">Favoritos guardados</h3>
+                  <h3 class="tc-card-heading">Acciones guardadas</h3>
                   <p class="tc-card-subtitle">
-                    Seleccioná y gestioná los reportes que guardaste como favoritos desde este panel.
+                    Seleccioná y gestioná las acciones guardadas desde este panel.
                   </p>
                 </div>
               </div>
@@ -8862,7 +8868,7 @@
                     <span id="aiSavedActionsSummaryName" class="ai-actions-summary-title"></span>
                     <span id="aiSavedActionsSummaryMeta" class="ai-actions-summary-meta"></span>
                   </div>
-                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar favorito</button>
+                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar acción</button>
                 </div>
                 <div class="ai-multi-select ai-multi-select--single">
                   <div
@@ -8875,7 +8881,7 @@
                 </div>
               </div>
             </div>
-            <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
+            <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay acciones guardadas todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">
               <button
                 type="button"
@@ -8888,15 +8894,15 @@
             </div>
           </div>
             <div class="tc-card">
-              <h3 class="tc-card-heading">Detalle del favorito</h3>
+              <h3 class="tc-card-heading">Detalle de la acción</h3>
               <p class="tc-card-subtitle">Revisá cada característica y editá el contenido sin salir de esta pestaña.</p>
               <div id="aiActionDetails" class="ai-action-details ai-hidden" aria-live="polite">
                 <div id="aiActionDetailCard"></div>
                 <div id="aiActionEditor" class="ai-action-editor ai-hidden">
                   <div class="ai-action-editor-head">
-                    <h4 id="aiActionEditorTitle">Editar reporte favorito</h4>
+                    <h4 id="aiActionEditorTitle">Editar acción guardada</h4>
                     <p id="aiActionEditorSubtitle" class="ai-action-editor-subtitle">
-                      Ajustá las características guardadas y actualizá el favorito directamente desde este panel.
+                      Ajustá las características guardadas y actualizá la acción guardada directamente desde este panel.
                     </p>
                     <div id="aiActionEditorMeta" class="ai-action-editor-meta"></div>
                   </div>
@@ -8904,8 +8910,8 @@
                 </div>
               </div>
               <div id="aiActionDetailControls" class="ai-action-controls ai-hidden">
-                <button type="button" id="aiActionSaveBtn" class="btn-primary">Guardar favorito</button>
-                <button type="button" id="aiActionDeleteBtn" class="btn-danger">Borrar favorito</button>
+                <button type="button" id="aiActionSaveBtn" class="btn-primary">Guardar acción</button>
+                <button type="button" id="aiActionDeleteBtn" class="btn-danger">Borrar acción</button>
               </div>
             </div>
           </div>
