@@ -3110,6 +3110,7 @@
         width: 100%;
         display: flex;
         justify-content: center;
+        transform: translateX(-10px);
       }
       .tc-trigger-calendar {
         width: 100%;
@@ -3402,6 +3403,9 @@
         letter-spacing: 0;
         text-align: left;
       }
+      .tc-trigger-date-range-label.is-hidden {
+        display: none;
+      }
       .tc-trigger-date-range-field.is-hidden {
         display: none;
       }
@@ -3459,24 +3463,26 @@
         min-width: 10.5ch;
         padding: 8px 12px;
         border-radius: 8px;
-        border: 1px solid rgba(59, 130, 246, 0.28);
-        background-color: #FFFFFF;
+        border: 1px solid var(--tc-primary);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(59, 130, 246, 0.05));
         cursor: pointer;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         margin-left: auto;
         margin-right: auto;
         box-sizing: border-box;
+        box-shadow: 0 6px 18px rgba(59, 130, 246, 0.18);
       }
       #triggerSectionCard .tc-trigger-time-input {
         width: 200px;
         transform: none;
       }
       .tc-trigger-time-input:hover {
-        border-color: rgba(59, 130, 246, 0.45);
-        box-shadow: 0 3px 10px rgba(59, 130, 246, 0.18);
+        border-color: var(--tc-primary-dark);
+        box-shadow: 0 8px 22px rgba(59, 130, 246, 0.25);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.08));
       }
       .tc-trigger-time-input:active {
-        background-color: rgba(59, 130, 246, 0.05);
+        background: rgba(59, 130, 246, 0.18);
       }
       .tc-trigger-time-input:focus-within {
         border-color: var(--tc-primary);
@@ -3498,11 +3504,11 @@
       .tc-trigger-time-display {
         font-weight: 600;
         font-variant-numeric: tabular-nums;
-        color: var(--tc-text);
+        color: var(--tc-primary-dark);
         letter-spacing: 0.02em;
       }
       .tc-trigger-time-display[data-state='empty'] {
-        color: var(--tc-muted);
+        color: rgba(59, 130, 246, 0.65);
       }
       .tc-trigger-calendar-field.is-disabled {
         opacity: 0.55;
@@ -8498,7 +8504,7 @@
                   </div>
                   <input type="hidden" id="triggerActionSelect" value="" />
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y textos guardados<br />así como las acciones favoritas.</p>
+                <p class="tc-field-note">Accede a tus tablas, textos y acciones guardadas.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>

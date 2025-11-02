@@ -1570,7 +1570,7 @@ function renderTriggerActionMenu() {
   picker.dataset.empty = hasItems ? 'false' : 'true';
   toggle.disabled = !hasItems;
   if (!hasItems) {
-    toggleLabel.textContent = 'Sin favoritos disponibles';
+    toggleLabel.textContent = 'Sin favoritos';
     hiddenInput.value = '';
     closeTriggerActionMenu();
   } else {
@@ -1864,7 +1864,15 @@ function updateTriggerFrequencyFields() {
     }
   }
   if (fromLabel) {
-    fromLabel.textContent = showFromField ? 'Fecha de Inicio' : 'Desde';
+    if (showFromField) {
+      fromLabel.textContent = '';
+      fromLabel.classList.add('is-hidden');
+      fromLabel.setAttribute('aria-hidden', 'true');
+    } else {
+      fromLabel.textContent = 'Desde';
+      fromLabel.classList.remove('is-hidden');
+      fromLabel.removeAttribute('aria-hidden');
+    }
   }
   if (toLabel) {
     toLabel.textContent = 'Hasta';
