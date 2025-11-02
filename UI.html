@@ -3093,12 +3093,12 @@
       }
       .tc-trigger-calendar-field {
         width: 100%;
-        max-width: 300px;
+        max-width: 200px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 14px;
         text-align: center;
       }
       .tc-trigger-calendar-heading {
@@ -3112,17 +3112,18 @@
         justify-content: center;
       }
       .tc-trigger-calendar {
-        width: 224px;
-        max-width: 224px;
+        width: 100%;
+        max-width: 200px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
-        padding: 14px;
+        padding: 10px;
         background-color: #FFFFFF;
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
+        box-sizing: border-box;
       }
       .tc-trigger-calendar-header {
         width: 100%;
@@ -3214,14 +3215,15 @@
       #triggerSectionCard .tc-trigger-weekly-options,
       #triggerSectionCard .tc-trigger-schedule-summary {
         width: 100%;
-        max-width: 240px;
+        max-width: 200px;
         margin-left: auto;
         margin-right: auto;
+        box-sizing: border-box;
       }
       #triggerSectionCard .tc-card-actions {
         justify-content: center;
         width: 100%;
-        max-width: 240px;
+        max-width: 200px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -3242,6 +3244,7 @@
       }
       #triggerSectionCard #triggerDateFrom {
         width: 200px;
+        box-sizing: border-box;
       }
       #triggerSectionCard #triggerActionPicker,
       #triggerSectionCard #triggerFrequencySelect {
@@ -3249,6 +3252,7 @@
         max-width: 200px;
         font-size: 14px;
         font-weight: 500;
+        box-sizing: border-box;
       }
       #triggerSectionCard #triggerFrequencySelect {
         display: block;
@@ -3259,13 +3263,15 @@
       .tc-trigger-calendar-controls {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
       }
       .tc-trigger-calendar-controls select {
         border: 1px solid rgba(59, 130, 246, 0.3);
         border-radius: 8px;
-        padding: 6px 14px;
-        min-width: 96px;
+        padding: 6px 12px;
+        min-width: 88px;
         font-size: 12px;
         font-weight: 600;
         color: var(--tc-text);
@@ -3273,12 +3279,13 @@
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         text-align: center;
+        box-sizing: border-box;
       }
       #triggerCalendarMonth {
-        min-width: 118px;
+        min-width: 100px;
       }
       #triggerCalendarYear {
-        min-width: 96px;
+        min-width: 84px;
         font-variant-numeric: tabular-nums;
       }
       .tc-trigger-calendar-controls select:hover {
@@ -3293,7 +3300,7 @@
         width: 100%;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
+        gap: 4px;
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
@@ -3307,7 +3314,7 @@
         margin-top: 6px;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
+        gap: 4px;
         justify-items: center;
         justify-content: center;
         align-items: center;
@@ -3315,7 +3322,7 @@
       }
       .tc-trigger-calendar-day {
         width: 100%;
-        height: 34px;
+        height: 28px;
         border-radius: 8px;
         border: none;
         background-color: transparent;
@@ -3370,9 +3377,10 @@
         margin-top: -4px;
       }
       #triggerSectionCard .tc-trigger-date-range {
-        max-width: 240px;
+        max-width: 200px;
         margin-left: auto;
         margin-right: auto;
+        width: 100%;
       }
       .tc-trigger-date-range.is-hidden {
         display: none;
@@ -3382,7 +3390,7 @@
         flex-direction: column;
         gap: 6px;
         width: 100%;
-        max-width: 220px;
+        max-width: 200px;
         align-items: stretch;
         text-align: left;
       }
@@ -3405,6 +3413,7 @@
         font-size: 13px;
         color: var(--tc-text);
         text-align: center;
+        box-sizing: border-box;
       }
       .tc-trigger-date-range-field input[type='date']:focus {
         outline: none;
@@ -3434,7 +3443,7 @@
         text-align: left;
         gap: 10px;
         width: 100%;
-        max-width: 300px;
+        max-width: 200px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -3456,6 +3465,7 @@
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         margin-left: auto;
         margin-right: auto;
+        box-sizing: border-box;
       }
       #triggerSectionCard .tc-trigger-time-input {
         width: 200px;
