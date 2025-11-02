@@ -3037,8 +3037,8 @@
         border-radius: 8px;
         border: 1px solid var(--tc-border);
         background-color: #FFFFFF;
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 500;
         color: var(--tc-text);
         cursor: pointer;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3092,7 +3092,7 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 360px;
+        max-width: 288px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
@@ -3111,7 +3111,7 @@
       }
       .tc-trigger-calendar {
         width: 100%;
-        max-width: 320px;
+        max-width: 288px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
         padding: 14px;
@@ -3210,6 +3210,15 @@
         width: 100%;
         margin-left: auto;
         margin-right: auto;
+      }
+      #triggerSectionCard #triggerActionPicker,
+      #triggerSectionCard #triggerFrequencySelect {
+        width: 100%;
+        max-width: 288px;
+      }
+      #triggerSectionCard #triggerFrequencySelect {
+        font-size: 14px;
+        font-weight: 500;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
@@ -8434,7 +8443,7 @@
                   </div>
                   <input type="hidden" id="triggerActionSelect" value="" />
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y textos guardados así como las acciones favoritas.</p>
+                <p class="tc-field-note">Se mostrarán las tablas y textos guardados<br />así como las acciones favoritas.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
@@ -8447,7 +8456,7 @@
                   <option value="biweekly">Quincenal</option>
                   <option value="monthly">Mensual</option>
                 </select>
-                <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
+                <p class="tc-field-note">Elige el intervalo que mejor acompañe tu<br />flujo de trabajo.</p>
               </div>
             </div>
             <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
