@@ -3092,28 +3092,28 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 280px;
+        width: 100%;
+        max-width: 300px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        align-items: stretch;
+        align-items: center;
         gap: 16px;
-        text-align: left;
+        text-align: center;
       }
       .tc-trigger-calendar-heading {
         width: 100%;
-        text-align: left;
-        margin-left: 20px;
+        margin: 0;
+        text-align: center;
       }
       .tc-trigger-calendar-wrapper {
         width: 100%;
         display: flex;
         justify-content: center;
-        transform: translateX(10px);
       }
       .tc-trigger-calendar {
-        width: 230px;
-        max-width: 230px;
+        width: 224px;
+        max-width: 224px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
         padding: 14px;
@@ -3192,19 +3192,20 @@
       }
       #triggerSectionCard .tc-form-field {
         width: 100%;
-        max-width: 288px;
+        max-width: 300px;
         margin-left: auto;
         margin-right: auto;
         display: flex;
         flex-direction: column;
-        align-items: stretch;
+        align-items: center;
         gap: 6px;
         text-align: left;
       }
       #triggerSectionCard .tc-form-field > label,
       #triggerSectionCard .tc-form-field > span.tc-trigger-date-range-label {
-        align-self: flex-start;
+        align-self: stretch;
         width: 100%;
+        text-align: left;
       }
       #triggerSectionCard .tc-trigger-picker,
       #triggerSectionCard .tc-trigger-picker-toggle,
@@ -3212,12 +3213,17 @@
       #triggerSectionCard .tc-trigger-time-input,
       #triggerSectionCard .tc-trigger-weekly-options,
       #triggerSectionCard .tc-trigger-schedule-summary {
-        max-width: 100%;
+        width: 100%;
+        max-width: 240px;
         margin-left: auto;
         margin-right: auto;
       }
       #triggerSectionCard .tc-card-actions {
         justify-content: center;
+        width: 100%;
+        max-width: 240px;
+        margin-left: auto;
+        margin-right: auto;
       }
       #triggerSectionCard .tc-form-field label,
       #triggerSectionCard .tc-form-field .tc-field-note,
@@ -3226,6 +3232,8 @@
       }
       #triggerSectionCard .tc-form-field .tc-field-note {
         max-width: 320px;
+        align-self: stretch;
+        text-align: left;
       }
       #triggerSectionCard .tc-form-field > *:not(label):not(.tc-field-note) {
         width: 100%;
@@ -3234,28 +3242,19 @@
       }
       #triggerSectionCard #triggerDateFrom {
         width: 200px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-      #triggerSectionCard #triggerActionPicker {
-        width: 200px;
-        max-width: 200px;
-      }
-      #triggerSectionCard #triggerFrequencySelect {
-        display: block;
-        width: 200px;
-        max-width: 200px;
-        margin-left: auto;
-        margin-right: auto;
-        font-size: 14px;
-        font-weight: 500;
       }
       #triggerSectionCard #triggerActionPicker,
       #triggerSectionCard #triggerFrequencySelect {
-        transform: translateX(-10px);
+        width: 200px;
+        max-width: 200px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      #triggerSectionCard #triggerFrequencySelect {
+        display: block;
       }
       #triggerSectionCard .tc-card-actions {
-        transform: translateX(-20px);
+        transform: none;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
@@ -3370,6 +3369,11 @@
         gap: 12px;
         margin-top: -4px;
       }
+      #triggerSectionCard .tc-trigger-date-range {
+        max-width: 240px;
+        margin-left: auto;
+        margin-right: auto;
+      }
       .tc-trigger-date-range.is-hidden {
         display: none;
       }
@@ -3430,7 +3434,7 @@
         text-align: left;
         gap: 10px;
         width: 100%;
-        max-width: 360px;
+        max-width: 300px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -3455,7 +3459,7 @@
       }
       #triggerSectionCard .tc-trigger-time-input {
         width: 200px;
-        transform: translateX(30px);
+        transform: none;
       }
       .tc-trigger-time-input:hover {
         border-color: rgba(59, 130, 246, 0.45);
