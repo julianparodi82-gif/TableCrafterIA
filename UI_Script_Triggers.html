@@ -2529,12 +2529,30 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
     if (startTimeEditBtn) {
+      let timeEditPointerActivated = false;
+      startTimeEditBtn.addEventListener('pointerdown', function(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (startTimeInput.disabled) {
+          timeEditPointerActivated = false;
+          return;
+        }
+        timeEditPointerActivated = true;
+        openTimePicker();
+      });
       startTimeEditBtn.addEventListener('click', function(event) {
         if (event) {
           event.preventDefault();
           event.stopPropagation();
         }
         if (startTimeInput.disabled) {
+          timeEditPointerActivated = false;
+          return;
+        }
+        if (timeEditPointerActivated) {
+          timeEditPointerActivated = false;
           return;
         }
         openTimePicker();
