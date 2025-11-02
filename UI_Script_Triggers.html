@@ -40,6 +40,20 @@ const TRIGGER_CALENDAR_MONTH_NAMES = Object.freeze([
   'Noviembre',
   'Diciembre'
 ]);
+const TRIGGER_CALENDAR_MONTH_SHORT_NAMES = Object.freeze([
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic'
+]);
 const TRIGGER_CALENDAR_YEAR_SPAN = 6;
 const TRIGGER_WEEKDAY_LABELS = Object.freeze([
   'Lunes',
@@ -414,11 +428,11 @@ function populateTriggerCalendarMonthOptions(select) {
   if (!select) {
     return;
   }
-  if (select.options && select.options.length === TRIGGER_CALENDAR_MONTH_NAMES.length) {
+  if (select.options && select.options.length === TRIGGER_CALENDAR_MONTH_SHORT_NAMES.length) {
     return;
   }
   select.innerHTML = '';
-  TRIGGER_CALENDAR_MONTH_NAMES.forEach(function(name, index) {
+  TRIGGER_CALENDAR_MONTH_SHORT_NAMES.forEach(function(name, index) {
     const option = document.createElement('option');
     option.value = String(index);
     option.textContent = name;

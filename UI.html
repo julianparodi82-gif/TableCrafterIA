@@ -3092,7 +3092,7 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 288px;
+        max-width: 280px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
@@ -3111,7 +3111,7 @@
       }
       .tc-trigger-calendar {
         width: 100%;
-        max-width: 288px;
+        max-width: 280px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
         padding: 14px;
@@ -3232,16 +3232,22 @@
       }
       #triggerSectionCard #triggerActionPicker {
         width: 100%;
-        max-width: 288px;
+        max-width: 200px;
       }
       #triggerSectionCard #triggerFrequencySelect {
         display: block;
-        width: 200px;
-        max-width: 100%;
+        width: 100%;
+        max-width: 200px;
         margin-left: auto;
         margin-right: auto;
         font-size: 14px;
         font-weight: 500;
+      }
+      #triggerSectionCard #triggerActionPicker,
+      #triggerSectionCard #triggerFrequencySelect,
+      #triggerSectionCard .tc-trigger-calendar-field,
+      #triggerSectionCard .tc-card-actions {
+        transform: translateX(-20px);
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
