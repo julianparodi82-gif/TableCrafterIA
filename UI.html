@@ -3414,6 +3414,10 @@
         letter-spacing: 0;
         text-align: left;
       }
+      #triggerWeeklyField > label.tc-trigger-date-range-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
       .tc-trigger-date-range-label.is-hidden {
         display: none;
       }
@@ -3512,6 +3516,11 @@
         cursor: pointer;
         background: transparent;
         pointer-events: none;
+        color: #0f172a;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        text-align: center;
       }
       .tc-trigger-time-display {
         flex: 1;
@@ -3558,6 +3567,14 @@
         color: rgba(15, 23, 42, 0.7);
         font-size: 16px;
         transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tc-trigger-time-edit-button:focus-visible {
+        outline: 2px solid rgba(15, 23, 42, 0.35);
+        outline-offset: 3px;
       }
       .tc-trigger-time-input:hover .tc-trigger-time-edit-button {
         background: rgba(15, 23, 42, 0.12);
@@ -3570,6 +3587,20 @@
       .tc-trigger-time-edit-button::before {
         content: '\270E';
         transform: scale(0.9);
+      }
+      .tc-trigger-time-input.is-editing {
+        cursor: text;
+      }
+      .tc-trigger-time-input.is-editing .tc-trigger-time-display,
+      .tc-trigger-time-input.is-editing .tc-trigger-time-edit-button {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .tc-trigger-time-input.is-editing input[type='time'] {
+        opacity: 1;
+        pointer-events: auto;
+        padding: 0 14px;
+        background: transparent;
       }
       .tc-trigger-calendar-field.is-disabled {
         opacity: 0.55;
@@ -8661,12 +8692,18 @@
                 aria-haspopup="dialog"
                 aria-controls="triggerStartTime"
                 aria-label="Editar hora de ejecución"
+                aria-expanded="false"
               >
                 <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
                   --:-- --
                 </span>
-                <span class="tc-trigger-time-edit-button" aria-hidden="true"></span>
-                <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+                <button
+                  type="button"
+                  id="triggerStartTimeEditBtn"
+                  class="tc-trigger-time-edit-button"
+                  aria-label="Editar hora"
+                ></button>
+                <input type="time" id="triggerStartTime" aria-label="Elegir hora de ejecución" />
               </div>
             </div>
             <div class="tc-card-actions">
