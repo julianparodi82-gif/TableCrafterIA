@@ -694,14 +694,59 @@ function updateTriggerWeeklyButtons() {
 }
 
 function setTriggerWeeklyDay(dayIndex, options) {
+  const opts = options || {};
   if (dayIndex === null || dayIndex === undefined || isNaN(dayIndex)) {
     triggerCalendarState.weeklyDay = null;
+    updateTriggerWeeklyButtons();
+    updateTriggerScheduleSummary();
+    updateTriggerFormState();
+    return;
+  }
+
+  triggerCalendarState.weeklyDay = dayIndex;
+
+  let nextDateString = '';
+  if (opts.preserveAnchor && opts.anchorDate) {
+    nextDateString = opts.anchorDate;
   } else {
-    triggerCalendarState.weeklyDay = dayIndex;
+    const anchorDateString = opts.anchorDate || '';
+    const anchorParts = anchorDateString ? parseTriggerDateString(anchorDateString) : null;
+    const todayParts = refreshTriggerTodayParts();
+    const todayDate = new Date(todayParts.year, todayParts.month, todayParts.day);
+    let referenceDate = anchorParts && anchorParts.date ? new Date(anchorParts.date.getTime()) : null;
+    if (!referenceDate || referenceDate.getTime() < todayDate.getTime()) {
+      referenceDate = new Date(todayDate.getTime());
+    }
+    if (referenceDate) {
+      const referenceWeekday = (referenceDate.getDay() + 6) % 7;
+      const offset = (dayIndex - referenceWeekday + 7) % 7;
+      const targetDate = new Date(
+        referenceDate.getFullYear(),
+        referenceDate.getMonth(),
+        referenceDate.getDate()
+      );
+      targetDate.setDate(targetDate.getDate() + offset);
+      nextDateString = formatTriggerDateParts(
+        targetDate.getFullYear(),
+        targetDate.getMonth(),
+        targetDate.getDate()
+      );
+    }
   }
-  if (options && options.anchorDate) {
-    setTriggerSelectedDates([options.anchorDate], { skipFrom: true });
+
+  if (nextDateString) {
+    setTriggerSelectedDates([nextDateString], { skipFrom: true });
+    const parsedTarget = parseTriggerDateString(nextDateString);
+    if (parsedTarget) {
+      triggerCalendarState.activeYear = parsedTarget.year;
+      triggerCalendarState.activeMonth = parsedTarget.month;
+    }
+    const fromInput = document.getElementById('triggerDateFrom');
+    if (fromInput) {
+      fromInput.value = nextDateString;
+    }
   }
+
   updateTriggerWeeklyButtons();
   updateTriggerScheduleSummary();
   updateTriggerFormState();
@@ -1081,7 +1126,7 @@ function applyTriggerDateSelection(dateString, options) {
     if (fromInput) {
       fromInput.value = dateString;
     }
-    setTriggerWeeklyDay(weekday, { anchorDate: dateString });
+    setTriggerWeeklyDay(weekday, { anchorDate: dateString, preserveAnchor: true });
   } else if (frequency === 'biweekly' || frequency === 'monthly') {
     const fromInput = document.getElementById('triggerDateFrom');
     if (fromInput) {
@@ -1177,7 +1222,7 @@ function handleTriggerDateFromChange() {
       const parsed = parseTriggerDateString(value);
       if (parsed && parsed.date) {
         const weekday = (parsed.date.getDay() + 6) % 7;
-        setTriggerWeeklyDay(weekday, { anchorDate: value });
+        setTriggerWeeklyDay(weekday, { anchorDate: value, preserveAnchor: true });
       } else {
         setTriggerSelectedDates([value], { skipFrom: true });
         updateTriggerWeeklyButtons();
