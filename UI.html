@@ -3096,12 +3096,13 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         gap: 16px;
+        text-align: left;
       }
       .tc-trigger-calendar-heading {
         width: 100%;
-        text-align: center;
+        text-align: left;
       }
       .tc-trigger-calendar-wrapper {
         width: 100%;
@@ -3191,14 +3192,24 @@
         max-width: 360px;
         margin-left: auto;
         margin-right: auto;
-        align-items: center;
-        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        text-align: left;
+      }
+      #triggerSectionCard .tc-form-field label,
+      #triggerSectionCard .tc-form-field .tc-field-note,
+      #triggerSectionCard .tc-form-field .tc-trigger-date-range-label {
+        text-align: left;
       }
       #triggerSectionCard .tc-form-field .tc-field-note {
         max-width: 320px;
       }
       #triggerSectionCard .tc-form-field > *:not(label):not(.tc-field-note) {
         width: 100%;
+        margin-left: auto;
+        margin-right: auto;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
@@ -3322,7 +3333,8 @@
         gap: 6px;
         width: 100%;
         max-width: 220px;
-        align-items: center;
+        align-items: stretch;
+        text-align: left;
       }
       .tc-trigger-date-range-label {
         font-size: 11px;
@@ -3330,6 +3342,7 @@
         color: var(--tc-muted);
         text-transform: none;
         letter-spacing: 0;
+        text-align: left;
       }
       .tc-trigger-date-range-field.is-hidden {
         display: none;
@@ -3368,7 +3381,7 @@
       }
       .tc-trigger-time-field {
         align-items: center;
-        text-align: center;
+        text-align: left;
         gap: 10px;
         width: 100%;
         max-width: 360px;
@@ -3376,8 +3389,8 @@
         margin-right: auto;
       }
       .tc-trigger-time-field label {
-        text-align: center;
         width: 100%;
+        text-align: left;
       }
       .tc-trigger-time-input {
         position: relative;
@@ -3391,6 +3404,8 @@
         background-color: #FFFFFF;
         cursor: pointer;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        margin-left: auto;
+        margin-right: auto;
       }
       .tc-trigger-time-input:hover {
         border-color: rgba(59, 130, 246, 0.45);
@@ -3453,8 +3468,14 @@
         max-width: 360px;
         margin-left: auto;
         margin-right: auto;
-        align-items: center;
-        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        gap: 8px;
+      }
+      #triggerWeeklyField > label {
+        text-align: left;
       }
       .tc-trigger-weekly-options {
         display: grid;
