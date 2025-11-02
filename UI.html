@@ -3231,6 +3231,9 @@
         margin-left: auto;
         margin-right: auto;
       }
+      #triggerSectionCard #triggerCreateBtn {
+        transform: translateX(-5px);
+      }
       #triggerSectionCard .tc-form-field label,
       #triggerSectionCard .tc-form-field .tc-field-note,
       #triggerSectionCard .tc-form-field .tc-trigger-date-range-label {
@@ -3455,7 +3458,7 @@
         text-align: left;
         gap: 10px;
         width: 100%;
-        max-width: 220px;
+        max-width: 230px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -3472,30 +3475,30 @@
         min-width: 10.5ch;
         padding: 10px 14px;
         border-radius: 10px;
-        border: 2px solid rgba(59, 130, 246, 0.75);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.32), rgba(59, 130, 246, 0.12));
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: #ffffff;
         cursor: pointer;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         margin-left: auto;
         margin-right: auto;
         box-sizing: border-box;
-        box-shadow: 0 10px 26px rgba(59, 130, 246, 0.28);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
       }
       #triggerSectionCard .tc-trigger-time-input {
-        width: 220px;
-        transform: none;
+        width: 230px;
+        transform: translateX(-10px);
       }
       .tc-trigger-time-input:hover {
-        border-color: rgba(37, 99, 235, 0.95);
-        box-shadow: 0 12px 30px rgba(59, 130, 246, 0.38);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.42), rgba(37, 99, 235, 0.16));
+        border-color: rgba(15, 23, 42, 0.28);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        background: #f8fafc;
       }
       .tc-trigger-time-input:active {
-        background: rgba(59, 130, 246, 0.28);
+        background: #f1f5f9;
       }
       .tc-trigger-time-input:focus-within {
-        border-color: rgba(37, 99, 235, 0.95);
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35);
+        border-color: rgba(15, 23, 42, 0.4);
+        box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.18);
       }
       .tc-trigger-time-input input[type='time'] {
         position: absolute;
@@ -3510,48 +3513,39 @@
         background: transparent;
         pointer-events: none;
       }
-      .tc-trigger-time-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: rgba(37, 99, 235, 0.15);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: rgba(37, 99, 235, 0.85);
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-      }
-      .tc-trigger-time-icon::before {
-        content: '\23F0';
-      }
       .tc-trigger-time-display {
+        flex: 1;
         font-weight: 700;
         font-variant-numeric: tabular-nums;
-        color: #1D4ED8;
+        color: #0f172a;
         letter-spacing: 0.04em;
       }
       .tc-trigger-time-display[data-state='empty'] {
-        color: rgba(37, 99, 235, 0.75);
+        color: rgba(15, 23, 42, 0.55);
       }
-      .tc-trigger-time-edit-hint {
+      .tc-trigger-time-edit-button {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: rgba(59, 130, 246, 0.16);
-        color: #1E3A8A;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        white-space: nowrap;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.08);
+        color: rgba(15, 23, 42, 0.7);
+        font-size: 16px;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
       }
-      .tc-trigger-time-input:hover .tc-trigger-time-edit-hint {
-        background: rgba(37, 99, 235, 0.22);
-        color: #1D4ED8;
+      .tc-trigger-time-input:hover .tc-trigger-time-edit-button {
+        background: rgba(15, 23, 42, 0.12);
+        color: rgba(15, 23, 42, 0.85);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+      }
+      .tc-trigger-time-input:active .tc-trigger-time-edit-button {
+        background: rgba(15, 23, 42, 0.16);
+      }
+      .tc-trigger-time-edit-button::before {
+        content: '\270E';
+        transform: scale(0.9);
       }
       .tc-trigger-calendar-field.is-disabled {
         opacity: 0.55;
@@ -8642,12 +8636,12 @@
                 tabindex="0"
                 aria-haspopup="dialog"
                 aria-controls="triggerStartTime"
+                aria-label="Editar hora de ejecución"
               >
-                <span class="tc-trigger-time-icon" aria-hidden="true"></span>
                 <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
                   --:-- --
                 </span>
-                <span class="tc-trigger-time-edit-hint" aria-hidden="true">Editar hora</span>
+                <span class="tc-trigger-time-edit-button" aria-hidden="true"></span>
                 <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
               </div>
             </div>
