@@ -162,6 +162,7 @@ function applyTriggerTimeConstraints() {
   if (!startTimeInput) {
     return false;
   }
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
   const fieldset = document.getElementById('triggerSectionFieldset');
   const sectionActive = isTriggerSectionEnabled() && (!fieldset || !fieldset.disabled);
   if (!sectionActive || startTimeInput.disabled) {
@@ -176,6 +177,13 @@ function applyTriggerTimeConstraints() {
     if (!startTimeInput.value || startTimeInput.value < currentValue) {
       startTimeInput.value = currentValue;
       updateTriggerStartTimeDisplay();
+      if (startTimeControl && typeof startTimeControl.__triggerTimeSync === 'function') {
+        try {
+          startTimeControl.__triggerTimeSync();
+        } catch (err) {
+          // ignore sync errors
+        }
+      }
       return true;
     }
   } else if (startTimeInput.min) {
@@ -2125,6 +2133,73 @@ function updateTriggerStartTimeDisplay() {
   }
 }
 
+function parseTriggerTimeValue(value) {
+  if (!value) {
+    return null;
+  }
+  const match = /^([0-2]?\d):([0-5]\d)$/.exec(String(value).trim());
+  if (!match) {
+    return null;
+  }
+  const hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  if (isNaN(hour) || isNaN(minute)) {
+    return null;
+  }
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+  return { hour: hour, minute: minute };
+}
+
+function getTriggerTimeSelectionParts(value) {
+  const parsed = parseTriggerTimeValue(value) || parseTriggerTimeValue(getCurrentTimeValue());
+  if (!parsed) {
+    return {
+      hour: '12',
+      minute: '00',
+      period: 'AM'
+    };
+  }
+  let hour = parsed.hour;
+  const minute = parsed.minute;
+  const period = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour === 0) {
+    hour = 12;
+  }
+  return {
+    hour: String(hour).padStart(2, '0'),
+    minute: String(minute).padStart(2, '0'),
+    period: period
+  };
+}
+
+function buildTriggerTimeValue(hourString, minuteString, period) {
+  let hour = parseInt(hourString, 10);
+  const minute = parseInt(minuteString, 10);
+  if (isNaN(hour) || isNaN(minute)) {
+    return '';
+  }
+  if (hour < 1) {
+    hour = 1;
+  }
+  if (hour > 12) {
+    hour = hour % 12;
+    if (hour === 0) {
+      hour = 12;
+    }
+  }
+  let normalizedHour = hour;
+  if (period === 'PM' && hour < 12) {
+    normalizedHour = hour + 12;
+  } else if (period === 'AM' && hour === 12) {
+    normalizedHour = 0;
+  }
+  const clampedMinute = Math.max(0, Math.min(59, minute));
+  return String(normalizedHour).padStart(2, '0') + ':' + String(clampedMinute).padStart(2, '0');
+}
+
 function updateTriggerFormState() {
   const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
@@ -2382,6 +2457,13 @@ function applyTriggerSectionState() {
       startTimeControl.classList.remove('is-editing');
       startTimeControl.removeAttribute('data-editing');
       startTimeControl.setAttribute('aria-expanded', 'false');
+      if (typeof startTimeControl.__triggerTimeClose === 'function') {
+        try {
+          startTimeControl.__triggerTimeClose({ restoreFocus: false });
+        } catch (err) {
+          // ignore close errors
+        }
+      }
     }
     closeTriggerActionMenu({ focusToggle: false });
     applyTriggerTimeConstraints();
@@ -2391,6 +2473,13 @@ function applyTriggerSectionState() {
 
   if (startTimeControl && !startTimeControl.classList.contains('ai-hidden')) {
     startTimeControl.removeAttribute('aria-disabled');
+    if (typeof startTimeControl.__triggerTimeSync === 'function') {
+      try {
+        startTimeControl.__triggerTimeSync();
+      } catch (err) {
+        // ignore sync errors
+      }
+    }
   }
 
   updateTriggerFrequencyFields();
@@ -2427,183 +2516,234 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   if (startTimeInput) {
     const startTimeEditBtn = document.getElementById('triggerStartTimeEditBtn');
-    const supportsNativeTimePicker = typeof startTimeInput.showPicker === 'function';
-    let isTriggerTimePickerOpening = false;
+    const timePopover = document.getElementById('triggerStartTimePopover');
+    const hourSelect = document.getElementById('triggerStartTimeHour');
+    const minuteSelect = document.getElementById('triggerStartTimeMinute');
+    const periodSelect = document.getElementById('triggerStartTimePeriod');
+    let isTimePopoverOpen = false;
     if (!startTimeInput.value) {
       startTimeInput.value = getCurrentTimeValue();
     }
     updateTriggerStartTimeDisplay();
     applyTriggerTimeConstraints();
-    const setTimePickerExpanded = function(expanded) {
-      if (startTimeControl) {
-        startTimeControl.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      }
-    };
-    const activateFallbackEditing = function() {
-      if (!startTimeControl) {
-        return;
-      }
-      startTimeControl.classList.add('is-editing');
-      startTimeControl.setAttribute('data-editing', 'true');
-    };
-    const deactivateFallbackEditing = function() {
-      if (!startTimeControl) {
-        return;
-      }
-      startTimeControl.classList.remove('is-editing');
-      startTimeControl.removeAttribute('data-editing');
-    };
-    const focusTimeInput = function() {
-      try {
-        startTimeInput.focus({ preventScroll: true });
-      } catch (err) {
-        startTimeInput.focus();
-      }
-    };
-    const openTimePicker = function(options) {
-      if (isTriggerTimePickerOpening || startTimeInput.disabled) {
-        return;
-      }
-      isTriggerTimePickerOpening = true;
-      const opts = options || {};
-      const shouldFocus = opts.focus !== false;
-      if (shouldFocus && document.activeElement !== startTimeInput) {
-        focusTimeInput();
-      }
-      let openedNative = false;
-      if (supportsNativeTimePicker && !opts.forceFallback) {
-        try {
-          if (document.activeElement !== startTimeInput && shouldFocus) {
-            focusTimeInput();
-          }
-          startTimeInput.showPicker();
-          openedNative = true;
-        } catch (err) {
-          openedNative = false;
+    const ensureTimeSelectOptions = function() {
+      if (hourSelect && hourSelect.options.length === 0) {
+        for (let hour = 1; hour <= 12; hour++) {
+          const option = document.createElement('option');
+          const value = String(hour).padStart(2, '0');
+          option.value = value;
+          option.textContent = value;
+          hourSelect.appendChild(option);
         }
       }
-      if (!supportsNativeTimePicker || !openedNative || opts.forceFallback) {
-        activateFallbackEditing();
-        if (shouldFocus && document.activeElement !== startTimeInput) {
-          focusTimeInput();
+      if (minuteSelect && minuteSelect.options.length === 0) {
+        for (let minute = 0; minute < 60; minute++) {
+          const option = document.createElement('option');
+          const value = String(minute).padStart(2, '0');
+          option.value = value;
+          option.textContent = value;
+          minuteSelect.appendChild(option);
         }
-        requestAnimationFrame(function() {
-          try {
-            startTimeInput.select();
-          } catch (err) {
-            // ignore select failures
-          }
+      }
+      if (periodSelect && periodSelect.options.length === 0) {
+        ['AM', 'PM'].forEach(function(period) {
+          const option = document.createElement('option');
+          option.value = period;
+          option.textContent = period;
+          periodSelect.appendChild(option);
         });
-      } else {
-        deactivateFallbackEditing();
       }
-      setTimePickerExpanded(true);
-      isTriggerTimePickerOpening = false;
     };
-    const closeTimePicker = function() {
-      deactivateFallbackEditing();
-      setTimePickerExpanded(false);
-      isTriggerTimePickerOpening = false;
+    const syncTimeSelectsToValue = function() {
+      ensureTimeSelectOptions();
+      const parts = getTriggerTimeSelectionParts(startTimeInput.value);
+      if (hourSelect) {
+        hourSelect.value = parts.hour;
+      }
+      if (minuteSelect) {
+        minuteSelect.value = parts.minute;
+      }
+      if (periodSelect) {
+        periodSelect.value = parts.period;
+      }
     };
+    const focusTimeSelect = function(targetElement) {
+      const element = targetElement || hourSelect;
+      if (!element) {
+        return;
+      }
+      try {
+        element.focus({ preventScroll: true });
+      } catch (err) {
+        element.focus();
+      }
+    };
+    const commitTimeFromSelects = function() {
+      ensureTimeSelectOptions();
+      const hourValue = hourSelect ? hourSelect.value : '12';
+      const minuteValue = minuteSelect ? minuteSelect.value : '00';
+      const periodValue = periodSelect ? periodSelect.value : 'AM';
+      const newValue = buildTriggerTimeValue(hourValue, minuteValue, periodValue);
+      if (!newValue || newValue === startTimeInput.value) {
+        updateTriggerStartTimeDisplay();
+        return;
+      }
+      startTimeInput.value = newValue;
+      startTimeInput.dispatchEvent(new Event('input', { bubbles: true }));
+      startTimeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const handleDocumentPointerDown = function(event) {
+      if (!startTimeControl) {
+        return;
+      }
+      const target = event && event.target ? event.target : null;
+      if (target && startTimeControl.contains(target)) {
+        return;
+      }
+      closeTimePopover({ restoreFocus: false });
+    };
+    const handleDocumentKeyDown = function(event) {
+      if (!isTimePopoverOpen) {
+        return;
+      }
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        event.preventDefault();
+        closeTimePopover({ restoreFocus: true });
+      }
+    };
+    const closeTimePopover = function(options) {
+      if (!isTimePopoverOpen) {
+        return;
+      }
+      const opts = options || {};
+      if (timePopover) {
+        timePopover.setAttribute('aria-hidden', 'true');
+      }
+      if (startTimeControl) {
+        startTimeControl.classList.remove('is-popover-open');
+        startTimeControl.setAttribute('aria-expanded', 'false');
+      }
+      document.removeEventListener('pointerdown', handleDocumentPointerDown, true);
+      document.removeEventListener('keydown', handleDocumentKeyDown, true);
+      isTimePopoverOpen = false;
+      if (opts.restoreFocus && startTimeControl) {
+        try {
+          startTimeControl.focus({ preventScroll: true });
+        } catch (err) {
+          startTimeControl.focus();
+        }
+      }
+    };
+    const openTimePopover = function(options) {
+      if (startTimeInput.disabled) {
+        return;
+      }
+      ensureTimeSelectOptions();
+      syncTimeSelectsToValue();
+      if (timePopover) {
+        timePopover.setAttribute('aria-hidden', 'false');
+      }
+      if (startTimeControl) {
+        startTimeControl.classList.add('is-popover-open');
+        startTimeControl.setAttribute('aria-expanded', 'true');
+      }
+      if (!isTimePopoverOpen) {
+        document.addEventListener('pointerdown', handleDocumentPointerDown, true);
+        document.addEventListener('keydown', handleDocumentKeyDown, true);
+      }
+      isTimePopoverOpen = true;
+      const opts = options || {};
+      const focusTarget = opts.focusTarget || hourSelect;
+      requestAnimationFrame(function() {
+        focusTimeSelect(focusTarget);
+      });
+    };
+    const handleSelectInteraction = function(event) {
+      if (!event) {
+        return;
+      }
+      if (event.type === 'keydown') {
+        if (event.key === 'Escape' || event.key === 'Esc') {
+          event.preventDefault();
+          closeTimePopover({ restoreFocus: true });
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitTimeFromSelects();
+          closeTimePopover({ restoreFocus: true });
+          return;
+        }
+      }
+      if (event.type === 'change' || event.type === 'input') {
+        commitTimeFromSelects();
+      }
+    };
+    [hourSelect, minuteSelect, periodSelect].forEach(function(select) {
+      if (!select) {
+        return;
+      }
+      select.addEventListener('change', handleSelectInteraction);
+      select.addEventListener('input', handleSelectInteraction);
+      select.addEventListener('keydown', handleSelectInteraction);
+    });
     if (startTimeControl) {
       startTimeControl.addEventListener('click', function(event) {
         if (startTimeInput.disabled) {
           return;
         }
-        if (event && event.target && event.target.id === 'triggerStartTimeEditBtn') {
+        if (timePopover && timePopover.contains(event.target)) {
           return;
         }
-        openTimePicker();
+        openTimePopover({ focusTarget: hourSelect });
       });
       startTimeControl.addEventListener('keydown', function(event) {
         if (startTimeInput.disabled) {
           return;
         }
-        if (event.target && event.target !== startTimeControl) {
-          return;
-        }
-        if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+        if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter' || event.key === 'ArrowDown') {
           event.preventDefault();
-          openTimePicker();
+          openTimePopover({ focusTarget: hourSelect });
+        }
+        if ((event.key === 'Escape' || event.key === 'Esc') && isTimePopoverOpen) {
+          event.preventDefault();
+          closeTimePopover({ restoreFocus: true });
         }
       });
     }
     if (startTimeEditBtn) {
-      let timeEditPointerActivated = false;
-      startTimeEditBtn.addEventListener('pointerdown', function(event) {
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        if (startTimeInput.disabled) {
-          timeEditPointerActivated = false;
-          return;
-        }
-        timeEditPointerActivated = true;
-        openTimePicker();
-      });
       startTimeEditBtn.addEventListener('click', function(event) {
         if (event) {
           event.preventDefault();
           event.stopPropagation();
         }
         if (startTimeInput.disabled) {
-          timeEditPointerActivated = false;
           return;
         }
-        if (timeEditPointerActivated) {
-          timeEditPointerActivated = false;
-          return;
-        }
-        openTimePicker();
+        openTimePopover({ focusTarget: hourSelect });
       });
     }
-    startTimeInput.addEventListener('focus', function() {
-      if (startTimeInput.disabled) {
-        return;
-      }
-      openTimePicker({ focus: false });
-    });
-    startTimeInput.addEventListener('click', function() {
-      if (startTimeInput.disabled) {
-        return;
-      }
-      openTimePicker({ focus: false });
-    });
-    startTimeInput.addEventListener('keydown', function(event) {
-      if (event.altKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      if (event.key === 'Tab') {
-        closeTimePicker();
-        return;
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        startTimeInput.blur();
-        closeTimePicker();
-        return;
-      }
-      const pickerKeys = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
-      if (supportsNativeTimePicker && pickerKeys.indexOf(event.key) !== -1) {
-        event.preventDefault();
-        openTimePicker({ focus: false });
-        return;
-      }
-      if (supportsNativeTimePicker) {
-        event.preventDefault();
-      }
-    });
-    startTimeInput.addEventListener('blur', function() {
-      closeTimePicker();
-    });
+    if (startTimeControl) {
+      startTimeControl.__triggerTimeClose = function(opts) {
+        closeTimePopover(opts || {});
+      };
+      startTimeControl.__triggerTimeSync = function() {
+        if (isTimePopoverOpen) {
+          syncTimeSelectsToValue();
+        }
+      };
+    }
     const handleTimeChange = function() {
       const adjusted = applyTriggerTimeConstraints();
       if (!adjusted) {
         updateTriggerStartTimeDisplay();
       }
-      if (supportsNativeTimePicker) {
-        setTimePickerExpanded(false);
+      if (startTimeControl && typeof startTimeControl.__triggerTimeSync === 'function') {
+        try {
+          startTimeControl.__triggerTimeSync();
+        } catch (err) {
+          // ignore sync errors
+        }
       }
       updateTriggerFormState();
     };
