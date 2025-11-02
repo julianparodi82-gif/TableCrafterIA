@@ -3162,9 +3162,43 @@
         border: none;
         margin: 0;
         padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
       }
       .tc-trigger-section-fieldset.is-collapsed {
         display: none;
+      }
+      .tc-trigger-card .tc-card-subtitle {
+        text-align: center;
+        max-width: 420px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #triggerSectionCard .tc-form-grid {
+        width: 100%;
+        max-width: 420px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        margin: 0 auto;
+      }
+      #triggerSectionCard .tc-form-field {
+        width: 100%;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+        align-items: center;
+        text-align: center;
+      }
+      #triggerSectionCard .tc-form-field .tc-field-note {
+        max-width: 320px;
+      }
+      #triggerSectionCard .tc-form-field > *:not(label):not(.tc-field-note) {
+        width: 100%;
       }
       .tc-trigger-calendar-controls {
         display: inline-flex;
@@ -3336,6 +3370,10 @@
         align-items: center;
         text-align: center;
         gap: 10px;
+        width: 100%;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
       }
       .tc-trigger-time-field label {
         text-align: center;
@@ -3411,10 +3449,22 @@
         flex-direction: column;
         gap: 8px;
       }
+      #triggerWeeklyField {
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+        align-items: center;
+        text-align: center;
+      }
       .tc-trigger-weekly-options {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
         gap: 6px;
+        justify-content: center;
+        width: 100%;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
       }
       .tc-trigger-weekly-button {
         border: 1px solid var(--tc-border);
@@ -3434,6 +3484,9 @@
       }
       .tc-trigger-schedule-summary {
         width: 100%;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
         font-size: 13px;
         color: var(--tc-muted);
         text-align: center;
@@ -8389,7 +8442,7 @@
               />
             </div>
             <div class="tc-form-field tc-trigger-calendar-field">
-              <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de inicio</label>
+              <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de Inicio</label>
               <div class="tc-trigger-calendar-wrapper">
                 <div
                   id="triggerStartCalendar"
