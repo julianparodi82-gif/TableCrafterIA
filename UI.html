@@ -3173,10 +3173,11 @@
         display: none;
       }
       .tc-trigger-card .tc-card-subtitle {
-        text-align: center;
+        text-align: left;
         max-width: 420px;
-        margin-left: auto;
-        margin-right: auto;
+        margin-left: 0;
+        margin-right: 0;
+        align-self: stretch;
       }
       #triggerSectionCard .tc-form-grid {
         width: 100%;
@@ -3189,7 +3190,7 @@
       }
       #triggerSectionCard .tc-form-field {
         width: 100%;
-        max-width: 360px;
+        max-width: 288px;
         margin-left: auto;
         margin-right: auto;
         display: flex;
@@ -3197,6 +3198,24 @@
         align-items: stretch;
         gap: 6px;
         text-align: left;
+      }
+      #triggerSectionCard .tc-form-field > label,
+      #triggerSectionCard .tc-form-field > span.tc-trigger-date-range-label {
+        align-self: flex-start;
+        width: 100%;
+      }
+      #triggerSectionCard .tc-trigger-picker,
+      #triggerSectionCard .tc-trigger-picker-toggle,
+      #triggerSectionCard select,
+      #triggerSectionCard .tc-trigger-time-input,
+      #triggerSectionCard .tc-trigger-weekly-options,
+      #triggerSectionCard .tc-trigger-schedule-summary {
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #triggerSectionCard .tc-card-actions {
+        justify-content: center;
       }
       #triggerSectionCard .tc-form-field label,
       #triggerSectionCard .tc-form-field .tc-field-note,
