@@ -73,6 +73,17 @@
       body.theme-tablecrafter .is-word-only {
         display: none !important;
       }
+      .tc-visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
       .sidebar-scroll-wrapper {
         direction: ltr;
         writing-mode: horizontal-tb;
@@ -3026,8 +3037,8 @@
         border-radius: 8px;
         border: 1px solid var(--tc-border);
         background-color: #FFFFFF;
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 500;
         color: var(--tc-text);
         cursor: pointer;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3081,90 +3092,247 @@
         display: block;
       }
       .tc-trigger-calendar-field {
-        max-width: 360px;
+        width: 100%;
+        max-width: 220px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        text-align: center;
+      }
+      .tc-trigger-calendar-heading {
+        width: 100%;
+        margin: 0;
+        text-align: center;
+      }
+      .tc-trigger-calendar-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: center;
       }
       .tc-trigger-calendar {
         width: 100%;
+        max-width: 220px;
         border: 1px solid var(--tc-border);
         border-radius: 12px;
-        padding: 12px;
+        padding: 10px;
         background-color: #FFFFFF;
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        box-sizing: border-box;
       }
       .tc-trigger-calendar-header {
+        width: 100%;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 8px;
+        justify-content: center;
+        margin-bottom: 4px;
       }
-      .tc-trigger-calendar-controls {
+      .tc-trigger-card {
+        transition: max-height var(--tc-transition-duration) ease;
+      }
+      .tc-trigger-heading {
         display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .tc-trigger-section-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 18px;
+        color: var(--tc-text);
+        text-decoration: none;
+      }
+      .tc-trigger-section-toggle:hover .tc-trigger-section-label {
+        text-decoration: underline;
+      }
+      .tc-trigger-section-toggle input[type='checkbox'] {
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        border-radius: 4px;
+        border: 1px solid rgba(46, 163, 125, 0.35);
+        accent-color: rgba(46, 163, 125, 0.65);
+      }
+      .tc-trigger-section-fieldset {
+        border: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+      }
+      .tc-trigger-section-fieldset.is-collapsed {
+        display: none;
+      }
+      .tc-trigger-card .tc-card-subtitle {
+        text-align: left;
+        max-width: 420px;
+        margin-left: 0;
+        margin-right: 0;
+        align-self: stretch;
+      }
+      #triggerSectionCard .tc-form-grid {
+        width: 100%;
+        max-width: 420px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        margin: 0 auto;
+      }
+      #triggerSectionCard .tc-form-field {
+        width: 100%;
+        max-width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+        display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 6px;
+        text-align: left;
+      }
+      #triggerSectionCard .tc-form-field > label,
+      #triggerSectionCard .tc-form-field > span.tc-trigger-date-range-label {
+        align-self: stretch;
+        width: 100%;
+        text-align: left;
+      }
+      #triggerSectionCard .tc-trigger-picker,
+      #triggerSectionCard .tc-trigger-picker-toggle,
+      #triggerSectionCard select,
+      #triggerSectionCard .tc-trigger-time-input,
+      #triggerSectionCard .tc-trigger-weekly-options,
+      #triggerSectionCard .tc-trigger-schedule-summary {
+        width: 100%;
+        max-width: 200px;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+      }
+      #triggerSectionCard .tc-card-actions {
+        justify-content: center;
+        width: 100%;
+        max-width: 200px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #triggerSectionCard .tc-form-field label,
+      #triggerSectionCard .tc-form-field .tc-field-note,
+      #triggerSectionCard .tc-form-field .tc-trigger-date-range-label {
+        text-align: left;
+      }
+      #triggerSectionCard .tc-form-field .tc-field-note {
+        max-width: 320px;
+        align-self: stretch;
+        text-align: left;
+      }
+      #triggerSectionCard .tc-form-field > *:not(label):not(.tc-field-note) {
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #triggerSectionCard #triggerDateFrom {
+        width: 200px;
+        box-sizing: border-box;
+      }
+      #triggerSectionCard #triggerActionPicker,
+      #triggerSectionCard #triggerFrequencySelect {
+        width: 200px;
+        max-width: 200px;
+        font-size: 14px;
+        font-weight: 500;
+        box-sizing: border-box;
+      }
+      #triggerSectionCard #triggerFrequencySelect {
+        display: block;
+      }
+      #triggerSectionCard .tc-card-actions {
+        transform: none;
+      }
+      .tc-trigger-calendar-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        justify-content: center;
       }
       .tc-trigger-calendar-controls select {
-        border: 1px solid var(--tc-border);
+        border: 1px solid rgba(59, 130, 246, 0.3);
         border-radius: 8px;
-        padding: 6px 10px;
-        font-size: 13px;
+        padding: 6px 12px;
+        min-width: 88px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--tc-text);
-        background-color: #FFFFFF;
+        background-color: rgba(59, 130, 246, 0.08);
         cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        text-align: center;
+        box-sizing: border-box;
+      }
+      #triggerCalendarMonth {
+        min-width: 100px;
+      }
+      #triggerCalendarYear {
+        min-width: 84px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tc-trigger-calendar-controls select:hover {
+        background-color: rgba(59, 130, 246, 0.16);
       }
       .tc-trigger-calendar-controls select:focus {
         outline: none;
         border-color: var(--tc-primary);
         box-shadow: 0 0 0 3px var(--tc-primary-ring);
       }
-      .tc-trigger-calendar-nav {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        background-color: var(--tc-primary-soft);
-        color: var(--tc-primary);
-        font-size: 18px;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.15s ease, color 0.15s ease;
-      }
-      .tc-trigger-calendar-nav:hover {
-        background-color: var(--tc-primary);
-        color: #FFFFFF;
-      }
       .tc-trigger-calendar-weekdays {
+        width: 100%;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
+        gap: 4px;
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
         color: var(--tc-muted);
         text-align: center;
+        justify-items: center;
+        justify-content: center;
       }
       .tc-trigger-calendar-days {
-        margin-top: 10px;
+        width: 100%;
+        margin-top: 6px;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
+        gap: 4px;
+        justify-items: center;
+        justify-content: center;
+        align-items: center;
+        align-content: center;
       }
       .tc-trigger-calendar-day {
-        height: 36px;
+        width: 100%;
+        height: 28px;
         border-radius: 8px;
         border: none;
         background-color: transparent;
         color: var(--tc-text);
         font-weight: 600;
         font-size: 13px;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        cursor: pointer;
         transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       }
       .tc-trigger-calendar-day:hover,
@@ -3186,33 +3354,66 @@
         color: #FFFFFF;
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
       }
-      .tc-trigger-calendar-day.is-range {
-        background-color: rgba(59, 130, 246, 0.15);
-        color: var(--tc-primary-dark);
+      .tc-trigger-calendar-day.is-disabled {
+        pointer-events: none;
+        cursor: default;
+        color: rgba(0, 0, 0, 0.35);
+        background-color: rgba(0, 0, 0, 0.04);
       }
-      .tc-trigger-calendar-day.is-range-edge {
-        background-color: var(--tc-primary);
-        color: #FFFFFF;
+      .tc-trigger-calendar-day.is-scheduled {
+        background-color: rgba(59, 130, 246, 0.18);
+        color: var(--tc-primary-dark);
+        font-weight: 700;
+      }
+      .tc-trigger-calendar-day.is-anchor {
+        border: 1px solid var(--tc-primary);
       }
       .tc-trigger-date-range {
+        width: 100%;
         display: flex;
-        align-items: flex-end;
+        flex-direction: column;
+        align-items: center;
         gap: 12px;
-        margin-top: 12px;
+        margin-top: -4px;
+      }
+      #triggerSectionCard .tc-trigger-date-range {
+        max-width: 200px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 100%;
+      }
+      .tc-trigger-date-range.is-hidden {
+        display: none;
       }
       .tc-trigger-date-range-field {
-        flex: 1 1 0;
         display: flex;
         flex-direction: column;
         gap: 6px;
+        width: 100%;
+        max-width: 200px;
+        align-items: stretch;
+        text-align: left;
+      }
+      .tc-trigger-date-range-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--tc-muted);
+        text-transform: none;
+        letter-spacing: 0;
+        text-align: left;
+      }
+      .tc-trigger-date-range-field.is-hidden {
+        display: none;
       }
       .tc-trigger-date-range-field input[type='date'] {
         width: 100%;
         border-radius: 8px;
         border: 1px solid var(--tc-border);
-        padding: 8px 10px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 13px;
         color: var(--tc-text);
+        text-align: center;
+        box-sizing: border-box;
       }
       .tc-trigger-date-range-field input[type='date']:focus {
         outline: none;
@@ -3224,13 +3425,156 @@
         color: var(--tc-muted);
         cursor: not-allowed;
       }
-      .tc-form-field--compact input[type='time'] {
-        max-width: 220px;
-        width: 100%;
+      .tc-trigger-frequency-count {
+        max-width: 120px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 6px 10px;
         border-radius: 8px;
+        border: 1px solid var(--tc-border);
+      }
+      .tc-trigger-frequency-count:focus {
+        outline: none;
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-time-field {
+        align-items: center;
+        text-align: left;
+        gap: 10px;
+        width: 100%;
+        max-width: 200px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .tc-trigger-time-field label {
+        width: 100%;
+        text-align: left;
+      }
+      .tc-trigger-time-input {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 10.5ch;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(59, 130, 246, 0.28);
+        background-color: #FFFFFF;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+      }
+      #triggerSectionCard .tc-trigger-time-input {
+        width: 200px;
+        transform: none;
+      }
+      .tc-trigger-time-input:hover {
+        border-color: rgba(59, 130, 246, 0.45);
+        box-shadow: 0 3px 10px rgba(59, 130, 246, 0.18);
+      }
+      .tc-trigger-time-input:active {
+        background-color: rgba(59, 130, 246, 0.05);
+      }
+      .tc-trigger-time-input:focus-within {
+        border-color: var(--tc-primary);
+        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+      }
+      .tc-trigger-time-input input[type='time'] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        border: none;
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        background: transparent;
+        pointer-events: none;
+      }
+      .tc-trigger-time-display {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--tc-text);
+        letter-spacing: 0.02em;
+      }
+      .tc-trigger-time-display[data-state='empty'] {
+        color: var(--tc-muted);
+      }
+      .tc-trigger-calendar-field.is-disabled {
+        opacity: 0.55;
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar {
+        pointer-events: none;
+        filter: grayscale(0.65);
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-heading,
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-date-range-label {
+        color: var(--tc-muted);
+      }
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-days,
+      .tc-trigger-calendar-field.is-disabled .tc-trigger-calendar-weekdays {
+        filter: grayscale(1);
       }
       .tc-trigger-calendar-field label + .tc-trigger-calendar {
         margin-top: 8px;
+      }
+      .tc-trigger-schedule-field {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #triggerWeeklyField {
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        gap: 8px;
+      }
+      #triggerWeeklyField > label {
+        text-align: left;
+      }
+      .tc-trigger-weekly-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        gap: 6px;
+        justify-content: center;
+        width: 100%;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .tc-trigger-weekly-button {
+        border: 1px solid var(--tc-border);
+        border-radius: 20px;
+        padding: 6px 10px;
+        background-color: #FFFFFF;
+        color: var(--tc-text);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+      .tc-trigger-weekly-button.is-selected {
+        background-color: var(--tc-primary);
+        border-color: var(--tc-primary);
+        color: #FFFFFF;
+      }
+      .tc-trigger-schedule-summary {
+        width: 100%;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 13px;
+        color: var(--tc-muted);
+        text-align: center;
       }
       .tc-trigger-calendar-field input[type='hidden'] {
         display: none;
@@ -8115,15 +8459,26 @@
               <button type="button" id="triggerRefreshBtn" class="btn-secondary">Actualizar</button>
             </div>
           </div>
-          <div class="tc-card">
-            <h3 class="tc-card-heading">Nuevo trigger</h3>
-            <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
-            <div class="tc-form-grid">
-              <div class="tc-form-field">
-                <label for="triggerActionToggle">Acción a ejecutar</label>
-                <div id="triggerActionPicker" class="tc-trigger-picker" data-empty="true">
-                  <button
-                    type="button"
+          <div class="tc-card tc-trigger-card" id="triggerSectionCard">
+            <h3 class="tc-card-heading tc-trigger-heading">
+              <label
+                for="triggerSectionToggle"
+                class="tc-trigger-section-toggle tc-tooltip-target"
+                data-tooltip="Activa o desactiva la configuración del trigger a crear."
+              >
+                <input type="checkbox" id="triggerSectionToggle" checked />
+                <span class="tc-trigger-section-label">Crear Trigger</span>
+              </label>
+            </h3>
+            <fieldset id="triggerSectionFieldset" class="tc-trigger-section-fieldset">
+              <legend class="tc-visually-hidden">Configuración del trigger a crear</legend>
+              <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
+              <div class="tc-form-grid">
+                <div class="tc-form-field">
+                  <label for="triggerActionToggle">Acción a ejecutar</label>
+                  <div id="triggerActionPicker" class="tc-trigger-picker" data-empty="true">
+                    <button
+                      type="button"
                     id="triggerActionToggle"
                     class="tc-trigger-picker-toggle"
                     aria-haspopup="true"
@@ -8143,20 +8498,20 @@
                   </div>
                   <input type="hidden" id="triggerActionSelect" value="" />
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y reportes favoritos disponibles.</p>
+                <p class="tc-field-note">Se mostrarán las tablas y textos guardados<br />así como las acciones favoritas.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
                 <select id="triggerFrequencySelect">
                   <option value="">Seleccionar frecuencia</option>
-                  <option value="once">Solo 1 vez</option>
                   <option value="custom">Varias veces</option>
+                  <option value="once">Solo 1 vez</option>
                   <option value="daily">Diario</option>
                   <option value="weekly">Semanal</option>
                   <option value="biweekly">Quincenal</option>
                   <option value="monthly">Mensual</option>
                 </select>
-                <p class="tc-field-note">Elige el intervalo que mejor acompañe tu flujo de trabajo.</p>
+                <p class="tc-field-note">Elige el intervalo que mejor acompañe tu<br />flujo de trabajo.</p>
               </div>
             </div>
             <div id="triggerFrequencyCustomField" class="tc-form-field ai-hidden">
@@ -8164,72 +8519,100 @@
               <input
                 type="number"
                 id="triggerFrequencyCount"
+                class="tc-trigger-frequency-count"
                 min="2"
+                max="20"
                 step="1"
                 placeholder="Ej: 5"
               />
             </div>
             <div class="tc-form-field tc-trigger-calendar-field">
-              <label for="triggerStartDate">Fecha de inicio</label>
-              <div
-                id="triggerStartCalendar"
-                class="tc-trigger-calendar"
-                role="application"
-                aria-label="Calendario de fecha de inicio"
-              >
-                <div class="tc-trigger-calendar-header">
-                  <button
-                    type="button"
-                    id="triggerCalendarPrev"
-                    class="tc-trigger-calendar-nav"
-                    aria-label="Mes anterior"
-                  >
-                    ‹
-                  </button>
-                  <div class="tc-trigger-calendar-controls">
-                    <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
-                    <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+              <label for="triggerDateFrom" class="tc-trigger-calendar-heading">Fecha de Inicio</label>
+              <div class="tc-trigger-calendar-wrapper">
+                <div
+                  id="triggerStartCalendar"
+                  class="tc-trigger-calendar"
+                  role="application"
+                  aria-label="Calendario de fecha de inicio"
+                >
+                  <div class="tc-trigger-calendar-header">
+                    <div class="tc-trigger-calendar-controls">
+                      <select id="triggerCalendarMonth" aria-label="Seleccionar mes"></select>
+                      <select id="triggerCalendarYear" aria-label="Seleccionar año"></select>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    id="triggerCalendarNext"
-                    class="tc-trigger-calendar-nav"
-                    aria-label="Mes siguiente"
-                  >
-                    ›
-                  </button>
+                  <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
+                    <span>Lu</span>
+                    <span>Ma</span>
+                    <span>Mi</span>
+                    <span>Ju</span>
+                    <span>Vi</span>
+                    <span>Sa</span>
+                    <span>Do</span>
+                  </div>
+                  <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
                 </div>
-                <div class="tc-trigger-calendar-weekdays" aria-hidden="true">
-                  <span>Lu</span>
-                  <span>Ma</span>
-                  <span>Mi</span>
-                  <span>Ju</span>
-                  <span>Vi</span>
-                  <span>Sa</span>
-                  <span>Do</span>
-                </div>
-                <div id="triggerCalendarDays" class="tc-trigger-calendar-days" role="grid"></div>
               </div>
-              <div class="tc-trigger-date-range">
-                <div class="tc-trigger-date-range-field">
-                  <label for="triggerDateFrom">Desde</label>
+              <div id="triggerDateRange" class="tc-trigger-date-range">
+                <div id="triggerDateFromContainer" class="tc-trigger-date-range-field">
+                  <span id="triggerDateFromLabel" class="tc-trigger-date-range-label">Desde</span>
                   <input type="date" id="triggerDateFrom" />
                 </div>
-                <div class="tc-trigger-date-range-field">
-                  <label for="triggerDateTo">Hasta</label>
+                <div id="triggerDateToContainer" class="tc-trigger-date-range-field">
+                  <span id="triggerDateToLabel" class="tc-trigger-date-range-label">Hasta</span>
                   <input type="date" id="triggerDateTo" />
                 </div>
               </div>
+              <div id="triggerWeeklyField" class="tc-trigger-schedule-field ai-hidden" aria-live="polite">
+                <label class="tc-trigger-date-range-label" for="triggerWeeklyOptions">Día de la semana</label>
+                <div
+                  id="triggerWeeklyOptions"
+                  class="tc-trigger-weekly-options"
+                  role="group"
+                  aria-label="Seleccionar día de la semana"
+                >
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="0">Lun</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="1">Mar</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="2">Mié</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="3">Jue</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="4">Vie</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="5">Sáb</button>
+                  <button type="button" class="tc-trigger-weekly-button" data-weekday="6">Dom</button>
+                </div>
+              </div>
+              <div id="triggerScheduleSummary" class="tc-trigger-schedule-summary ai-hidden" aria-live="polite"></div>
               <input type="hidden" id="triggerStartDate" />
+              <input type="hidden" id="triggerSelectedDates" />
             </div>
-            <div class="tc-form-field tc-form-field--compact">
+            <div class="tc-form-field tc-form-field--compact tc-trigger-time-field">
               <label for="triggerStartTime">Hora de ejecución</label>
-              <input type="time" id="triggerStartTime" />
+              <div
+                id="triggerStartTimeControl"
+                class="tc-trigger-time-input"
+                role="button"
+                tabindex="0"
+                aria-haspopup="dialog"
+                aria-controls="triggerStartTime"
+              >
+                <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
+                  --:-- --
+                </span>
+                <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+              </div>
             </div>
             <div class="tc-card-actions">
-              <button type="button" id="triggerPreviewBtn" class="btn-secondary">Vista previa</button>
-              <button type="button" id="triggerCreateBtn" class="btn-primary">Guardar trigger</button>
-            </div>
+                <button
+                  type="button"
+                  id="triggerCreateBtn"
+                  class="btn-primary tc-tooltip-target"
+                  data-tooltip="(Alt + G)"
+                  accesskey="g"
+                  aria-keyshortcuts="Alt+G"
+                >
+                  <span class="shortcut-accesskey">G</span>uardar Trigger
+                </button>
+              </div>
+            </fieldset>
           </div>
         </div>
       </div>

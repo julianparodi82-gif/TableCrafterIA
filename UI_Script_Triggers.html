@@ -40,13 +40,149 @@ const TRIGGER_CALENDAR_MONTH_NAMES = Object.freeze([
   'Noviembre',
   'Diciembre'
 ]);
+const TRIGGER_CALENDAR_MONTH_SHORT_NAMES = Object.freeze([
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic'
+]);
 const TRIGGER_CALENDAR_YEAR_SPAN = 6;
+const TRIGGER_WEEKDAY_LABELS = Object.freeze([
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo'
+]);
+const TRIGGER_WEEKDAY_SHORT_LABELS = Object.freeze([
+  'Lun',
+  'Mar',
+  'Mié',
+  'Jue',
+  'Vie',
+  'Sáb',
+  'Dom'
+]);
+const TRIGGER_SCHEDULE_DAY_MS = 24 * 60 * 60 * 1000;
 let triggerCalendarState = {
   activeYear: null,
   activeMonth: null,
   selectedDate: '',
+  selectedDates: [],
+  selectionLimit: 1,
+  frequency: 'once',
+  weeklyDay: null,
+  biweeklyDays: [],
   todayParts: null
 };
+
+function refreshTriggerTodayParts() {
+  const parts = getTriggerCalendarTodayParts();
+  triggerCalendarState.todayParts = parts;
+  return parts;
+}
+
+function getTriggerTodayDateString() {
+  const parts = refreshTriggerTodayParts();
+  return formatTriggerDateParts(parts.year, parts.month, parts.day);
+}
+
+function isTriggerDateInPast(parts) {
+  if (!parts || !parts.date) {
+    return false;
+  }
+  const todayParts = triggerCalendarState.todayParts || refreshTriggerTodayParts();
+  const todayTime = new Date(todayParts.year, todayParts.month, todayParts.day).getTime();
+  return parts.date.getTime() < todayTime;
+}
+
+function isTriggerDateStringInPast(dateString) {
+  if (!dateString) {
+    return false;
+  }
+  const parsed = parseTriggerDateString(dateString);
+  if (!parsed) {
+    return false;
+  }
+  return isTriggerDateInPast(parsed);
+}
+
+function isTriggerSectionEnabled() {
+  const toggle = document.getElementById('triggerSectionToggle');
+  return !toggle || toggle.checked;
+}
+
+function getCurrentTimeValue() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return hours + ':' + minutes;
+}
+
+function isTriggerStartToday() {
+  if (!isTriggerSectionEnabled()) {
+    return false;
+  }
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    return false;
+  }
+  const todayString = getTriggerTodayDateString();
+  if (!todayString) {
+    return false;
+  }
+  if (frequency === 'custom') {
+    return Array.isArray(triggerCalendarState.selectedDates)
+      ? triggerCalendarState.selectedDates.indexOf(todayString) !== -1
+      : false;
+  }
+  if (frequency === 'weekly') {
+    const fromInput = document.getElementById('triggerDateFrom');
+    return !!(fromInput && fromInput.value === todayString);
+  }
+  if (Array.isArray(triggerCalendarState.selectedDates) && triggerCalendarState.selectedDates.length) {
+    return triggerCalendarState.selectedDates[0] === todayString;
+  }
+  const fromInput = document.getElementById('triggerDateFrom');
+  return !!(fromInput && fromInput.value === todayString);
+}
+
+function applyTriggerTimeConstraints() {
+  const startTimeInput = document.getElementById('triggerStartTime');
+  if (!startTimeInput) {
+    return false;
+  }
+  const fieldset = document.getElementById('triggerSectionFieldset');
+  const sectionActive = isTriggerSectionEnabled() && (!fieldset || !fieldset.disabled);
+  if (!sectionActive || startTimeInput.disabled) {
+    if (startTimeInput.min) {
+      startTimeInput.min = '';
+    }
+    return false;
+  }
+  if (isTriggerStartToday()) {
+    const currentValue = getCurrentTimeValue();
+    startTimeInput.min = currentValue;
+    if (!startTimeInput.value || startTimeInput.value < currentValue) {
+      startTimeInput.value = currentValue;
+      updateTriggerStartTimeDisplay();
+      return true;
+    }
+  } else if (startTimeInput.min) {
+    startTimeInput.min = '';
+  }
+  return false;
+}
 
 function normalizeTriggerSearchText(value) {
   if (value === null || value === undefined) {
@@ -276,7 +412,12 @@ function ensureTriggerCalendarDefaults() {
     triggerCalendarState.todayParts = getTriggerCalendarTodayParts();
   }
   if (typeof triggerCalendarState.activeYear !== 'number' || typeof triggerCalendarState.activeMonth !== 'number') {
-    const selected = parseTriggerDateString(triggerCalendarState.selectedDate);
+    const anchorValue =
+      triggerCalendarState.selectedDate ||
+      (triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length
+        ? triggerCalendarState.selectedDates[0]
+        : '');
+    const selected = parseTriggerDateString(anchorValue);
     const base = selected || triggerCalendarState.todayParts || getTriggerCalendarTodayParts();
     triggerCalendarState.activeYear = base.year;
     triggerCalendarState.activeMonth = base.month;
@@ -287,11 +428,11 @@ function populateTriggerCalendarMonthOptions(select) {
   if (!select) {
     return;
   }
-  if (select.options && select.options.length === TRIGGER_CALENDAR_MONTH_NAMES.length) {
+  if (select.options && select.options.length === TRIGGER_CALENDAR_MONTH_SHORT_NAMES.length) {
     return;
   }
   select.innerHTML = '';
-  TRIGGER_CALENDAR_MONTH_NAMES.forEach(function(name, index) {
+  TRIGGER_CALENDAR_MONTH_SHORT_NAMES.forEach(function(name, index) {
     const option = document.createElement('option');
     option.value = String(index);
     option.textContent = name;
@@ -321,6 +462,418 @@ function populateTriggerCalendarYearOptions(select, targetYear) {
   }
 }
 
+function getTriggerFrequencyValue() {
+  const frequencySelect = document.getElementById('triggerFrequencySelect');
+  return frequencySelect ? frequencySelect.value || '' : '';
+}
+
+function getTriggerCustomSelectionLimit() {
+  const countInput = document.getElementById('triggerFrequencyCount');
+  if (!countInput) {
+    return 0;
+  }
+  const parsed = countInput.value ? parseInt(countInput.value, 10) : NaN;
+  if (isNaN(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return Math.min(parsed, 20);
+}
+
+function trimTriggerSelectedDates() {
+  if (!Array.isArray(triggerCalendarState.selectedDates)) {
+    triggerCalendarState.selectedDates = [];
+  }
+  const original = triggerCalendarState.selectedDates.slice();
+  const todayParts = triggerCalendarState.todayParts || refreshTriggerTodayParts();
+  const todayTime = new Date(todayParts.year, todayParts.month, todayParts.day).getTime();
+  const seen = Object.create(null);
+  const filtered = [];
+  original.forEach(function(dateString) {
+    if (!dateString || seen[dateString]) {
+      return;
+    }
+    const parsed = parseTriggerDateString(dateString);
+    if (!parsed || !parsed.date || parsed.date.getTime() < todayTime) {
+      return;
+    }
+    seen[dateString] = true;
+    filtered.push(dateString);
+  });
+  let finalDates = filtered;
+  if (triggerCalendarState.selectionLimit > 0 && finalDates.length > triggerCalendarState.selectionLimit) {
+    finalDates = finalDates.slice(0, triggerCalendarState.selectionLimit);
+  }
+  triggerCalendarState.selectedDates = finalDates;
+  triggerCalendarState.selectedDate = finalDates.length ? finalDates[0] : '';
+  if (finalDates.length !== original.length) {
+    return true;
+  }
+  for (let i = 0; i < finalDates.length; i++) {
+    if (finalDates[i] !== original[i]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isBiweeklyScheduledDate(anchorParts, startTime, currentParts, windowCheck) {
+  if (!anchorParts || !anchorParts.date || !currentParts || !currentParts.date) {
+    return false;
+  }
+  if (isNaN(startTime)) {
+    return false;
+  }
+  const currentTime = currentParts.date.getTime();
+  if (currentTime < startTime) {
+    return false;
+  }
+  if (typeof windowCheck === 'function' && !windowCheck(currentTime)) {
+    return false;
+  }
+  const anchorDay = anchorParts.day;
+  const targetDate = currentParts.date;
+  let occurrence = new Date(anchorParts.date.getTime());
+
+  function computeNext(previous) {
+    const next = new Date(previous.getTime());
+    if (anchorDay === 15 && previous.getDate() === 15) {
+      const monthDays = new Date(previous.getFullYear(), previous.getMonth() + 1, 0).getDate();
+      if (monthDays !== 30) {
+        return new Date(previous.getFullYear(), previous.getMonth(), monthDays);
+      }
+      next.setDate(next.getDate() + 15);
+      return next;
+    }
+    next.setDate(next.getDate() + 15);
+    if (anchorDay === 15 && previous.getDate() !== 15) {
+      const monthDays = new Date(previous.getFullYear(), previous.getMonth() + 1, 0).getDate();
+      if (previous.getDate() === monthDays && monthDays !== 30) {
+        return new Date(previous.getFullYear(), previous.getMonth() + 1, 15);
+      }
+    }
+    return next;
+  }
+
+  let guard = 0;
+  while (occurrence.getTime() < startTime && guard < 400) {
+    const nextOccurrence = computeNext(occurrence);
+    if (nextOccurrence.getTime() <= occurrence.getTime()) {
+      break;
+    }
+    occurrence = nextOccurrence;
+    guard++;
+  }
+
+  guard = 0;
+  while (occurrence.getTime() <= currentTime && guard < 400) {
+    if (
+      occurrence.getFullYear() === targetDate.getFullYear() &&
+      occurrence.getMonth() === targetDate.getMonth() &&
+      occurrence.getDate() === targetDate.getDate()
+    ) {
+      return true;
+    }
+    const nextOccurrence = computeNext(occurrence);
+    if (nextOccurrence.getTime() <= occurrence.getTime()) {
+      break;
+    }
+    occurrence = nextOccurrence;
+    guard++;
+  }
+  return false;
+}
+
+function updateTriggerCalendarSelectionLimit() {
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    triggerCalendarState.selectionLimit = 0;
+    triggerCalendarState.selectedDates = [];
+    triggerCalendarState.selectedDate = '';
+    syncTriggerSelectedInputs();
+    return;
+  }
+  if (frequency === 'custom') {
+    const limit = getTriggerCustomSelectionLimit();
+    triggerCalendarState.selectionLimit = limit > 0 ? limit : 0;
+  } else if (frequency === 'weekly') {
+    triggerCalendarState.selectionLimit = 0;
+  } else if (frequency === 'biweekly') {
+    triggerCalendarState.selectionLimit = 1;
+  } else {
+    triggerCalendarState.selectionLimit = 1;
+  }
+  if (frequency === 'custom' && triggerCalendarState.selectionLimit <= 0) {
+    triggerCalendarState.selectedDates = [];
+    triggerCalendarState.selectedDate = '';
+    syncTriggerSelectedInputs({ skipFrom: true });
+  }
+  if (trimTriggerSelectedDates()) {
+    syncTriggerSelectedInputs();
+  }
+}
+
+function syncTriggerSelectedInputs(options) {
+  const opts = options || {};
+  const hiddenStart = document.getElementById('triggerStartDate');
+  const listInput = document.getElementById('triggerSelectedDates');
+  const fromInput = document.getElementById('triggerDateFrom');
+  if (hiddenStart) {
+    hiddenStart.value = triggerCalendarState.selectedDates.length ? triggerCalendarState.selectedDates[0] : '';
+  }
+  if (listInput) {
+    listInput.value = triggerCalendarState.selectedDates.join(',');
+  }
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  const shouldSyncFromInput =
+    !opts.skipFrom &&
+    frequency &&
+    (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly');
+  if (fromInput && shouldSyncFromInput) {
+    fromInput.value = triggerCalendarState.selectedDates.length ? triggerCalendarState.selectedDates[0] : '';
+  }
+}
+
+function setTriggerSelectedDates(dateStrings, options) {
+  triggerCalendarState.selectedDates = Array.isArray(dateStrings) ? dateStrings.slice() : [];
+  trimTriggerSelectedDates();
+  syncTriggerSelectedInputs(options);
+}
+
+function setTriggerSingleDate(dateString, options) {
+  if (dateString) {
+    setTriggerSelectedDates([dateString], options);
+  } else {
+    setTriggerSelectedDates([], options);
+  }
+}
+
+function toggleTriggerCustomDate(dateString) {
+  if (!dateString) {
+    return;
+  }
+  if (isTriggerDateStringInPast(dateString)) {
+    return;
+  }
+  if (!Array.isArray(triggerCalendarState.selectedDates)) {
+    triggerCalendarState.selectedDates = [];
+  }
+  const index = triggerCalendarState.selectedDates.indexOf(dateString);
+  const limit = triggerCalendarState.selectionLimit;
+  if (limit <= 0 && index === -1) {
+    return;
+  }
+  if (index !== -1) {
+    triggerCalendarState.selectedDates.splice(index, 1);
+  } else {
+    if (limit > 0 && triggerCalendarState.selectedDates.length >= limit) {
+      return;
+    }
+    triggerCalendarState.selectedDates.push(dateString);
+  }
+  trimTriggerSelectedDates();
+  syncTriggerSelectedInputs({ skipFrom: true });
+}
+
+function updateTriggerWeeklyButtons() {
+  const container = document.getElementById('triggerWeeklyOptions');
+  if (!container) {
+    return;
+  }
+  const buttons = container.querySelectorAll('.tc-trigger-weekly-button');
+  buttons.forEach(function(button) {
+    const value = button.getAttribute('data-weekday');
+    const dayIndex = value === null ? null : parseInt(value, 10);
+    if (dayIndex !== null && !isNaN(dayIndex) && dayIndex === triggerCalendarState.weeklyDay) {
+      button.classList.add('is-selected');
+      button.setAttribute('aria-pressed', 'true');
+    } else {
+      button.classList.remove('is-selected');
+      button.setAttribute('aria-pressed', 'false');
+    }
+  });
+}
+
+function setTriggerWeeklyDay(dayIndex, options) {
+  if (dayIndex === null || dayIndex === undefined || isNaN(dayIndex)) {
+    triggerCalendarState.weeklyDay = null;
+  } else {
+    triggerCalendarState.weeklyDay = dayIndex;
+  }
+  if (options && options.anchorDate) {
+    setTriggerSelectedDates([options.anchorDate], { skipFrom: true });
+  }
+  updateTriggerWeeklyButtons();
+  updateTriggerScheduleSummary();
+  updateTriggerFormState();
+}
+
+function updateTriggerBiweeklyInputs() {
+  const day1Input = document.getElementById('triggerBiweeklyDay1');
+  const day2Input = document.getElementById('triggerBiweeklyDay2');
+  const days = Array.isArray(triggerCalendarState.biweeklyDays)
+    ? triggerCalendarState.biweeklyDays.slice().sort(function(a, b) {
+        return a - b;
+      })
+    : [];
+  if (day1Input) {
+    day1Input.value = days[0] ? String(days[0]) : '';
+  }
+  if (day2Input) {
+    day2Input.value = days[1] ? String(days[1]) : '';
+  }
+}
+
+function setTriggerBiweeklyDays(days, options) {
+  const validDays = Array.isArray(days)
+    ? days
+        .map(function(day) {
+          const parsed = parseInt(day, 10);
+          return !isNaN(parsed) && parsed >= 1 && parsed <= 31 ? parsed : null;
+        })
+        .filter(function(day) {
+          return day !== null;
+        })
+    : [];
+  const unique = [];
+  const seen = Object.create(null);
+  validDays.forEach(function(day) {
+    if (!seen[day] && unique.length < 2) {
+      seen[day] = true;
+      unique.push(day);
+    }
+  });
+  triggerCalendarState.biweeklyDays = unique.sort(function(a, b) {
+    return a - b;
+  });
+  if (options && options.anchorDate) {
+    setTriggerSelectedDates([options.anchorDate], { skipFrom: true });
+  }
+  updateTriggerBiweeklyInputs();
+  updateTriggerScheduleSummary();
+  updateTriggerFormState();
+}
+
+function toggleTriggerBiweeklyDay(day, anchorDateString) {
+  const parsedDay = parseInt(day, 10);
+  if (isNaN(parsedDay) || parsedDay < 1 || parsedDay > 31) {
+    return;
+  }
+  if (!Array.isArray(triggerCalendarState.biweeklyDays)) {
+    triggerCalendarState.biweeklyDays = [];
+  }
+  const index = triggerCalendarState.biweeklyDays.indexOf(parsedDay);
+  if (index !== -1) {
+    triggerCalendarState.biweeklyDays.splice(index, 1);
+  } else {
+    if (triggerCalendarState.biweeklyDays.length >= 2) {
+      return;
+    }
+    triggerCalendarState.biweeklyDays.push(parsedDay);
+  }
+  setTriggerBiweeklyDays(triggerCalendarState.biweeklyDays.slice(), { anchorDate: anchorDateString });
+}
+
+function buildTriggerSelectedDatesSummary() {
+  if (!triggerCalendarState.selectedDates || !triggerCalendarState.selectedDates.length) {
+    return '';
+  }
+  return triggerCalendarState.selectedDates
+    .slice()
+    .sort()
+    .join(', ');
+}
+
+function updateTriggerScheduleSummary() {
+  const summaryEl = document.getElementById('triggerScheduleSummary');
+  if (!summaryEl) {
+    return;
+  }
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    summaryEl.textContent = '';
+    summaryEl.classList.add('ai-hidden');
+    return;
+  }
+  const fromInput = document.getElementById('triggerDateFrom');
+  const startReference =
+    triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length
+      ? triggerCalendarState.selectedDates[0]
+      : fromInput && fromInput.value
+      ? fromInput.value
+      : '';
+  let message = '';
+  if (frequency === 'custom') {
+    const selectedSummary = buildTriggerSelectedDatesSummary();
+    if (selectedSummary) {
+      const limit = triggerCalendarState.selectionLimit;
+      if (limit > 0) {
+        message =
+          'Fechas seleccionadas (' + triggerCalendarState.selectedDates.length + '/' + limit + '): ' + selectedSummary;
+      } else {
+        message = 'Fechas seleccionadas: ' + selectedSummary;
+      }
+    } else {
+      const limit = triggerCalendarState.selectionLimit;
+      message = limit > 0 ? 'Seleccioná ' + limit + ' fechas en el calendario.' : 'Indicá cuántas repeticiones necesitas.';
+    }
+  } else if (frequency === 'weekly') {
+    if (typeof triggerCalendarState.weeklyDay === 'number') {
+      message = 'Ejecuta los ' + TRIGGER_WEEKDAY_LABELS[triggerCalendarState.weeklyDay] + ' de cada semana';
+      if (startReference) {
+        message += ' desde ' + startReference;
+      }
+      message += '.';
+    } else {
+      message = 'Elegí un día de la semana para programar el trigger.';
+    }
+  } else if (frequency === 'biweekly') {
+    if (startReference) {
+      message = 'Se ejecuta cada 15 días desde ' + startReference + '.';
+    } else {
+      message = 'Seleccioná una fecha para comenzar la ejecución quincenal.';
+    }
+  } else if (frequency === 'monthly') {
+    if (startReference) {
+      message = 'Se ejecuta cada 30 días desde ' + startReference + '.';
+    } else {
+      message = 'Seleccioná una fecha para iniciar la ejecución mensual.';
+    }
+  } else {
+    message = '';
+  }
+  if (message) {
+    summaryEl.textContent = message;
+    summaryEl.classList.remove('ai-hidden');
+  } else {
+    summaryEl.textContent = '';
+    summaryEl.classList.add('ai-hidden');
+  }
+}
+
+function isTriggerScheduleReady(frequency) {
+  switch (frequency) {
+    case 'once':
+    case 'daily':
+    case 'biweekly':
+    case 'monthly':
+      return triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length > 0;
+    case 'custom': {
+      const limit = triggerCalendarState.selectionLimit;
+      if (limit > 0) {
+        return (
+          triggerCalendarState.selectedDates &&
+          triggerCalendarState.selectedDates.length === limit
+        );
+      }
+      return triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length > 0;
+    }
+    case 'weekly':
+      return typeof triggerCalendarState.weeklyDay === 'number';
+    default:
+      return !!frequency;
+  }
+}
+
 function renderTriggerCalendar() {
   const calendar = document.getElementById('triggerStartCalendar');
   const monthSelect = document.getElementById('triggerCalendarMonth');
@@ -330,25 +883,59 @@ function renderTriggerCalendar() {
     return;
   }
   ensureTriggerCalendarDefaults();
+  updateTriggerCalendarSelectionLimit();
   const state = triggerCalendarState;
-  const todayParts = state.todayParts || getTriggerCalendarTodayParts();
+  const trimmed = trimTriggerSelectedDates();
+  if (trimmed) {
+    syncTriggerSelectedInputs();
+    updateTriggerScheduleSummary();
+    updateTriggerFormState();
+  }
+  const todayParts = refreshTriggerTodayParts();
   populateTriggerCalendarMonthOptions(monthSelect);
   populateTriggerCalendarYearOptions(yearSelect, state.activeYear);
   monthSelect.value = String(state.activeMonth);
   yearSelect.value = String(state.activeYear);
 
+  let frequency = state.frequency || getTriggerFrequencyValue() || '';
+  const isFrequencyDisabled = !frequency;
+  if (!frequency) {
+    frequency = 'once';
+  }
   const firstOfMonth = new Date(state.activeYear, state.activeMonth, 1);
   let startWeekday = firstOfMonth.getDay();
-  startWeekday = (startWeekday + 6) % 7; // convert Sunday index to Monday-first scale
+  startWeekday = (startWeekday + 6) % 7;
   const daysInMonth = new Date(state.activeYear, state.activeMonth + 1, 0).getDate();
-  const selectedValue = state.selectedDate || '';
-  const selectedParts = parseTriggerDateString(selectedValue);
+  const selectedDates = Array.isArray(state.selectedDates) ? state.selectedDates.slice() : [];
+  const selectedSet = isFrequencyDisabled ? new Set() : new Set(selectedDates);
+  if (!isFrequencyDisabled && state.selectedDate && !selectedSet.has(state.selectedDate)) {
+    selectedSet.add(state.selectedDate);
+  }
   const fromInput = document.getElementById('triggerDateFrom');
   const toInput = document.getElementById('triggerDateTo');
-  const rangeStartValue = fromInput && fromInput.value ? fromInput.value : selectedValue;
-  const rangeEndValue = toInput && !toInput.disabled && toInput.value ? toInput.value : '';
-  const rangeStartParts = parseTriggerDateString(rangeStartValue);
-  const rangeEndParts = parseTriggerDateString(rangeEndValue);
+  const startValue = isFrequencyDisabled ? '' : fromInput && fromInput.value ? fromInput.value : '';
+  const startParts = startValue ? parseTriggerDateString(startValue) : null;
+  const anchorValue =
+    isFrequencyDisabled
+      ? ''
+      : state.selectedDates && state.selectedDates.length
+      ? state.selectedDates[0]
+      : state.selectedDate || '';
+  const anchorParts = anchorValue ? parseTriggerDateString(anchorValue) : null;
+  const effectiveStartParts = startParts || anchorParts;
+  const effectiveStartTime = effectiveStartParts && effectiveStartParts.date ? effectiveStartParts.date.getTime() : NaN;
+  const endParts = toInput && !toInput.disabled && toInput.value ? parseTriggerDateString(toInput.value) : null;
+  const endTime = endParts && endParts.date ? endParts.date.getTime() : NaN;
+
+  function isWithinWindow(time) {
+    if (!isNaN(effectiveStartTime) && time < effectiveStartTime) {
+      return false;
+    }
+    if (!isNaN(endTime) && time > endTime) {
+      return false;
+    }
+    return true;
+  }
 
   daysContainer.innerHTML = '';
   for (let fillerIndex = 0; fillerIndex < startWeekday; fillerIndex++) {
@@ -379,71 +966,136 @@ function renderTriggerCalendar() {
     if (currentTime === todayTime) {
       classes.push('is-today');
     }
-    let inRange = false;
-    let isEdge = false;
-    const startMatch = rangeStartParts && rangeStartParts.date ? rangeStartParts.date.getTime() : NaN;
-    const endMatch = rangeEndParts && rangeEndParts.date ? rangeEndParts.date.getTime() : NaN;
-    if (!isNaN(startMatch) && !isNaN(endMatch)) {
-      if (currentTime >= startMatch && currentTime <= endMatch) {
-        inRange = true;
-        if (currentTime === startMatch || currentTime === endMatch) {
-          isEdge = true;
+    const isPast = currentTime < todayTime;
+
+    const weekdayIndex = (currentParts.date.getDay() + 6) % 7;
+    const isSelected = selectedSet.has(dateString);
+    let isScheduled = false;
+    let isAnchor = false;
+
+    if (anchorParts && anchorParts.date && currentTime === anchorParts.date.getTime()) {
+      isAnchor = true;
+    }
+
+    switch (frequency) {
+      case 'once':
+        isScheduled = isSelected;
+        break;
+      case 'daily':
+        if (!isNaN(effectiveStartTime) && currentTime >= effectiveStartTime && isWithinWindow(currentTime)) {
+          isScheduled = true;
         }
-      }
-    } else if (!isNaN(startMatch)) {
-      if (currentTime === startMatch) {
-        inRange = true;
-        isEdge = true;
-      }
+        break;
+      case 'custom':
+        isScheduled = isSelected;
+        break;
+      case 'weekly':
+        if (typeof state.weeklyDay === 'number' && weekdayIndex === state.weeklyDay && isWithinWindow(currentTime)) {
+          isScheduled = true;
+        }
+        break;
+      case 'biweekly':
+        if (isBiweeklyScheduledDate(anchorParts, effectiveStartTime, currentParts, isWithinWindow)) {
+          isScheduled = true;
+        }
+        break;
+      case 'monthly':
+        if (!isNaN(effectiveStartTime) && currentTime >= effectiveStartTime && isWithinWindow(currentTime)) {
+          const diffDays = Math.round((currentTime - effectiveStartTime) / TRIGGER_SCHEDULE_DAY_MS);
+          if (diffDays % 30 === 0) {
+            isScheduled = true;
+          }
+        }
+        break;
+      default:
+        isScheduled = isSelected;
+        break;
     }
-    if (selectedParts && selectedParts.date && selectedParts.date.getTime() === currentTime) {
+
+    if (isScheduled) {
+      classes.push('is-scheduled');
+    }
+    if (isSelected) {
       classes.push('is-selected');
-      if (!isEdge) {
-        classes.push('is-range-edge');
-      }
-      isEdge = true;
     }
-    if (inRange) {
-      classes.push('is-range');
+    if (isAnchor && classes.indexOf('is-anchor') === -1) {
+      classes.push('is-anchor');
     }
-    if (isEdge) {
-      if (classes.indexOf('is-range-edge') === -1) {
-        classes.push('is-range-edge');
-      }
+    if (isPast) {
+      classes.push('is-disabled');
+    }
+    const shouldDisable = isFrequencyDisabled || isPast;
+    if (shouldDisable) {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+    } else {
+      button.disabled = false;
+      button.removeAttribute('aria-disabled');
     }
     button.className = classes.join(' ');
-    const isSelected = selectedParts && selectedParts.date && selectedParts.date.getTime() === currentTime;
-    button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-    button.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    const pressed = isSelected || isScheduled;
+    button.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    button.setAttribute('aria-selected', pressed ? 'true' : 'false');
     daysContainer.appendChild(button);
   }
+  applyTriggerTimeConstraints();
 }
 
 function applyTriggerDateSelection(dateString, options) {
-  const hiddenInput = document.getElementById('triggerStartDate');
-  const fromInput = document.getElementById('triggerDateFrom');
-  const toInput = document.getElementById('triggerDateTo');
-  triggerCalendarState.selectedDate = dateString || '';
-  if (dateString) {
-    const parsed = parseTriggerDateString(dateString);
-    if (parsed) {
-      triggerCalendarState.activeYear = parsed.year;
-      triggerCalendarState.activeMonth = parsed.month;
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    return;
+  }
+  if (!dateString) {
+    if (frequency === 'custom' || frequency === 'weekly') {
+      setTriggerSelectedDates([], { skipFrom: true });
+      if (frequency === 'weekly') {
+        triggerCalendarState.weeklyDay = null;
+        updateTriggerWeeklyButtons();
+      }
+    } else {
+      setTriggerSingleDate('', options);
     }
+    renderTriggerCalendar();
+    updateTriggerScheduleSummary();
+    updateTriggerFormState();
+    return;
+  }
+
+  const parsed = parseTriggerDateString(dateString);
+  if (!parsed) {
+    return;
+  }
+  if (isTriggerDateInPast(parsed)) {
+    return;
+  }
+
+  triggerCalendarState.activeYear = parsed.year;
+  triggerCalendarState.activeMonth = parsed.month;
+
+  if (frequency === 'custom') {
+    toggleTriggerCustomDate(dateString);
+  } else if (frequency === 'weekly') {
+    const weekday = (parsed.date.getDay() + 6) % 7;
+    const fromInput = document.getElementById('triggerDateFrom');
+    if (fromInput) {
+      fromInput.value = dateString;
+    }
+    setTriggerWeeklyDay(weekday, { anchorDate: dateString });
+  } else if (frequency === 'biweekly' || frequency === 'monthly') {
+    const fromInput = document.getElementById('triggerDateFrom');
+    if (fromInput) {
+      fromInput.value = dateString;
+    }
+    setTriggerSingleDate(dateString, { skipFrom: true });
   } else {
-    triggerCalendarState.activeYear = null;
-    triggerCalendarState.activeMonth = null;
+    setTriggerSingleDate(dateString, options);
   }
-  if (hiddenInput) {
-    hiddenInput.value = dateString || '';
-  }
-  if (fromInput && (!options || !options.skipInputUpdate)) {
-    fromInput.value = dateString || '';
-  }
-  if (fromInput && toInput && toInput.value && dateString && toInput.value < dateString) {
-    toInput.value = dateString;
-  }
+
+  updateTriggerCalendarSelectionLimit();
   renderTriggerCalendar();
+  updateTriggerScheduleSummary();
+  updateTriggerFormState();
 }
 
 function handleTriggerCalendarMonthChange(event) {
@@ -484,7 +1136,15 @@ function handleTriggerCalendarNav(direction) {
 
 function handleTriggerCalendarDayClick(event) {
   const target = event && event.target ? event.target : null;
-  if (!target || !target.classList || !target.classList.contains('tc-trigger-calendar-day') || target.classList.contains('is-placeholder')) {
+  if (
+    !target ||
+    !target.classList ||
+    !target.classList.contains('tc-trigger-calendar-day') ||
+    target.classList.contains('is-placeholder')
+  ) {
+    return;
+  }
+  if (!isTriggerSectionEnabled() || target.disabled || target.getAttribute('aria-disabled') === 'true') {
     return;
   }
   const dateString = target.getAttribute('data-date');
@@ -499,14 +1159,42 @@ function handleTriggerDateFromChange() {
   if (!fromInput) {
     return;
   }
+  if (!isTriggerSectionEnabled()) {
+    return;
+  }
+  if (fromInput.value && isTriggerDateStringInPast(fromInput.value)) {
+    fromInput.value = getTriggerTodayDateString();
+  }
   const value = fromInput.value || '';
-  applyTriggerDateSelection(value, { skipInputUpdate: true });
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
+    return;
+  }
+  if (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly') {
+    setTriggerSingleDate(value, { skipFrom: true });
+  } else if (frequency === 'weekly') {
+    if (value) {
+      setTriggerSelectedDates([value], { skipFrom: true });
+    } else {
+      setTriggerSelectedDates([], { skipFrom: true });
+    }
+  }
+  renderTriggerCalendar();
+  updateTriggerScheduleSummary();
+  updateTriggerFormState();
 }
 
 function handleTriggerDateToChange() {
   const fromInput = document.getElementById('triggerDateFrom');
   const toInput = document.getElementById('triggerDateTo');
   if (!toInput) {
+    return;
+  }
+  if (!isTriggerSectionEnabled()) {
+    return;
+  }
+  const frequency = triggerCalendarState.frequency || getTriggerFrequencyValue() || '';
+  if (!frequency) {
     return;
   }
   if (toInput.disabled) {
@@ -519,6 +1207,60 @@ function handleTriggerDateToChange() {
     toInput.value = fromValue;
   }
   renderTriggerCalendar();
+  updateTriggerScheduleSummary();
+}
+
+function handleTriggerWeeklyOptionClick(event) {
+  const target = event && event.target ? event.target : null;
+  if (!target || !target.classList || !target.classList.contains('tc-trigger-weekly-button')) {
+    return;
+  }
+  const value = target.getAttribute('data-weekday');
+  if (value === null || value === undefined) {
+    return;
+  }
+  const dayIndex = parseInt(value, 10);
+  if (isNaN(dayIndex)) {
+    return;
+  }
+  const anchorValue =
+    triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length
+      ? triggerCalendarState.selectedDates[0]
+      : (document.getElementById('triggerDateFrom') || { value: '' }).value || '';
+  setTriggerWeeklyDay(dayIndex, { anchorDate: anchorValue });
+  renderTriggerCalendar();
+}
+
+function handleTriggerBiweeklyInputChange() {
+  const day1Input = document.getElementById('triggerBiweeklyDay1');
+  const day2Input = document.getElementById('triggerBiweeklyDay2');
+  const days = [];
+  if (day1Input && day1Input.value) {
+    days.push(day1Input.value);
+  }
+  if (day2Input && day2Input.value) {
+    days.push(day2Input.value);
+  }
+  const anchorValue =
+    triggerCalendarState.selectedDates && triggerCalendarState.selectedDates.length
+      ? triggerCalendarState.selectedDates[0]
+      : (document.getElementById('triggerDateFrom') || { value: '' }).value || '';
+  setTriggerBiweeklyDays(days, { anchorDate: anchorValue });
+  renderTriggerCalendar();
+}
+
+function handleTriggerFrequencyCountInput() {
+  const countInput = document.getElementById('triggerFrequencyCount');
+  if (countInput && countInput.value) {
+    const parsed = parseInt(countInput.value, 10);
+    if (!isNaN(parsed) && parsed > 20) {
+      countInput.value = '20';
+    }
+  }
+  updateTriggerCalendarSelectionLimit();
+  updateTriggerScheduleSummary();
+  renderTriggerCalendar();
+  updateTriggerFormState();
 }
 
 function initializeTriggerCalendar() {
@@ -527,15 +1269,40 @@ function initializeTriggerCalendar() {
     return;
   }
   triggerCalendarState.todayParts = getTriggerCalendarTodayParts();
+  triggerCalendarState.frequency = getTriggerFrequencyValue() || '';
   const hiddenInput = document.getElementById('triggerStartDate');
+  const listInput = document.getElementById('triggerSelectedDates');
   const fromInput = document.getElementById('triggerDateFrom');
-  const initialValue = hiddenInput && hiddenInput.value ? hiddenInput.value : fromInput && fromInput.value ? fromInput.value : '';
-  triggerCalendarState.selectedDate = initialValue;
-  const parsed = parseTriggerDateString(initialValue);
+  let initialDates = [];
+  if (listInput && listInput.value) {
+    initialDates = listInput.value
+      .split(',')
+      .map(function(part) {
+        return part.trim();
+      })
+      .filter(function(part) {
+        return !!part;
+      });
+  }
+  if (!initialDates.length) {
+    const fallback = hiddenInput && hiddenInput.value ? hiddenInput.value : fromInput && fromInput.value ? fromInput.value : '';
+    if (fallback) {
+      initialDates = [fallback];
+    }
+  }
+  initialDates = initialDates.filter(function(dateString) {
+    return !isTriggerDateStringInPast(dateString);
+  });
+  setTriggerSelectedDates(initialDates, { skipFrom: true });
+  const parsed = initialDates.length ? parseTriggerDateString(initialDates[0]) : null;
   if (parsed) {
     triggerCalendarState.activeYear = parsed.year;
     triggerCalendarState.activeMonth = parsed.month;
   }
+  updateTriggerCalendarSelectionLimit();
+  updateTriggerWeeklyButtons();
+  updateTriggerBiweeklyInputs();
+  updateTriggerScheduleSummary();
   const prevBtn = document.getElementById('triggerCalendarPrev');
   const nextBtn = document.getElementById('triggerCalendarNext');
   const monthSelect = document.getElementById('triggerCalendarMonth');
@@ -568,6 +1335,20 @@ function initializeTriggerCalendar() {
   if (toInput) {
     toInput.addEventListener('change', handleTriggerDateToChange);
     toInput.addEventListener('input', handleTriggerDateToChange);
+  }
+  const weeklyOptions = document.getElementById('triggerWeeklyOptions');
+  if (weeklyOptions) {
+    weeklyOptions.addEventListener('click', handleTriggerWeeklyOptionClick);
+  }
+  const biweeklyDay1 = document.getElementById('triggerBiweeklyDay1');
+  const biweeklyDay2 = document.getElementById('triggerBiweeklyDay2');
+  if (biweeklyDay1) {
+    biweeklyDay1.addEventListener('input', handleTriggerBiweeklyInputChange);
+    biweeklyDay1.addEventListener('change', handleTriggerBiweeklyInputChange);
+  }
+  if (biweeklyDay2) {
+    biweeklyDay2.addEventListener('input', handleTriggerBiweeklyInputChange);
+    biweeklyDay2.addEventListener('change', handleTriggerBiweeklyInputChange);
   }
   renderTriggerCalendar();
 }
@@ -1001,13 +1782,36 @@ function updateTriggerFrequencyFields() {
   const frequencySelect = document.getElementById('triggerFrequencySelect');
   const customField = document.getElementById('triggerFrequencyCustomField');
   const countInput = document.getElementById('triggerFrequencyCount');
+  const dateRange = document.getElementById('triggerDateRange');
   const dateToInput = document.getElementById('triggerDateTo');
+  const fromInput = document.getElementById('triggerDateFrom');
+  const fromLabel = document.getElementById('triggerDateFromLabel');
+  const toLabel = document.getElementById('triggerDateToLabel');
+  const fromContainer = document.getElementById('triggerDateFromContainer');
+  const toContainer = document.getElementById('triggerDateToContainer');
+  const weeklyField = document.getElementById('triggerWeeklyField');
+  const biweeklyField = document.getElementById('triggerBiweeklyField');
+  const calendarField = document.querySelector('.tc-trigger-calendar-field');
+  const calendarElement = document.getElementById('triggerStartCalendar');
+  const timeField = document.querySelector('.tc-trigger-time-field');
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
+  const scheduleSummary = document.getElementById('triggerScheduleSummary');
   if (!frequencySelect || !customField) {
     return;
   }
-  if (frequencySelect.value === 'custom') {
+  const frequency = frequencySelect.value || '';
+  const isFrequencyEmpty = !frequency;
+  triggerCalendarState.frequency = frequency;
+  if (frequency === 'custom') {
     customField.classList.remove('ai-hidden');
     customField.removeAttribute('aria-hidden');
+    setTriggerSelectedDates([], { skipFrom: true });
+    triggerCalendarState.weeklyDay = null;
+    triggerCalendarState.biweeklyDays = [];
+    if (fromInput) {
+      fromInput.value = '';
+    }
   } else {
     customField.classList.add('ai-hidden');
     customField.setAttribute('aria-hidden', 'true');
@@ -1015,17 +1819,142 @@ function updateTriggerFrequencyFields() {
       countInput.value = '';
     }
   }
-  if (dateToInput) {
-    const isOnce = frequencySelect.value === 'once';
-    dateToInput.disabled = isOnce;
-    if (isOnce) {
-      dateToInput.setAttribute('aria-disabled', 'true');
-    } else {
-      dateToInput.removeAttribute('aria-disabled');
+  if (isFrequencyEmpty) {
+    setTriggerSelectedDates([], { skipFrom: true });
+    triggerCalendarState.weeklyDay = null;
+    triggerCalendarState.biweeklyDays = [];
+    if (fromInput) {
+      fromInput.value = '';
     }
-    renderTriggerCalendar();
+    if (dateToInput) {
+      dateToInput.value = '';
+    }
   }
+  const showFromField = !isFrequencyEmpty && frequency !== 'custom';
+  const showToField = false;
+  if (fromContainer) {
+    if (showFromField) {
+      fromContainer.classList.remove('is-hidden');
+    } else {
+      fromContainer.classList.add('is-hidden');
+    }
+  }
+  if (toContainer) {
+    if (showToField) {
+      toContainer.classList.remove('is-hidden');
+    } else {
+      toContainer.classList.add('is-hidden');
+    }
+  }
+  if (dateRange) {
+    if (!showFromField && !showToField) {
+      dateRange.classList.add('is-hidden');
+    } else {
+      dateRange.classList.remove('is-hidden');
+    }
+  }
+  if (dateToInput) {
+    if (showToField) {
+      dateToInput.disabled = false;
+      dateToInput.removeAttribute('aria-disabled');
+    } else {
+      dateToInput.disabled = true;
+      dateToInput.value = '';
+      dateToInput.setAttribute('aria-disabled', 'true');
+    }
+  }
+  if (fromLabel) {
+    fromLabel.textContent = showFromField ? 'Fecha de Inicio' : 'Desde';
+  }
+  if (toLabel) {
+    toLabel.textContent = 'Hasta';
+  }
+  if (fromInput) {
+    if (frequency === 'custom' || isFrequencyEmpty) {
+      fromInput.disabled = true;
+      fromInput.setAttribute('aria-disabled', 'true');
+    } else {
+      fromInput.disabled = false;
+      fromInput.removeAttribute('aria-disabled');
+    }
+    if (frequency === 'weekly') {
+      fromInput.placeholder = 'Próxima ejecución (opcional)';
+    } else {
+      fromInput.placeholder = '';
+    }
+  }
+  if (weeklyField) {
+    if (frequency === 'weekly') {
+      weeklyField.classList.remove('ai-hidden');
+      weeklyField.removeAttribute('aria-hidden');
+    } else {
+      weeklyField.classList.add('ai-hidden');
+      weeklyField.setAttribute('aria-hidden', 'true');
+    }
+  }
+  triggerCalendarState.biweeklyDays = [];
+  if (biweeklyField) {
+    biweeklyField.classList.add('ai-hidden');
+    biweeklyField.setAttribute('aria-hidden', 'true');
+  }
+  if (calendarField) {
+    if (isFrequencyEmpty) {
+      calendarField.classList.add('is-disabled');
+      calendarField.setAttribute('aria-disabled', 'true');
+    } else {
+      calendarField.classList.remove('is-disabled');
+      calendarField.removeAttribute('aria-disabled');
+    }
+  }
+  if (calendarElement) {
+    if (isFrequencyEmpty) {
+      calendarElement.setAttribute('aria-disabled', 'true');
+    } else {
+      calendarElement.removeAttribute('aria-disabled');
+    }
+  }
+  if (timeField) {
+    if (isFrequencyEmpty) {
+      timeField.classList.add('ai-hidden');
+      timeField.setAttribute('aria-hidden', 'true');
+    } else {
+      timeField.classList.remove('ai-hidden');
+      timeField.removeAttribute('aria-hidden');
+    }
+  }
+  if (startTimeInput) {
+    if (isFrequencyEmpty) {
+      startTimeInput.disabled = true;
+      startTimeInput.setAttribute('aria-disabled', 'true');
+    } else {
+      startTimeInput.disabled = false;
+      startTimeInput.removeAttribute('aria-disabled');
+    }
+  }
+  if (startTimeControl) {
+    if (isFrequencyEmpty) {
+      startTimeControl.setAttribute('aria-disabled', 'true');
+    } else {
+      startTimeControl.removeAttribute('aria-disabled');
+    }
+  }
+  updateTriggerCalendarSelectionLimit();
+  if (
+    frequency &&
+    frequency !== 'custom' &&
+    (frequency === 'once' || frequency === 'daily' || frequency === 'biweekly' || frequency === 'monthly')
+  ) {
+    syncTriggerSelectedInputs();
+  }
+  updateTriggerWeeklyButtons();
+  updateTriggerBiweeklyInputs();
+  updateTriggerScheduleSummary();
+  renderTriggerCalendar();
   updateTriggerFormState();
+  if (scheduleSummary && isFrequencyEmpty) {
+    scheduleSummary.textContent = '';
+    scheduleSummary.classList.add('ai-hidden');
+  }
 }
 
 function updateTriggerEmptyState(hasItems) {
@@ -1094,12 +2023,56 @@ function renderTriggerList() {
   });
 }
 
+function formatTriggerTimeDisplay(value) {
+  if (!value) {
+    return '--:-- --';
+  }
+  const parts = String(value).split(':');
+  if (parts.length < 2) {
+    return '--:-- --';
+  }
+  let hours = parseInt(parts[0], 10);
+  if (isNaN(hours)) {
+    return '--:-- --';
+  }
+  const minutes = parts[1] !== undefined ? parts[1] : '00';
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) {
+    hours = 12;
+  }
+  const paddedHours = String(hours).padStart(2, '0');
+  const paddedMinutes = String(minutes).padStart(2, '0');
+  return paddedHours + ':' + paddedMinutes + ' ' + period;
+}
+
+function updateTriggerStartTimeDisplay() {
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const display = document.getElementById('triggerStartTimeDisplay');
+  if (!display) {
+    return;
+  }
+  const value = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
+  if (value) {
+    display.textContent = formatTriggerTimeDisplay(value);
+    display.setAttribute('data-state', 'filled');
+  } else {
+    display.textContent = '--:-- --';
+    display.setAttribute('data-state', 'empty');
+  }
+}
+
 function updateTriggerFormState() {
   const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
   const countInput = document.getElementById('triggerFrequencyCount');
   const createBtn = document.getElementById('triggerCreateBtn');
   if (!createBtn) {
+    return;
+  }
+  if (!isTriggerSectionEnabled()) {
+    createBtn.disabled = true;
+    createBtn.setAttribute('aria-disabled', 'true');
     return;
   }
   const actionReady = !!(actionInput && actionInput.value);
@@ -1109,7 +2082,58 @@ function updateTriggerFormState() {
     const parsed = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
     frequencyReady = !isNaN(parsed) && parsed > 0;
   }
-  createBtn.disabled = !(actionReady && frequencyReady);
+  const scheduleReady = frequencyReady
+    ? isTriggerScheduleReady(frequencyValue || triggerCalendarState.frequency || '')
+    : false;
+  createBtn.disabled = !(actionReady && frequencyReady && scheduleReady);
+  createBtn.setAttribute('aria-disabled', createBtn.disabled ? 'true' : 'false');
+}
+
+function getTriggerScheduleData() {
+  const frequencySelect = document.getElementById('triggerFrequencySelect');
+  const fromInput = document.getElementById('triggerDateFrom');
+  const toInput = document.getElementById('triggerDateTo');
+  const countInput = document.getElementById('triggerFrequencyCount');
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const frequency = frequencySelect ? frequencySelect.value || '' : '';
+  const data = {
+    frequency: frequency,
+    selectedDates: triggerCalendarState.selectedDates
+      ? triggerCalendarState.selectedDates.slice().sort()
+      : [],
+    startDate: '',
+    endDate: '',
+    weeklyDay: triggerCalendarState.weeklyDay,
+    biweeklyDays: triggerCalendarState.biweeklyDays ? triggerCalendarState.biweeklyDays.slice() : [],
+    customCount: countInput && countInput.value ? parseInt(countInput.value, 10) : 0,
+    startTime: startTimeInput && startTimeInput.value ? startTimeInput.value : ''
+  };
+  switch (frequency) {
+    case 'once':
+    case 'daily':
+    case 'biweekly':
+    case 'monthly':
+      data.startDate = data.selectedDates.length ? data.selectedDates[0] : '';
+      break;
+    case 'custom':
+      data.startDate = data.selectedDates.length ? data.selectedDates[0] : '';
+      if (triggerCalendarState.selectionLimit > 0) {
+        data.customCount = triggerCalendarState.selectionLimit;
+      }
+      break;
+    case 'weekly':
+      data.startDate = fromInput && fromInput.value ? fromInput.value : data.selectedDates.length ? data.selectedDates[0] : '';
+      break;
+    default:
+      data.startDate = fromInput && fromInput.value ? fromInput.value : data.selectedDates.length ? data.selectedDates[0] : '';
+  }
+  if (toInput && !toInput.disabled && toInput.value) {
+    data.endDate = toInput.value;
+  }
+  if (isNaN(data.customCount)) {
+    data.customCount = 0;
+  }
+  return data;
 }
 
 function buildTriggerTitle(actionLabel, frequencyLabel) {
@@ -1123,72 +2147,86 @@ function buildTriggerTitle(actionLabel, frequencyLabel) {
   return parts.length ? parts.join(' • ') : 'Trigger programado';
 }
 
-function buildTriggerScheduleSummary(startDate, endDate, startTime) {
+function buildTriggerScheduleSummary(scheduleData) {
+  if (!scheduleData) {
+    return 'Inicio: Al guardar';
+  }
   const segments = [];
-  if (startDate) {
-    segments.push('Desde ' + startDate);
+  const frequency = scheduleData.frequency || '';
+  switch (frequency) {
+    case 'once':
+      if (scheduleData.startDate) {
+        segments.push('Fecha ' + scheduleData.startDate);
+      }
+      break;
+    case 'daily':
+      if (scheduleData.startDate) {
+        segments.push('Desde ' + scheduleData.startDate);
+      }
+      if (scheduleData.endDate) {
+        segments.push('Hasta ' + scheduleData.endDate);
+      }
+      break;
+    case 'custom':
+      if (scheduleData.selectedDates && scheduleData.selectedDates.length) {
+        segments.push('Fechas: ' + scheduleData.selectedDates.join(', '));
+      }
+      break;
+    case 'weekly':
+      if (typeof scheduleData.weeklyDay === 'number') {
+        segments.push('Día ' + TRIGGER_WEEKDAY_LABELS[scheduleData.weeklyDay] + ' de cada semana');
+      }
+      if (scheduleData.startDate) {
+        segments.push('Desde ' + scheduleData.startDate);
+      }
+      if (scheduleData.endDate) {
+        segments.push('Hasta ' + scheduleData.endDate);
+      }
+      break;
+    case 'biweekly':
+      if (scheduleData.startDate) {
+        segments.push('Cada 15 días desde ' + scheduleData.startDate);
+      }
+      if (scheduleData.endDate) {
+        segments.push('Hasta ' + scheduleData.endDate);
+      }
+      break;
+    case 'monthly': {
+      if (scheduleData.startDate) {
+        segments.push('Cada 30 días desde ' + scheduleData.startDate);
+      }
+      if (scheduleData.endDate) {
+        segments.push('Hasta ' + scheduleData.endDate);
+      }
+      break;
+    }
+    default:
+      if (scheduleData.startDate) {
+        segments.push('Desde ' + scheduleData.startDate);
+      }
+      if (scheduleData.endDate) {
+        segments.push('Hasta ' + scheduleData.endDate);
+      }
   }
-  if (endDate) {
-    segments.push('Hasta ' + endDate);
-  }
-  if (startTime) {
-    segments.push('Hora ' + startTime);
+  if (scheduleData.startTime) {
+    segments.push('Hora ' + scheduleData.startTime);
   }
   if (!segments.length) {
     return 'Inicio: Al guardar';
   }
-  return 'Inicio: ' + segments.join(' • ');
-}
-
-function handleTriggerPreview() {
-  const actionInput = document.getElementById('triggerActionSelect');
-  const frequencySelect = document.getElementById('triggerFrequencySelect');
-  const countInput = document.getElementById('triggerFrequencyCount');
-  const startDateInput = document.getElementById('triggerStartDate');
-  const startRangeInput = document.getElementById('triggerDateFrom');
-  const endRangeInput = document.getElementById('triggerDateTo');
-  const startTimeInput = document.getElementById('triggerStartTime');
-  const actionId = actionInput ? actionInput.value : '';
-  const actionEntry = actionId && triggerActionMap[actionId] ? triggerActionMap[actionId] : null;
-  const actionLabel = actionEntry ? actionEntry.displayLabel || actionEntry.label : '';
-  const frequencyValue = frequencySelect ? frequencySelect.value : '';
-  const rawCount = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
-  const customCount =
-    frequencyValue === 'custom' && !isNaN(rawCount) && rawCount > 0 ? rawCount : 0;
-  const frequencyLabel = getTriggerFrequencyLabel(frequencyValue, { count: customCount });
-  const storedStartDate = startDateInput && startDateInput.value ? startDateInput.value : '';
-  const startDate = startRangeInput && startRangeInput.value ? startRangeInput.value : storedStartDate;
-  const endDate =
-    endRangeInput && !endRangeInput.disabled && endRangeInput.value ? endRangeInput.value : '';
-  const startTime = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
-  const lines = [];
-  if (actionLabel) {
-    lines.push('Favorito: ' + actionLabel);
-  }
-  if (frequencyLabel) {
-    lines.push('Frecuencia: ' + frequencyLabel);
-  }
-  if (frequencyValue === 'custom' && customCount) {
-    lines.push('Repeticiones: ' + customCount);
-  }
-  lines.push(buildTriggerScheduleSummary(startDate, endDate, startTime));
-  showMessageModal(lines.join('\n'), {
-    title: 'Vista previa del trigger',
-    variant: 'info'
-  });
+  return 'Programación: ' + segments.join(' • ');
 }
 
 function handleTriggerCreate() {
   const actionInput = document.getElementById('triggerActionSelect');
   const frequencySelect = document.getElementById('triggerFrequencySelect');
-  const countInput = document.getElementById('triggerFrequencyCount');
-  const startDateInput = document.getElementById('triggerStartDate');
-  const startRangeInput = document.getElementById('triggerDateFrom');
-  const endRangeInput = document.getElementById('triggerDateTo');
-  const startTimeInput = document.getElementById('triggerStartTime');
   if (!actionInput || !frequencySelect) {
     return;
   }
+  if (!isTriggerSectionEnabled()) {
+    return;
+  }
+  applyTriggerTimeConstraints();
   const actionId = actionInput.value;
   const frequency = frequencySelect.value;
   if (!actionId || !frequency) {
@@ -1200,8 +2238,8 @@ function handleTriggerCreate() {
   }
   let customCount = 0;
   if (frequency === 'custom') {
-    const parsed = countInput && countInput.value ? parseInt(countInput.value, 10) : NaN;
-    if (isNaN(parsed) || parsed <= 0) {
+    const parsed = triggerCalendarState.selectionLimit;
+    if (!parsed || parsed <= 0) {
       showMessageModal('Indicá cuántas veces querés ejecutar el trigger.', {
         title: 'Falta indicar repeticiones',
         variant: 'warning'
@@ -1210,25 +2248,35 @@ function handleTriggerCreate() {
     }
     customCount = parsed;
   }
+  if (!isTriggerScheduleReady(frequency)) {
+    showMessageModal('Configurá la programación del calendario antes de guardar el trigger.', {
+      title: 'Falta definir la programación',
+      variant: 'warning'
+    });
+    return;
+  }
   const actionEntry = triggerActionMap[actionId];
   const actionLabel = actionEntry ? actionEntry.displayLabel || actionEntry.label : '';
-  const frequencyLabel = getTriggerFrequencyLabel(frequency, { count: customCount });
-  const storedStartDate = startDateInput && startDateInput.value ? startDateInput.value : '';
-  const startDate = startRangeInput && startRangeInput.value ? startRangeInput.value : storedStartDate;
-  const endDate =
-    endRangeInput && !endRangeInput.disabled && endRangeInput.value ? endRangeInput.value : '';
-  const startTime = startTimeInput && startTimeInput.value ? startTimeInput.value : '';
+  const scheduleData = getTriggerScheduleData();
+  const frequencyLabel = getTriggerFrequencyLabel(frequency, { count: customCount || scheduleData.customCount });
+  const entrySchedule = Object.assign({}, scheduleData, {
+    customCount: frequency === 'custom' ? (customCount || scheduleData.customCount) : 0
+  });
   const entry = {
     id: 'localTrigger:' + ++triggerIdCounter,
     actionId: actionId,
     actionLabel: actionLabel,
     frequency: frequency,
     frequencyLabel: frequencyLabel,
-    customCount: frequency === 'custom' ? customCount : 0,
-    startDate: startDate,
-    endDate: endDate,
-    startTime: startTime,
-    startsAtLabel: buildTriggerScheduleSummary(startDate, endDate, startTime),
+    customCount: entrySchedule.customCount,
+    startDate: entrySchedule.startDate,
+    endDate: entrySchedule.endDate,
+    startTime: entrySchedule.startTime,
+    selectedDates: entrySchedule.selectedDates,
+    weeklyDay: entrySchedule.weeklyDay,
+    biweeklyDays: entrySchedule.biweeklyDays,
+    schedule: entrySchedule,
+    startsAtLabel: buildTriggerScheduleSummary(entrySchedule),
     title: buildTriggerTitle(actionLabel, frequencyLabel)
   };
   triggerEntries.push(entry);
@@ -1239,33 +2287,167 @@ function handleTriggerCreate() {
   });
 }
 
+function applyTriggerSectionState() {
+  const toggle = document.getElementById('triggerSectionToggle');
+  const fieldset = document.getElementById('triggerSectionFieldset');
+  const card = document.getElementById('triggerSectionCard');
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
+  const enabled = !toggle || toggle.checked;
+
+  if (card) {
+    if (enabled) {
+      card.classList.remove('is-inactive');
+    } else {
+      card.classList.add('is-inactive');
+    }
+  }
+
+  if (fieldset) {
+    fieldset.disabled = !enabled;
+    if (enabled) {
+      fieldset.classList.remove('is-collapsed');
+      fieldset.removeAttribute('aria-hidden');
+    } else {
+      fieldset.classList.add('is-collapsed');
+      fieldset.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  if (!enabled) {
+    if (startTimeControl) {
+      startTimeControl.setAttribute('aria-disabled', 'true');
+    }
+    closeTriggerActionMenu({ focusToggle: false });
+    applyTriggerTimeConstraints();
+    updateTriggerFormState();
+    return;
+  }
+
+  if (startTimeControl && !startTimeControl.classList.contains('ai-hidden')) {
+    startTimeControl.removeAttribute('aria-disabled');
+  }
+
+  updateTriggerFrequencyFields();
+  applyTriggerTimeConstraints();
+  updateTriggerStartTimeDisplay();
+  updateTriggerFormState();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   initializeTriggerActionPicker();
   initializeTriggerCalendar();
   const frequencySelect = document.getElementById('triggerFrequencySelect');
   const countInput = document.getElementById('triggerFrequencyCount');
   const createBtn = document.getElementById('triggerCreateBtn');
-  const previewBtn = document.getElementById('triggerPreviewBtn');
   const refreshBtn = document.getElementById('triggerRefreshBtn');
+  const startTimeInput = document.getElementById('triggerStartTime');
+  const startTimeControl = document.getElementById('triggerStartTimeControl');
+  const sectionToggle = document.getElementById('triggerSectionToggle');
 
   if (frequencySelect) {
     frequencySelect.addEventListener('change', updateTriggerFrequencyFields);
   }
   if (countInput) {
-    countInput.addEventListener('input', updateTriggerFormState);
-    countInput.addEventListener('change', updateTriggerFormState);
+    countInput.addEventListener('input', handleTriggerFrequencyCountInput);
+    countInput.addEventListener('change', handleTriggerFrequencyCountInput);
   }
   if (createBtn) {
     createBtn.addEventListener('click', handleTriggerCreate);
-  }
-  if (previewBtn) {
-    previewBtn.addEventListener('click', handleTriggerPreview);
   }
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function() {
       renderTriggerList();
     });
   }
+  if (startTimeInput) {
+    if (!startTimeInput.value) {
+      startTimeInput.value = getCurrentTimeValue();
+    }
+    updateTriggerStartTimeDisplay();
+    applyTriggerTimeConstraints();
+    const openTimePicker = function() {
+      if (startTimeInput.disabled) {
+        return;
+      }
+      if (typeof startTimeInput.showPicker === 'function') {
+        try {
+          startTimeInput.showPicker();
+        } catch (err) {
+          // ignore showPicker failures when unsupported
+        }
+      }
+    };
+    if (startTimeControl) {
+      startTimeControl.addEventListener('click', function() {
+        if (startTimeInput.disabled) {
+          return;
+        }
+        startTimeInput.focus();
+        openTimePicker();
+      });
+      startTimeControl.addEventListener('keydown', function(event) {
+        if (startTimeInput.disabled) {
+          return;
+        }
+        if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+          event.preventDefault();
+          startTimeInput.focus();
+          openTimePicker();
+        }
+      });
+    }
+    startTimeInput.addEventListener('focus', function() {
+      openTimePicker();
+    });
+    startTimeInput.addEventListener('click', function() {
+      openTimePicker();
+    });
+    startTimeInput.addEventListener('keydown', function(event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (event.key === 'Tab' || event.key === 'Escape') {
+        return;
+      }
+      const pickerKeys = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      if (pickerKeys.indexOf(event.key) !== -1) {
+        event.preventDefault();
+        openTimePicker();
+        return;
+      }
+      event.preventDefault();
+    });
+    const handleTimeChange = function() {
+      const adjusted = applyTriggerTimeConstraints();
+      if (!adjusted) {
+        updateTriggerStartTimeDisplay();
+      }
+      updateTriggerFormState();
+    };
+    startTimeInput.addEventListener('input', handleTimeChange);
+    startTimeInput.addEventListener('change', handleTimeChange);
+  }
+  if (sectionToggle) {
+    sectionToggle.addEventListener('change', function() {
+      applyTriggerSectionState();
+    });
+  }
+  document.addEventListener('keydown', function(event) {
+    if (
+      event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.shiftKey &&
+      event.key &&
+      event.key.toLowerCase() === 'g'
+    ) {
+      const targetBtn = document.getElementById('triggerCreateBtn');
+      if (targetBtn && !targetBtn.disabled) {
+        event.preventDefault();
+        targetBtn.click();
+      }
+    }
+  });
 
   document.addEventListener('tc:savedActionsUpdated', function(event) {
     const actions = event && event.detail && Array.isArray(event.detail.actions) ? event.detail.actions : [];
@@ -1281,15 +2463,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  updateTriggerFrequencyFields();
-  updateTriggerFormState();
+  applyTriggerSectionState();
+  updateTriggerStartTimeDisplay();
   renderTriggerList();
 });
 
 const TableCrafterTriggersTab = Object.freeze({
   renderList: renderTriggerList,
   updateFormState: updateTriggerFormState,
-  previewTrigger: handleTriggerPreview,
   createTrigger: handleTriggerCreate
 });
 
