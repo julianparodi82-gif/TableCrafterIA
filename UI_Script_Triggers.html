@@ -2428,6 +2428,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (startTimeInput) {
     const startTimeEditBtn = document.getElementById('triggerStartTimeEditBtn');
     const supportsNativeTimePicker = typeof startTimeInput.showPicker === 'function';
+    let isTriggerTimePickerOpening = false;
     if (!startTimeInput.value) {
       startTimeInput.value = getCurrentTimeValue();
     }
@@ -2452,43 +2453,57 @@ document.addEventListener('DOMContentLoaded', function() {
       startTimeControl.classList.remove('is-editing');
       startTimeControl.removeAttribute('data-editing');
     };
+    const focusTimeInput = function() {
+      try {
+        startTimeInput.focus({ preventScroll: true });
+      } catch (err) {
+        startTimeInput.focus();
+      }
+    };
     const openTimePicker = function(options) {
-      if (startTimeInput.disabled) {
+      if (isTriggerTimePickerOpening || startTimeInput.disabled) {
         return;
       }
+      isTriggerTimePickerOpening = true;
       const opts = options || {};
-      if (opts.focus !== false || document.activeElement !== startTimeInput) {
-        try {
-          startTimeInput.focus({ preventScroll: true });
-        } catch (err) {
-          startTimeInput.focus();
-        }
+      const shouldFocus = opts.focus !== false;
+      if (shouldFocus && document.activeElement !== startTimeInput) {
+        focusTimeInput();
       }
       let openedNative = false;
-      if (supportsNativeTimePicker) {
+      if (supportsNativeTimePicker && !opts.forceFallback) {
         try {
+          if (document.activeElement !== startTimeInput && shouldFocus) {
+            focusTimeInput();
+          }
           startTimeInput.showPicker();
           openedNative = true;
         } catch (err) {
           openedNative = false;
         }
       }
-      if (!supportsNativeTimePicker || !openedNative) {
+      if (!supportsNativeTimePicker || !openedNative || opts.forceFallback) {
         activateFallbackEditing();
-        try {
-          startTimeInput.select();
-        } catch (err) {
-          // ignore select failures
+        if (shouldFocus && document.activeElement !== startTimeInput) {
+          focusTimeInput();
         }
-        setTimePickerExpanded(true);
+        requestAnimationFrame(function() {
+          try {
+            startTimeInput.select();
+          } catch (err) {
+            // ignore select failures
+          }
+        });
       } else {
         deactivateFallbackEditing();
-        setTimePickerExpanded(false);
       }
+      setTimePickerExpanded(true);
+      isTriggerTimePickerOpening = false;
     };
     const closeTimePicker = function() {
       deactivateFallbackEditing();
       setTimePickerExpanded(false);
+      isTriggerTimePickerOpening = false;
     };
     if (startTimeControl) {
       startTimeControl.addEventListener('click', function(event) {
