@@ -221,6 +221,7 @@
         table: [
           { value: '', label: 'Seleccionar' },
           { value: 'report', label: 'Reporte' },
+          { value: 'sync-data', label: 'Sincronizar datos vigentes' },
           { value: 'ask', label: 'Pregunta IA' }
         ],
         word: [
@@ -228,10 +229,23 @@
           { value: 'word-length', label: 'Cambiar longitud del texto' },
           { value: 'word-rewrite', label: 'Reformular texto' },
           { value: 'word-tone', label: 'Ajustar tono' },
+          { value: 'word-refresh', label: 'Actualizar texto con datos recientes' },
           { value: 'word-summary', label: 'Resumir contenido' }
         ]
       });
       const WORD_ACTION_DEFAULT = 'word-length';
+
+      function createReadableList(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          return '';
+        }
+        if (items.length === 1) {
+          return items[0];
+        }
+        const parts = items.slice(0, -1);
+        const last = items[items.length - 1];
+        return parts.join(', ') + ' y ' + last;
+      }
 
       let savedReportEmails = [];
       let savedReportPhones = [];
@@ -5726,15 +5740,19 @@ function updateAiActionState() {
         const wordRewriteSection = document.getElementById('aiWordRewriteSection');
         const wordToneSection = document.getElementById('aiWordToneSection');
         const wordSummarySection = document.getElementById('aiWordSummarySection');
+        const wordRefreshSection = document.getElementById('aiWordRefreshSection');
+        const dataSyncSection = document.getElementById('aiDataSyncSection');
         if (!select || !askSection) {
           return;
         }
         const sections = {
           ask: askSection,
           report: reportSection,
+          'sync-data': dataSyncSection,
           'word-length': wordLengthSection,
           'word-rewrite': wordRewriteSection,
           'word-tone': wordToneSection,
+          'word-refresh': wordRefreshSection,
           'word-summary': wordSummarySection
         };
         Object.keys(sections).forEach(function(key) {
@@ -5901,6 +5919,95 @@ function updateWordSummaryPreview() {
         }
         summary.textContent =
           'El resumen incluirá ' + features.join(', ') + ' en ' + lengthText + '.';
+      }
+
+function updateTableSyncSummary() {
+        const summary = document.getElementById('aiDataSyncSummary');
+        if (!summary) {
+          return;
+        }
+        const valuesToggle = document.getElementById('aiSyncValues');
+        const formulasToggle = document.getElementById('aiSyncFormulas');
+        const formatsToggle = document.getElementById('aiSyncFormats');
+        const appendToggle = document.getElementById('aiSyncAppendRows');
+        const respectToggle = document.getElementById('aiSyncRespectFilters');
+        const keepNotesToggle = document.getElementById('aiSyncKeepNotes');
+        const notesInput = document.getElementById('aiSyncNotes');
+        const components = [];
+        if (valuesToggle && valuesToggle.checked) {
+          components.push('valores y texto');
+        }
+        if (formulasToggle && formulasToggle.checked) {
+          components.push('fórmulas');
+        }
+        if (formatsToggle && formatsToggle.checked) {
+          components.push('formatos y estilos');
+        }
+        if (components.length === 0) {
+          summary.textContent = 'Selecciona al menos un componente para sincronizar datos en tus tablas.';
+          return;
+        }
+        const sentences = [];
+        sentences.push('La IA actualizará ' + createReadableList(components));
+        const preferences = [];
+        if (appendToggle && appendToggle.checked) {
+          preferences.push('Se agregarán filas nuevas al final');
+        }
+        if (respectToggle && respectToggle.checked) {
+          preferences.push('Se respetarán filtros activos');
+        }
+        if (keepNotesToggle && keepNotesToggle.checked) {
+          preferences.push('Se conservarán notas y comentarios');
+        }
+        if (preferences.length > 0) {
+          sentences.push(preferences.join('. '));
+        }
+        if (notesInput && notesInput.value.trim()) {
+          sentences.push('Se aplicarán las instrucciones proporcionadas');
+        }
+        summary.textContent = sentences.join('. ') + '.';
+      }
+
+function updateWordRefreshSummary() {
+        const summary = document.getElementById('wordRefreshSummary');
+        if (!summary) {
+          return;
+        }
+        const introToggle = document.getElementById('wordRefreshIntro');
+        const bodyToggle = document.getElementById('wordRefreshBody');
+        const conclusionToggle = document.getElementById('wordRefreshConclusion');
+        const keepToneToggle = document.getElementById('wordRefreshKeepTone');
+        const highlightToggle = document.getElementById('wordRefreshHighlightChanges');
+        const dataInput = document.getElementById('wordRefreshData');
+        const sections = [];
+        if (introToggle && introToggle.checked) {
+          sections.push('la introducción');
+        }
+        if (bodyToggle && bodyToggle.checked) {
+          sections.push('el desarrollo');
+        }
+        if (conclusionToggle && conclusionToggle.checked) {
+          sections.push('la conclusión');
+        }
+        if (sections.length === 0) {
+          summary.textContent = 'Seleccioná al menos una sección para actualizar con los datos recientes.';
+          return;
+        }
+        const sentences = [];
+        let firstSentence = 'La IA actualizará ' + createReadableList(sections);
+        if (keepToneToggle && keepToneToggle.checked) {
+          firstSentence += ' manteniendo el tono y formato originales';
+        } else {
+          firstSentence += ' ajustando el tono cuando sea necesario para reflejar las novedades';
+        }
+        sentences.push(firstSentence);
+        if (highlightToggle && highlightToggle.checked) {
+          sentences.push('Los cambios se entregarán resaltados para su revisión');
+        }
+        if (dataInput && dataInput.value.trim()) {
+          sentences.push('Se integrarán los datos proporcionados');
+        }
+        summary.textContent = sentences.join('. ') + '.';
       }
 
 function updateAskCustomizationSummary() {
@@ -6358,6 +6465,43 @@ function collectAskCustomization() {
             input.addEventListener('change', updateWordSummaryPreview);
           });
         updateWordSummaryPreview();
+        [
+          document.getElementById('aiSyncValues'),
+          document.getElementById('aiSyncFormulas'),
+          document.getElementById('aiSyncFormats'),
+          document.getElementById('aiSyncAppendRows'),
+          document.getElementById('aiSyncRespectFilters'),
+          document.getElementById('aiSyncKeepNotes')
+        ]
+          .filter(function(input) {
+            return !!input;
+          })
+          .forEach(function(input) {
+            input.addEventListener('change', updateTableSyncSummary);
+          });
+        const aiSyncNotes = document.getElementById('aiSyncNotes');
+        if (aiSyncNotes) {
+          aiSyncNotes.addEventListener('input', updateTableSyncSummary);
+        }
+        updateTableSyncSummary();
+        [
+          document.getElementById('wordRefreshIntro'),
+          document.getElementById('wordRefreshBody'),
+          document.getElementById('wordRefreshConclusion'),
+          document.getElementById('wordRefreshKeepTone'),
+          document.getElementById('wordRefreshHighlightChanges')
+        ]
+          .filter(function(input) {
+            return !!input;
+          })
+          .forEach(function(input) {
+            input.addEventListener('change', updateWordRefreshSummary);
+          });
+        const wordRefreshData = document.getElementById('wordRefreshData');
+        if (wordRefreshData) {
+          wordRefreshData.addEventListener('input', updateWordRefreshSummary);
+        }
+        updateWordRefreshSummary();
         const askToneSelect = document.getElementById('aiAskTone');
         if (askToneSelect) {
           askToneSelect.addEventListener('change', updateAskToneCustom);
