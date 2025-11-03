@@ -4362,8 +4362,10 @@
           rgba(15, 23, 42, 0)
         );
       }
+      body.theme-wordcrafter .word-create-divider {
+        margin: 6px 0 4px;
+      }
       body.theme-wordcrafter .word-create-divider[data-word-divider-for='wordContextCard'] {
-        margin-top: 8px;
         margin-bottom: 4px;
       }
       .word-structure-card {
@@ -5238,8 +5240,13 @@
               Pegar una oración por celda (en la misma columna)
             </label>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordTitleSectionBlock"
+            aria-hidden="true"
+          ></div>
         </div>
-        <div class="section">
+        <div class="section" id="wordTitleSectionBlock">
           <label
             for="tableName"
             id="tableNameLabel"
@@ -5364,6 +5371,11 @@
             <label for="tableDesc">Descripción de la tabla</label>
             <textarea id="tableDesc" placeholder="Descripción de la tabla..."></textarea>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordStructureCard"
+            aria-hidden="true"
+          ></div>
           <div id="wordStructureCard" class="word-structure-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
