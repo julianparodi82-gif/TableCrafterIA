@@ -1934,6 +1934,18 @@ function syncWordCreateDividers() {
           }
           const targetId = divider.getAttribute('data-word-divider-for');
           const target = targetId ? document.getElementById(targetId) : null;
+          const targetParent = target && target.parentNode ? target.parentNode : null;
+          if (targetParent) {
+            const dividerParent = divider.parentNode;
+            if (dividerParent !== targetParent) {
+              targetParent.insertBefore(divider, target);
+            } else {
+              const nextElement = divider.nextElementSibling;
+              if (nextElement !== target) {
+                targetParent.insertBefore(divider, target);
+              }
+            }
+          }
           const isHidden =
             !target ||
             target.hidden === true ||
