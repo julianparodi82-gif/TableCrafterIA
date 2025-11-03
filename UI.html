@@ -600,6 +600,11 @@
         padding-bottom: 0;
         margin-bottom: 14px;
       }
+      body.theme-wordcrafter #wordTitleSectionBlock {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 14px;
+      }
       .tc-card {
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
@@ -4350,24 +4355,6 @@
         min-width: 180px;
         flex: 1 1 auto;
       }
-      .word-create-divider {
-        display: none;
-        width: 100%;
-        height: 1px;
-        margin: 12px 0 6px;
-        background: linear-gradient(
-          90deg,
-          rgba(15, 23, 42, 0),
-          rgba(15, 23, 42, 0.2),
-          rgba(15, 23, 42, 0)
-        );
-      }
-      body.theme-wordcrafter .word-create-divider {
-        margin: 6px 0 4px;
-      }
-      body.theme-wordcrafter .word-create-divider[data-word-divider-for='wordContextCard'] {
-        margin-bottom: 4px;
-      }
       .word-structure-card {
         margin-top: 12px;
         border-radius: 18px;
@@ -5240,11 +5227,6 @@
               Pegar una oración por celda (en la misma columna)
             </label>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordTitleSectionBlock"
-            aria-hidden="true"
-          ></div>
         </div>
         <div class="section" id="wordTitleSectionBlock">
           <label
@@ -5371,11 +5353,6 @@
             <label for="tableDesc">Descripción de la tabla</label>
             <textarea id="tableDesc" placeholder="Descripción de la tabla..."></textarea>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordStructureCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordStructureCard" class="word-structure-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5546,11 +5523,6 @@
               </div>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordContextCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordContextCard" class="word-body-context-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5614,11 +5586,6 @@
               </p>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordPersonalizationCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordPersonalizationCard" class="word-personalization-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5818,11 +5785,6 @@
               Ajusta estos campos para que la IA combine el estilo adecuado con tus indicaciones clave.
             </p>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordWebSourcesCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordWebSourcesCard" class="word-web-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5910,11 +5872,6 @@
               </div>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordBodyOptions"
-            aria-hidden="true"
-          ></div>
           <div id="wordBodyOptions" class="word-text-options" style="display:none;">
             <div class="word-text-toggle-group">
               <div class="word-context-section-head">
