@@ -719,6 +719,7 @@ function syncWordBodyControls() {
           formatOptions.style.display = manualActive ? 'block' : 'none';
         }
         updateWordPreview('body');
+        syncWordCreateDividers();
       }
 
 function syncWordContextCard() {
@@ -752,6 +753,7 @@ function syncWordContextCard() {
           }
           setWordCollapseToggleDisabled('wordPersonalizationContent', true);
           syncWordCollapseTargetState('wordPersonalizationContent');
+          syncWordCreateDividers();
           return;
         }
         setWordCollapseToggleDisabled('wordContextCardContent', false);
@@ -759,6 +761,7 @@ function syncWordContextCard() {
         setWordCollapseToggleDisabled('wordPersonalizationContent', false);
         syncWordCollapseTargetState('wordPersonalizationContent');
         syncWordContextSections();
+        syncWordCreateDividers();
       }
 
 function syncWordContextSection(section) {
@@ -1064,6 +1067,10 @@ function syncWordCustomOptionInputs() {
             input.removeAttribute('aria-hidden');
           } else {
             input.setAttribute('aria-hidden', 'true');
+          }
+          const group = typeof input.closest === 'function' ? input.closest('.word-format-group') : null;
+          if (group) {
+            group.classList.toggle('word-custom-detail-visible', isActive);
           }
         });
       }
@@ -1919,6 +1926,35 @@ function bindWordSectionWebControls() {
         });
       }
 
+function syncWordCreateDividers() {
+        const dividers = document.querySelectorAll('[data-word-divider-for]');
+        dividers.forEach(function(divider) {
+          if (!divider) {
+            return;
+          }
+          const targetId = divider.getAttribute('data-word-divider-for');
+          const target = targetId ? document.getElementById(targetId) : null;
+          const targetParent = target && target.parentNode ? target.parentNode : null;
+          if (targetParent) {
+            const dividerParent = divider.parentNode;
+            if (dividerParent !== targetParent) {
+              targetParent.insertBefore(divider, target);
+            } else {
+              const nextElement = divider.nextElementSibling;
+              if (nextElement !== target) {
+                targetParent.insertBefore(divider, target);
+              }
+            }
+          }
+          const isHidden =
+            !target ||
+            target.hidden === true ||
+            target.getAttribute('aria-hidden') === 'true' ||
+            target.style.display === 'none';
+          divider.style.display = isHidden ? 'none' : 'block';
+        });
+      }
+
 function syncWordStructureCard() {
         const card = document.getElementById('wordStructureCard');
         if (!card) {
@@ -1936,11 +1972,13 @@ function syncWordStructureCard() {
           }
           setWordCollapseToggleDisabled('wordStructureContent', true);
           syncWordCollapseTargetState('wordStructureContent');
+          syncWordCreateDividers();
           return;
         }
         setWordCollapseToggleDisabled('wordStructureContent', false);
         syncWordCollapseTargetState('wordStructureContent');
         syncWordStructureSections();
+        syncWordCreateDividers();
       }
 
 function bindWordStructureControls() {
@@ -2701,6 +2739,7 @@ function syncWordWebSourcesCard() {
           }
           setWordCollapseToggleDisabled('wordWebSourcesBody', true);
           syncWordCollapseTargetState('wordWebSourcesBody');
+          syncWordCreateDividers();
           return;
         }
         const toggle = document.getElementById('wordWebSourcesToggle');
@@ -2772,6 +2811,7 @@ function syncWordWebSourcesCard() {
           addBtn.disabled = !isActive || wordWebSourcesState.length >= WORD_WEB_SOURCE_LIMIT;
         }
         syncWordWebSavedSection();
+        syncWordCreateDividers();
       }
 
 function syncWordCreateOptions() {
@@ -2781,6 +2821,7 @@ function syncWordCreateOptions() {
         syncWordContextCard();
         syncWordCustomOptionInputs();
         syncWordWebSourcesCard();
+        syncWordCreateDividers();
       }
 
 function bindWordTextToggles() {

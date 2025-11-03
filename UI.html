@@ -206,6 +206,9 @@
         width: calc((100% - 24px) / 3);
         max-width: calc((100% - 24px) / 3);
       }
+      .tab-nav-primary-bottom .tab-btn--triggers {
+        margin-left: -5px;
+      }
       .tab-btn {
         border: 1px solid var(--tc-border);
         background: rgba(255, 255, 255, 0.92);
@@ -3110,6 +3113,7 @@
         width: 100%;
         display: flex;
         justify-content: center;
+        transform: translateX(-5px);
       }
       .tc-trigger-calendar {
         width: 100%;
@@ -3226,6 +3230,9 @@
         max-width: 200px;
         margin-left: auto;
         margin-right: auto;
+      }
+      #triggerSectionCard #triggerCreateBtn {
+        transform: translateX(-5px);
       }
       #triggerSectionCard .tc-form-field label,
       #triggerSectionCard .tc-form-field .tc-field-note,
@@ -3394,6 +3401,11 @@
         align-items: stretch;
         text-align: left;
       }
+      #triggerDateFromContainer {
+        margin-top: 15px;
+        transform: translateX(-5px);
+        align-self: flex-start;
+      }
       .tc-trigger-date-range-label {
         font-size: 11px;
         font-weight: 500;
@@ -3401,6 +3413,13 @@
         text-transform: none;
         letter-spacing: 0;
         text-align: left;
+      }
+      #triggerWeeklyField > label.tc-trigger-date-range-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .tc-trigger-date-range-label.is-hidden {
+        display: none;
       }
       .tc-trigger-date-range-field.is-hidden {
         display: none;
@@ -3443,7 +3462,7 @@
         text-align: left;
         gap: 10px;
         width: 100%;
-        max-width: 200px;
+        max-width: 230px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -3455,32 +3474,40 @@
         position: relative;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
+        gap: 12px;
         min-width: 10.5ch;
-        padding: 8px 12px;
-        border-radius: 8px;
-        border: 1px solid rgba(59, 130, 246, 0.28);
-        background-color: #FFFFFF;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: #ffffff;
         cursor: pointer;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         margin-left: auto;
         margin-right: auto;
         box-sizing: border-box;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
       }
       #triggerSectionCard .tc-trigger-time-input {
-        width: 200px;
-        transform: none;
+        width: 210px;
+        transform: translateX(-10px);
+      }
+      .tc-trigger-time-input.is-popover-open {
+        border-color: rgba(15, 23, 42, 0.38);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+        background: #f8fafc;
       }
       .tc-trigger-time-input:hover {
-        border-color: rgba(59, 130, 246, 0.45);
-        box-shadow: 0 3px 10px rgba(59, 130, 246, 0.18);
+        border-color: rgba(15, 23, 42, 0.28);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        background: #f8fafc;
       }
       .tc-trigger-time-input:active {
-        background-color: rgba(59, 130, 246, 0.05);
+        background: #f1f5f9;
       }
       .tc-trigger-time-input:focus-within {
-        border-color: var(--tc-primary);
-        box-shadow: 0 0 0 3px var(--tc-primary-ring);
+        border-color: rgba(15, 23, 42, 0.4);
+        box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.18);
       }
       .tc-trigger-time-input input[type='time'] {
         position: absolute;
@@ -3494,15 +3521,172 @@
         cursor: pointer;
         background: transparent;
         pointer-events: none;
+        color: #0f172a;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        text-align: center;
       }
       .tc-trigger-time-display {
-        font-weight: 600;
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
-        color: var(--tc-text);
-        letter-spacing: 0.02em;
+        color: #0f172a;
+        letter-spacing: 0.04em;
+        text-align: center;
+      }
+      #triggerSectionCard #triggerDateFrom {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        color: #0f172a;
+        font-size: 16px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: #ffffff;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        text-align: center;
+      }
+      #triggerSectionCard #triggerDateFrom:hover {
+        border-color: rgba(15, 23, 42, 0.28);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        background: #f8fafc;
+      }
+      #triggerSectionCard #triggerDateFrom:focus {
+        outline: none;
+        border-color: rgba(15, 23, 42, 0.4);
+        box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.18);
       }
       .tc-trigger-time-display[data-state='empty'] {
-        color: var(--tc-muted);
+        color: rgba(15, 23, 42, 0.55);
+      }
+      .tc-trigger-time-edit-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.08);
+        color: rgba(15, 23, 42, 0.7);
+        font-size: 16px;
+        transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tc-trigger-time-edit-button:focus-visible {
+        outline: 2px solid rgba(15, 23, 42, 0.35);
+        outline-offset: 3px;
+      }
+      .tc-trigger-time-input:hover .tc-trigger-time-edit-button {
+        background: rgba(15, 23, 42, 0.12);
+        color: rgba(15, 23, 42, 0.85);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+      }
+      .tc-trigger-time-input:active .tc-trigger-time-edit-button {
+        background: rgba(15, 23, 42, 0.16);
+      }
+      .tc-trigger-time-edit-button::before {
+        content: '\270E';
+        transform: scale(0.9);
+      }
+      .tc-trigger-time-input.is-editing {
+        cursor: text;
+      }
+      .tc-trigger-time-input.is-editing .tc-trigger-time-display,
+      .tc-trigger-time-input.is-editing .tc-trigger-time-edit-button {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .tc-trigger-time-input.is-editing input[type='time'] {
+        opacity: 1;
+        pointer-events: auto;
+        padding: 0 14px;
+        background: transparent;
+      }
+      .tc-trigger-time-popover {
+        position: absolute;
+        bottom: calc(100% + 12px);
+        left: 50%;
+        transform: translate(-50%, 4px);
+        display: flex;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.16);
+        background: #ffffff;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 20;
+      }
+      .tc-trigger-time-popover::before {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        width: 16px;
+        height: 16px;
+        background: #ffffff;
+        border-right: 1px solid rgba(15, 23, 42, 0.16);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.16);
+        box-shadow: 4px 4px 12px rgba(15, 23, 42, 0.08);
+        z-index: -1;
+      }
+      .tc-trigger-time-popover[aria-hidden='false'] {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+      }
+      .tc-trigger-time-popover-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+        min-width: 72px;
+      }
+      .tc-trigger-time-popover-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(15, 23, 42, 0.55);
+      }
+      .tc-trigger-time-popover-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: #f8fafc;
+        border: 1px solid rgba(15, 23, 42, 0.18);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 15px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: #0f172a;
+        cursor: pointer;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        text-align: center;
+        text-align-last: center;
+      }
+      .tc-trigger-time-popover-select:focus {
+        outline: none;
+        border-color: rgba(59, 130, 246, 0.75);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+        background: #eff6ff;
+      }
+      .tc-trigger-time-popover-select:hover {
+        border-color: rgba(15, 23, 42, 0.32);
       }
       .tc-trigger-calendar-field.is-disabled {
         opacity: 0.55;
@@ -3750,7 +3934,12 @@
       .word-custom-detail-input {
         margin-top: 8px;
         width: 100%;
+      }
+      .word-format-group.word-custom-detail-visible .word-custom-detail-input {
         display: block;
+      }
+      .word-format-group:not(.word-custom-detail-visible) .word-custom-detail-input {
+        display: none;
       }
       .word-range-info {
         background: rgba(13, 107, 90, 0.08);
@@ -4098,6 +4287,18 @@
       .word-personalization-grid .word-format-group {
         min-width: 180px;
         flex: 1 1 auto;
+      }
+      .word-create-divider {
+        display: none;
+        width: 100%;
+        height: 1px;
+        margin: 32px 0;
+        background: linear-gradient(
+          90deg,
+          rgba(15, 23, 42, 0),
+          rgba(15, 23, 42, 0.12),
+          rgba(15, 23, 42, 0)
+        );
       }
       .word-structure-card {
         margin-top: 16px;
@@ -4945,7 +5146,7 @@
             class="tc-tooltip-target"
             data-tooltip="Define el nombre principal del texto. Puedes ajustar el formato incluso si se genera automáticamente."
           >
-            Título del texto
+            Título del texto (Opcional)
           </label>
           <input type="text" id="tableName" placeholder="Ingrese un título..." />
           <div id="wordTitleOptions" class="word-text-options" style="display:none;">
@@ -5063,6 +5264,11 @@
             <label for="tableDesc">Descripción de la tabla</label>
             <textarea id="tableDesc" placeholder="Descripción de la tabla..."></textarea>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordStructureCard"
+            aria-hidden="true"
+          ></div>
           <div id="wordStructureCard" class="word-structure-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5233,6 +5439,11 @@
               </div>
             </div>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordContextCard"
+            aria-hidden="true"
+          ></div>
           <div id="wordContextCard" class="word-body-context-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5296,6 +5507,11 @@
               </p>
             </div>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordPersonalizationCard"
+            aria-hidden="true"
+          ></div>
           <div id="wordPersonalizationCard" class="word-personalization-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5495,6 +5711,11 @@
               Ajusta estos campos para que la IA combine el estilo adecuado con tus indicaciones clave.
             </p>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordWebSourcesCard"
+            aria-hidden="true"
+          ></div>
           <div id="wordWebSourcesCard" class="word-web-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5582,6 +5803,11 @@
               </div>
             </div>
           </div>
+          <div
+            class="word-create-divider"
+            data-word-divider-for="wordBodyOptions"
+            aria-hidden="true"
+          ></div>
           <div id="wordBodyOptions" class="word-text-options" style="display:none;">
             <div class="word-text-toggle-group">
               <div class="word-context-section-head">
@@ -8459,18 +8685,23 @@
               <button type="button" id="triggerRefreshBtn" class="btn-secondary">Actualizar</button>
             </div>
           </div>
-          <div class="tc-card tc-trigger-card" id="triggerSectionCard">
+          <div class="tc-card tc-trigger-card is-inactive" id="triggerSectionCard">
             <h3 class="tc-card-heading tc-trigger-heading">
               <label
                 for="triggerSectionToggle"
                 class="tc-trigger-section-toggle tc-tooltip-target"
                 data-tooltip="Activa o desactiva la configuración del trigger a crear."
               >
-                <input type="checkbox" id="triggerSectionToggle" checked />
+                <input type="checkbox" id="triggerSectionToggle" />
                 <span class="tc-trigger-section-label">Crear Trigger</span>
               </label>
             </h3>
-            <fieldset id="triggerSectionFieldset" class="tc-trigger-section-fieldset">
+            <fieldset
+              id="triggerSectionFieldset"
+              class="tc-trigger-section-fieldset is-collapsed"
+              disabled
+              aria-hidden="true"
+            >
               <legend class="tc-visually-hidden">Configuración del trigger a crear</legend>
               <p class="tc-card-subtitle">Define la frecuencia y la acción que quieres automatizar.</p>
               <div class="tc-form-grid">
@@ -8498,7 +8729,7 @@
                   </div>
                   <input type="hidden" id="triggerActionSelect" value="" />
                 </div>
-                <p class="tc-field-note">Se mostrarán las tablas y textos guardados<br />así como las acciones favoritas.</p>
+                <p class="tc-field-note">Accede a tus tablas, textos y acciones guardadas.</p>
               </div>
               <div class="tc-form-field">
                 <label for="triggerFrequencySelect">Frecuencia</label>
@@ -8592,12 +8823,53 @@
                 role="button"
                 tabindex="0"
                 aria-haspopup="dialog"
-                aria-controls="triggerStartTime"
+                aria-controls="triggerStartTimePopover"
+                aria-label="Editar hora de ejecución"
+                aria-disabled="true"
+                aria-expanded="false"
               >
                 <span id="triggerStartTimeDisplay" class="tc-trigger-time-display" aria-hidden="true" data-state="empty">
                   --:-- --
                 </span>
-                <input type="time" id="triggerStartTime" inputmode="none" aria-label="Elegir hora de ejecución" />
+                <button
+                  type="button"
+                  id="triggerStartTimeEditBtn"
+                  class="tc-trigger-time-edit-button"
+                  aria-label="Editar hora"
+                ></button>
+                <input type="time" id="triggerStartTime" aria-label="Elegir hora de ejecución" />
+                <div
+                  id="triggerStartTimePopover"
+                  class="tc-trigger-time-popover"
+                  role="group"
+                  aria-label="Seleccionar hora de ejecución"
+                  aria-hidden="true"
+                >
+                  <div class="tc-trigger-time-popover-section">
+                    <span class="tc-trigger-time-popover-label">HORA</span>
+                    <select
+                      id="triggerStartTimeHour"
+                      class="tc-trigger-time-popover-select"
+                      aria-label="Seleccionar hora"
+                    ></select>
+                  </div>
+                  <div class="tc-trigger-time-popover-section">
+                    <span class="tc-trigger-time-popover-label">MINUTO</span>
+                    <select
+                      id="triggerStartTimeMinute"
+                      class="tc-trigger-time-popover-select"
+                      aria-label="Seleccionar minutos"
+                    ></select>
+                  </div>
+                  <div class="tc-trigger-time-popover-section">
+                    <span class="tc-trigger-time-popover-label">PERIODO</span>
+                    <select
+                      id="triggerStartTimePeriod"
+                      class="tc-trigger-time-popover-select"
+                      aria-label="Seleccionar período"
+                    ></select>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="tc-card-actions">
@@ -8623,9 +8895,9 @@
               <div class="tc-card-title">
                 <span class="tc-card-icon tc-card-icon--favorite" aria-hidden="true">★</span>
                 <div>
-                  <h3 class="tc-card-heading">Favoritos guardados</h3>
+                  <h3 class="tc-card-heading">Acciones guardadas</h3>
                   <p class="tc-card-subtitle">
-                    Seleccioná y gestioná los reportes que guardaste como favoritos desde este panel.
+                    Seleccioná y gestioná las acciones guardadas desde este panel.
                   </p>
                 </div>
               </div>
@@ -8638,7 +8910,7 @@
                     <span id="aiSavedActionsSummaryName" class="ai-actions-summary-title"></span>
                     <span id="aiSavedActionsSummaryMeta" class="ai-actions-summary-meta"></span>
                   </div>
-                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar favorito</button>
+                  <button type="button" id="aiSavedActionsShowAllBtn" class="btn-secondary">Cambiar acción</button>
                 </div>
                 <div class="ai-multi-select ai-multi-select--single">
                   <div
@@ -8651,7 +8923,7 @@
                 </div>
               </div>
             </div>
-            <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay favoritos guardados todavía.</div>
+            <div id="aiActionsEmptyMessage" class="tc-card-empty">No hay acciones guardadas todavía.</div>
             <div class="tc-card-footer tc-card-footer--right">
               <button
                 type="button"
@@ -8664,15 +8936,15 @@
             </div>
           </div>
             <div class="tc-card">
-              <h3 class="tc-card-heading">Detalle del favorito</h3>
+              <h3 class="tc-card-heading">Detalle de la acción</h3>
               <p class="tc-card-subtitle">Revisá cada característica y editá el contenido sin salir de esta pestaña.</p>
               <div id="aiActionDetails" class="ai-action-details ai-hidden" aria-live="polite">
                 <div id="aiActionDetailCard"></div>
                 <div id="aiActionEditor" class="ai-action-editor ai-hidden">
                   <div class="ai-action-editor-head">
-                    <h4 id="aiActionEditorTitle">Editar reporte favorito</h4>
+                    <h4 id="aiActionEditorTitle">Editar acción guardada</h4>
                     <p id="aiActionEditorSubtitle" class="ai-action-editor-subtitle">
-                      Ajustá las características guardadas y actualizá el favorito directamente desde este panel.
+                      Ajustá las características guardadas y actualizá la acción guardada directamente desde este panel.
                     </p>
                     <div id="aiActionEditorMeta" class="ai-action-editor-meta"></div>
                   </div>
@@ -8680,8 +8952,8 @@
                 </div>
               </div>
               <div id="aiActionDetailControls" class="ai-action-controls ai-hidden">
-                <button type="button" id="aiActionSaveBtn" class="btn-primary">Guardar favorito</button>
-                <button type="button" id="aiActionDeleteBtn" class="btn-danger">Borrar favorito</button>
+                <button type="button" id="aiActionSaveBtn" class="btn-primary">Guardar acción</button>
+                <button type="button" id="aiActionDeleteBtn" class="btn-danger">Borrar acción</button>
               </div>
             </div>
           </div>
