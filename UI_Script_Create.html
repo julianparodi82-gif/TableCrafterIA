@@ -273,17 +273,140 @@ function renderCreateHeaders() {
         renderHeaderList('headersList', currentHeaders);
       }
 
-function setDefaultStyles() {
+function resolveCreateTableStyleDefaults(overrides) {
+        const base =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
+        if (!overrides || typeof overrides !== 'object') {
+          return Object.assign({}, base);
+        }
+        if (typeof normalizeTableStyleDefaults === 'function') {
+          return normalizeTableStyleDefaults(overrides, base);
+        }
+        return Object.assign({}, base, overrides);
+      }
+
+function applyCreateTableStyleDefaults(defaults) {
+        const resolved = resolveCreateTableStyleDefaults(defaults);
         const colorHeader = document.getElementById('colorHeader');
         const colorAlt1 = document.getElementById('colorAlt1');
         const colorAlt2 = document.getElementById('colorAlt2');
         const borderToggle = document.getElementById('toggleBorder');
         const boldToggle = document.getElementById('toggleBold');
-        if (colorHeader) colorHeader.value = DEFAULT_STYLE.headerColor;
-        if (colorAlt1) colorAlt1.value = DEFAULT_STYLE.altColor1;
-        if (colorAlt2) colorAlt2.value = DEFAULT_STYLE.altColor2;
-        if (borderToggle) borderToggle.checked = DEFAULT_STYLE.border;
-        if (boldToggle) boldToggle.checked = DEFAULT_STYLE.bold;
+        if (colorHeader && resolved.headerColor) {
+          colorHeader.value = resolved.headerColor;
+        }
+        if (colorAlt1 && resolved.altColor1) {
+          colorAlt1.value = resolved.altColor1;
+        }
+        if (colorAlt2 && resolved.altColor2) {
+          colorAlt2.value = resolved.altColor2;
+        }
+        if (borderToggle) {
+          borderToggle.checked = !!resolved.border;
+        }
+        if (boldToggle) {
+          boldToggle.checked = !!resolved.bold;
+        }
+      }
+
+function setDefaultStyles(style) {
+        applyCreateTableStyleDefaults(style);
+      }
+
+function getCurrentTableStyleSnapshot() {
+        const defaults = resolveCreateTableStyleDefaults();
+        const headerInput = document.getElementById('colorHeader');
+        const alt1Input = document.getElementById('colorAlt1');
+        const alt2Input = document.getElementById('colorAlt2');
+        const borderToggle = document.getElementById('toggleBorder');
+        const boldToggle = document.getElementById('toggleBold');
+        return {
+          headerColor: headerInput ? headerInput.value : defaults.headerColor,
+          altColor1: alt1Input ? alt1Input.value : defaults.altColor1,
+          altColor2: alt2Input ? alt2Input.value : defaults.altColor2,
+          border: borderToggle ? !!borderToggle.checked : defaults.border,
+          bold: boldToggle ? !!boldToggle.checked : defaults.bold
+        };
+      }
+
+function flashTableFormatAction(button, message, stateClass) {
+        if (!button) {
+          return;
+        }
+        const defaultTooltip = button.dataset && button.dataset.defaultTooltip
+          ? button.dataset.defaultTooltip
+          : button.getAttribute('data-tooltip') || '';
+        if (button.dataset && !button.dataset.defaultTooltip) {
+          button.dataset.defaultTooltip = defaultTooltip;
+        }
+        if (message) {
+          button.setAttribute('data-tooltip', message);
+          if (button.dataset) {
+            button.dataset.tooltip = message;
+          }
+        }
+        if (stateClass) {
+          button.classList.add(stateClass);
+        }
+        button.blur();
+        window.setTimeout(function() {
+          if (stateClass) {
+            button.classList.remove(stateClass);
+          }
+          const baseTooltip = button.dataset && button.dataset.defaultTooltip ? button.dataset.defaultTooltip : defaultTooltip;
+          if (baseTooltip) {
+            button.setAttribute('data-tooltip', baseTooltip);
+            if (button.dataset) {
+              button.dataset.tooltip = baseTooltip;
+            }
+          } else {
+            button.removeAttribute('data-tooltip');
+            if (button.dataset) {
+              delete button.dataset.tooltip;
+            }
+          }
+        }, 2000);
+      }
+
+function handleRememberTableStyleDefaults() {
+        const snapshot = getCurrentTableStyleSnapshot();
+        if (typeof saveTableStyleDefaults === 'function') {
+          saveTableStyleDefaults(snapshot);
+        }
+        const button = document.getElementById('tableFormatRememberBtn');
+        flashTableFormatAction(button, 'Formato predeterminado actualizado', 'table-format-action--success');
+      }
+
+function handleResetTableStyleDefaults() {
+        let defaults;
+        if (typeof resetTableStyleDefaultsToPrimary === 'function') {
+          defaults = resetTableStyleDefaultsToPrimary();
+        }
+        applyCreateTableStyleDefaults(defaults);
+        markCreateFormatDirty();
+        const button = document.getElementById('tableFormatResetBtn');
+        flashTableFormatAction(button, 'Valores principales restaurados', 'table-format-action--restore');
+      }
+
+function bindTableFormatDefaultsControls() {
+        const rememberBtn = document.getElementById('tableFormatRememberBtn');
+        if (rememberBtn && rememberBtn.dataset.tableFormatBound !== 'true') {
+          rememberBtn.addEventListener('click', handleRememberTableStyleDefaults);
+          rememberBtn.dataset.tableFormatBound = 'true';
+        }
+        const resetBtn = document.getElementById('tableFormatResetBtn');
+        if (resetBtn && resetBtn.dataset.tableFormatBound !== 'true') {
+          resetBtn.addEventListener('click', handleResetTableStyleDefaults);
+          resetBtn.dataset.tableFormatBound = 'true';
+        }
       }
 
 /* -------------------------------------------------------------------------- */
@@ -363,6 +486,7 @@ function collectTableFavoriteConfig(validation) {
         const alt2Input = document.getElementById('colorAlt2');
         const borderToggle = document.getElementById('toggleBorder');
         const boldToggle = document.getElementById('toggleBold');
+        const defaults = resolveCreateTableStyleDefaults();
         const fullRange = sheetName && a1Notation ? sheetName + '!' + a1Notation : rangeValue || '';
         return {
           version: 1,
@@ -378,11 +502,11 @@ function collectTableFavoriteConfig(validation) {
           },
           headers: headers,
           style: {
-            headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
-            altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
-            altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
-            border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
-            bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+            headerColor: headerColorInput ? headerColorInput.value : defaults.headerColor,
+            altColor1: alt1Input ? alt1Input.value : defaults.altColor1,
+            altColor2: alt2Input ? alt2Input.value : defaults.altColor2,
+            border: borderToggle ? !!borderToggle.checked : defaults.border,
+            bold: boldToggle ? !!boldToggle.checked : defaults.bold
           },
           updateFormulaReferences: true,
           origin: 'tableCreate',
@@ -712,6 +836,8 @@ function notifyTableFavoriteThemeChanged(nextTheme) {
 
 function initializeTableFavorites() {
         bindTableFavoriteButton();
+        bindTableFormatDefaultsControls();
+        setDefaultStyles();
         updateTableFavoriteButtonState();
         refreshTableFavorites({ silent: true }).catch(function() {});
       }

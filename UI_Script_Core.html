@@ -10,6 +10,9 @@ const DEFAULT_STYLE = Object.freeze({
   bold: true
 });
 
+const TABLE_STYLE_DEFAULTS_STORAGE_KEY = 'tablecrafter.styleDefaults.v1';
+let tableStyleDefaultsCache = null;
+
 const ALL_TABLES_OPTION_VALUE = '__ALL__';
 const SAVED_TABLES_STORAGE_KEY = 'tablecrafter.savedTables.v1';
 const DEFAULT_AI_FILL_DATA_TYPE = 'datos';
@@ -336,13 +339,114 @@ function normalizeHeaderWebSourceArray(source) {
 
       
 
-function normalizeStyleModel(style) {
-        const normalized = {
+function getPrimaryTableStyleDefaults() {
+        return {
           headerColor: DEFAULT_STYLE.headerColor,
           altColor1: DEFAULT_STYLE.altColor1,
           altColor2: DEFAULT_STYLE.altColor2,
           border: DEFAULT_STYLE.border,
           bold: DEFAULT_STYLE.bold
+        };
+      }
+
+function normalizeTableStyleDefaults(style, baseDefaults) {
+        const fallback =
+          baseDefaults && typeof baseDefaults === 'object'
+            ? baseDefaults
+            : getPrimaryTableStyleDefaults();
+        const normalized = {
+          headerColor: fallback.headerColor,
+          altColor1: fallback.altColor1,
+          altColor2: fallback.altColor2,
+          border: fallback.border,
+          bold: fallback.bold
+        };
+        if (style && typeof style === 'object') {
+          const headerColor = normalizeHexColor(style.headerColor);
+          if (headerColor) {
+            normalized.headerColor = headerColor;
+          }
+          const alt1Color = normalizeHexColor(style.altColor1);
+          if (alt1Color) {
+            normalized.altColor1 = alt1Color;
+          }
+          const alt2Color = normalizeHexColor(style.altColor2);
+          if (alt2Color) {
+            normalized.altColor2 = alt2Color;
+          }
+          if (Object.prototype.hasOwnProperty.call(style, 'border')) {
+            normalized.border = !!style.border;
+          }
+          if (Object.prototype.hasOwnProperty.call(style, 'bold')) {
+            normalized.bold = !!style.bold;
+          }
+        }
+        return normalized;
+      }
+
+function loadStoredTableStyleDefaults() {
+        const storage = getLocalStorage();
+        if (!storage) {
+          return null;
+        }
+        try {
+          const raw = storage.getItem(TABLE_STYLE_DEFAULTS_STORAGE_KEY);
+          if (!raw) {
+            return null;
+          }
+          const parsed = JSON.parse(raw);
+          return normalizeTableStyleDefaults(parsed, getPrimaryTableStyleDefaults());
+        } catch (err) {
+          console.log('No se pudieron cargar los valores predeterminados de formato.', err);
+          return null;
+        }
+      }
+
+function getTableStyleDefaults() {
+        if (tableStyleDefaultsCache) {
+          return Object.assign({}, tableStyleDefaultsCache);
+        }
+        const stored = loadStoredTableStyleDefaults();
+        tableStyleDefaultsCache = stored || getPrimaryTableStyleDefaults();
+        return Object.assign({}, tableStyleDefaultsCache);
+      }
+
+function saveTableStyleDefaults(style) {
+        const currentDefaults = tableStyleDefaultsCache ? tableStyleDefaultsCache : getTableStyleDefaults();
+        const normalized = normalizeTableStyleDefaults(style, currentDefaults);
+        tableStyleDefaultsCache = normalized;
+        const storage = getLocalStorage();
+        if (storage) {
+          try {
+            storage.setItem(TABLE_STYLE_DEFAULTS_STORAGE_KEY, JSON.stringify(normalized));
+          } catch (err) {
+            console.log('No se pudieron guardar los valores predeterminados de formato.', err);
+          }
+        }
+        return Object.assign({}, tableStyleDefaultsCache);
+      }
+
+function resetTableStyleDefaultsToPrimary() {
+        tableStyleDefaultsCache = getPrimaryTableStyleDefaults();
+        const storage = getLocalStorage();
+        if (storage) {
+          try {
+            storage.removeItem(TABLE_STYLE_DEFAULTS_STORAGE_KEY);
+          } catch (err) {
+            console.log('No se pudieron restablecer los valores predeterminados de formato.', err);
+          }
+        }
+        return Object.assign({}, tableStyleDefaultsCache);
+      }
+
+function normalizeStyleModel(style) {
+        const defaults = getTableStyleDefaults();
+        const normalized = {
+          headerColor: defaults.headerColor,
+          altColor1: defaults.altColor1,
+          altColor2: defaults.altColor2,
+          border: defaults.border,
+          bold: defaults.bold
         };
         if (style && typeof style === 'object') {
           if (style.headerColor && String(style.headerColor).trim()) {
@@ -3819,13 +3923,13 @@ function playSidebarAnimation() {
           const normalizedTheme = theme === 'word' ? 'word' : 'table';
           const isWord = normalizedTheme === 'word';
           if (tabButtonRefs.edit) {
-            tabButtonRefs.edit.textContent = isWord ? 'Editar Texto' : 'Editar tabla';
+            tabButtonRefs.edit.textContent = isWord ? 'Editar Texto' : 'Editar Tabla';
             tabButtonRefs.edit.dataset.tooltip = isWord
               ? '(Alt + 2) Modifica textos guardados y ajusta su estilo.'
               : '(Alt + 2) Modifica tablas guardadas y ajusta sus estilos.';
           }
           if (tabButtonRefs.create) {
-            tabButtonRefs.create.textContent = isWord ? 'Crear Texto' : 'Crear tabla';
+            tabButtonRefs.create.textContent = isWord ? 'Crear Texto' : 'Crear Tabla';
             tabButtonRefs.create.dataset.tooltip = isWord
               ? '(Alt + 3)\nGenera nuevos textos con apoyo de IA y plantillas personalizadas.'
               : '(Alt + 3)\nCrea nuevas tablas con ayuda de IA y formatos personalizados.';
@@ -4289,7 +4393,16 @@ const TableCrafterCore = Object.freeze({
         formatFavoriteMetadataLabel: formatFavoriteMetadataLabel
       });
 
+const TableStyleDefaults = Object.freeze({
+        get: getTableStyleDefaults,
+        save: saveTableStyleDefaults,
+        reset: resetTableStyleDefaultsToPrimary,
+        primary: getPrimaryTableStyleDefaults,
+        normalize: normalizeTableStyleDefaults
+      });
+
 window.TableCrafterCore = TableCrafterCore;
+window.TableStyleDefaults = TableStyleDefaults;
 window.promptFavoriteName = promptFavoriteName;
 window.buildFavoriteMetadata = buildFavoriteMetadata;
 window.formatFavoriteMetadataLabel = formatFavoriteMetadataLabel;

@@ -3889,6 +3889,64 @@
           max-height: 60vh;
         }
       }
+      .table-format-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        margin-bottom: 4px;
+      }
+      .table-format-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--tc-muted-strong, #475569);
+      }
+      .table-format-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .table-format-action {
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 6px;
+        padding: 6px 10px;
+        min-height: 32px;
+        min-width: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tc-primary-dark, #0F172A);
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      }
+      .table-format-action:hover,
+      .table-format-action:focus {
+        background: rgba(15, 23, 42, 0.08);
+        border-color: rgba(15, 23, 42, 0.18);
+        outline: none;
+      }
+      .table-format-action:focus-visible {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+      }
+      .table-format-action-icon {
+        font-size: 16px;
+        line-height: 1;
+      }
+      .table-format-action--success {
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(22, 163, 74, 0.45);
+        color: #047857;
+      }
+      .table-format-action--restore {
+        background: rgba(59, 130, 246, 0.18);
+        border-color: rgba(37, 99, 235, 0.45);
+        color: #1D4ED8;
+      }
+      body.theme-wordcrafter .table-format-toolbar {
+        display: none;
+      }
       .toggle-group {
         display: flex;
         align-items: center;
@@ -5994,6 +6052,31 @@
           <div id="tableHeaderOptions" data-themes="table">
             <label>Encabezados (puede editar y reordenar)</label>
             <ul id="headersList" class="header-list"></ul>
+            <div class="table-format-toolbar">
+              <span class="table-format-title">Formato de Tabla</span>
+              <div class="table-format-actions">
+                <button
+                  type="button"
+                  id="tableFormatRememberBtn"
+                  class="table-format-action tc-tooltip-target"
+                  aria-label="Usar el formato actual como predeterminado"
+                  data-tooltip="Establecer como formato predeterminado"
+                >
+                  <span class="table-format-action-icon" aria-hidden="true">★</span>
+                  <span class="tc-visually-hidden">Guardar formato predeterminado</span>
+                </button>
+                <button
+                  type="button"
+                  id="tableFormatResetBtn"
+                  class="table-format-action tc-tooltip-target"
+                  aria-label="Restablecer el formato principal"
+                  data-tooltip="Restablecer valores principales"
+                >
+                  <span class="table-format-action-icon" aria-hidden="true">↺</span>
+                  <span class="tc-visually-hidden">Restaurar formato principal</span>
+                </button>
+              </div>
+            </div>
             <div class="toggle-group">
               <label for="colorHeader">Color encabezado</label>
               <input type="color" id="colorHeader" />
