@@ -362,6 +362,25 @@
         left: 50%;
         transform: translateX(-50%);
       }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]::after {
+        top: 50%;
+        bottom: auto;
+        left: auto;
+        right: calc(100% + 12px);
+        transform: translate(4px, -50%);
+      }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]::before {
+        top: 50%;
+        bottom: auto;
+        left: auto;
+        right: calc(100% + 4px);
+        transform: translateY(-50%);
+        border-color: transparent transparent transparent var(--tc-tooltip-bg);
+      }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]:hover::after,
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]:hover::before {
+        transform: translate(0, -50%);
+      }
       .ai-report-order-label.tc-tooltip-target[data-tooltip]::after {
         bottom: auto;
         top: calc(100% + 8px);
@@ -3898,9 +3917,10 @@
         margin-bottom: 4px;
       }
       .table-format-title {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 600;
-        color: var(--tc-muted-strong, #475569);
+        color: var(--tc-muted);
+        letter-spacing: 0;
       }
       .table-format-actions {
         display: flex;
@@ -6058,7 +6078,7 @@
                 <button
                   type="button"
                   id="tableFormatRememberBtn"
-                  class="table-format-action tc-tooltip-target"
+                  class="table-format-action tc-tooltip-target tc-tooltip-target--left"
                   aria-label="Usar el formato actual como predeterminado"
                   data-tooltip="Establecer como formato predeterminado"
                 >
@@ -6068,7 +6088,7 @@
                 <button
                   type="button"
                   id="tableFormatResetBtn"
-                  class="table-format-action tc-tooltip-target"
+                  class="table-format-action tc-tooltip-target tc-tooltip-target--left"
                   aria-label="Restablecer el formato principal"
                   data-tooltip="Restablecer valores principales"
                 >
