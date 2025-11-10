@@ -352,21 +352,29 @@ function renderEditSavedTablesList(entries, config) {
         const disabled = !!options.disabled;
         const groupBySheet = !!options.groupBySheet;
         const selectedValue = options.selectedValue ? String(options.selectedValue) : '';
+        const hasEntries = data.length > 0;
+        const listDisabled = disabled || !hasEntries;
         listEl.innerHTML = '';
         listEl.setAttribute('role', 'listbox');
         listEl.setAttribute('aria-multiselectable', 'false');
-        listEl.classList.toggle('disabled', disabled);
-        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        listEl.classList.toggle('disabled', listDisabled);
+        listEl.setAttribute('aria-disabled', listDisabled ? 'true' : 'false');
 
-        if (disabled || data.length === 0) {
+        if (listDisabled) {
           setEditSavedListCollapsed(false);
           const empty = document.createElement('div');
           empty.className = 'edit-saved-empty';
           empty.textContent = 'No hay tablas guardadas';
           listEl.appendChild(empty);
+          if (!hasEntries) {
+            selectEl.innerHTML = '';
+          }
+          selectEl.disabled = true;
           syncEditSavedListCollapseClass();
           return;
         }
+
+        selectEl.disabled = false;
 
         if (groupBySheet) {
           const grouped = Object.create(null);
@@ -419,23 +427,23 @@ function renderEditSavedTextsList(entries, config) {
         const options = config || {};
         const disabled = !!options.disabled;
         const selectedValue = options.selectedValue ? String(options.selectedValue) : '';
+        const hasEntries = data.length > 0;
+        const listDisabled = disabled || !hasEntries;
         listEl.innerHTML = '';
         listEl.setAttribute('role', 'listbox');
         listEl.setAttribute('aria-multiselectable', 'false');
-        listEl.classList.toggle('disabled', disabled);
-        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        listEl.classList.toggle('disabled', listDisabled);
+        listEl.setAttribute('aria-disabled', listDisabled ? 'true' : 'false');
 
-        if (!selectEl.disabled && disabled) {
-          selectEl.disabled = true;
-        }
-
-        if (disabled || data.length === 0) {
+        if (listDisabled) {
           setEditSavedTextsCollapsed(false);
           const empty = document.createElement('div');
           empty.className = 'edit-saved-empty';
           empty.textContent = 'No hay textos guardados';
           listEl.appendChild(empty);
-          selectEl.innerHTML = '';
+          if (!hasEntries) {
+            selectEl.innerHTML = '';
+          }
           selectEl.disabled = true;
           syncEditSavedTextsCollapseClass();
           return;
