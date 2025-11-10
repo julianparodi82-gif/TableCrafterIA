@@ -352,21 +352,29 @@ function renderEditSavedTablesList(entries, config) {
         const disabled = !!options.disabled;
         const groupBySheet = !!options.groupBySheet;
         const selectedValue = options.selectedValue ? String(options.selectedValue) : '';
+        const hasEntries = data.length > 0;
+        const listDisabled = disabled || !hasEntries;
         listEl.innerHTML = '';
         listEl.setAttribute('role', 'listbox');
         listEl.setAttribute('aria-multiselectable', 'false');
-        listEl.classList.toggle('disabled', disabled);
-        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        listEl.classList.toggle('disabled', listDisabled);
+        listEl.setAttribute('aria-disabled', listDisabled ? 'true' : 'false');
 
-        if (disabled || data.length === 0) {
+        if (listDisabled) {
           setEditSavedListCollapsed(false);
           const empty = document.createElement('div');
           empty.className = 'edit-saved-empty';
           empty.textContent = 'No hay tablas guardadas';
           listEl.appendChild(empty);
+          if (!hasEntries) {
+            selectEl.innerHTML = '';
+          }
+          selectEl.disabled = true;
           syncEditSavedListCollapseClass();
           return;
         }
+
+        selectEl.disabled = false;
 
         if (groupBySheet) {
           const grouped = Object.create(null);
@@ -419,23 +427,23 @@ function renderEditSavedTextsList(entries, config) {
         const options = config || {};
         const disabled = !!options.disabled;
         const selectedValue = options.selectedValue ? String(options.selectedValue) : '';
+        const hasEntries = data.length > 0;
+        const listDisabled = disabled || !hasEntries;
         listEl.innerHTML = '';
         listEl.setAttribute('role', 'listbox');
         listEl.setAttribute('aria-multiselectable', 'false');
-        listEl.classList.toggle('disabled', disabled);
-        listEl.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+        listEl.classList.toggle('disabled', listDisabled);
+        listEl.setAttribute('aria-disabled', listDisabled ? 'true' : 'false');
 
-        if (!selectEl.disabled && disabled) {
-          selectEl.disabled = true;
-        }
-
-        if (disabled || data.length === 0) {
+        if (listDisabled) {
           setEditSavedTextsCollapsed(false);
           const empty = document.createElement('div');
           empty.className = 'edit-saved-empty';
           empty.textContent = 'No hay textos guardados';
           listEl.appendChild(empty);
-          selectEl.innerHTML = '';
+          if (!hasEntries) {
+            selectEl.innerHTML = '';
+          }
           selectEl.disabled = true;
           syncEditSavedTextsCollapseClass();
           return;
@@ -739,11 +747,21 @@ function setEditDefaultStyles() {
         const colorAlt2 = document.getElementById('editColorAlt2');
         const borderToggle = document.getElementById('editToggleBorder');
         const boldToggle = document.getElementById('editToggleBold');
-        if (colorHeader) colorHeader.value = DEFAULT_STYLE.headerColor;
-        if (colorAlt1) colorAlt1.value = DEFAULT_STYLE.altColor1;
-        if (colorAlt2) colorAlt2.value = DEFAULT_STYLE.altColor2;
-        if (borderToggle) borderToggle.checked = DEFAULT_STYLE.border;
-        if (boldToggle) boldToggle.checked = DEFAULT_STYLE.bold;
+        const defaults =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
+        if (colorHeader) colorHeader.value = defaults.headerColor;
+        if (colorAlt1) colorAlt1.value = defaults.altColor1;
+        if (colorAlt2) colorAlt2.value = defaults.altColor2;
+        if (borderToggle) borderToggle.checked = !!defaults.border;
+        if (boldToggle) boldToggle.checked = !!defaults.bold;
       }
 
 /* -------------------------------------------------------------------------- */
@@ -794,6 +812,16 @@ function collectEditFavoriteConfig(validation) {
         const borderToggle = document.getElementById('editToggleBorder');
         const boldToggle = document.getElementById('editToggleBold');
         const updateFormulaReferences = shouldUpdateEditFormulaReferences();
+        const defaults =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
         return {
           version: 1,
           name: values.name || '',
@@ -808,11 +836,11 @@ function collectEditFavoriteConfig(validation) {
           },
           headers: headers,
           style: {
-            headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
-            altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
-            altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
-            border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
-            bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+            headerColor: headerColorInput ? headerColorInput.value : defaults.headerColor,
+            altColor1: alt1Input ? alt1Input.value : defaults.altColor1,
+            altColor2: alt2Input ? alt2Input.value : defaults.altColor2,
+            border: borderToggle ? !!borderToggle.checked : defaults.border,
+            bold: boldToggle ? !!boldToggle.checked : defaults.bold
           },
           updateFormulaReferences: updateFormulaReferences,
           origin: 'tableEdit',
@@ -1299,13 +1327,25 @@ function populateEditForm(meta) {
         }
 
         const style = normalizedMeta.style || {};
-        const headerColor = typeof style.headerColor === 'string' ? style.headerColor : DEFAULT_STYLE.headerColor;
-        const alt1 = typeof style.altColor1 === 'string' ? style.altColor1 : DEFAULT_STYLE.altColor1;
-        const alt2 = typeof style.altColor2 === 'string' ? style.altColor2 : DEFAULT_STYLE.altColor2;
-        const border = Object.prototype.hasOwnProperty.call(style, 'border')
-          ? !!style.border
-          : DEFAULT_STYLE.border;
-        const bold = Object.prototype.hasOwnProperty.call(style, 'bold') ? !!style.bold : DEFAULT_STYLE.bold;
+        const defaults =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
+        const normalizedStyle =
+          typeof normalizeTableStyleDefaults === 'function'
+            ? normalizeTableStyleDefaults(style, defaults)
+            : Object.assign({}, defaults, style || {});
+        const headerColor = normalizedStyle.headerColor;
+        const alt1 = normalizedStyle.altColor1;
+        const alt2 = normalizedStyle.altColor2;
+        const border = !!normalizedStyle.border;
+        const bold = !!normalizedStyle.bold;
 
         const headerColorInput = document.getElementById('editColorHeader');
         if (headerColorInput) {
@@ -1489,12 +1529,22 @@ async function handleEditApplyFormat() {
         const alt2Input = document.getElementById('editColorAlt2');
         const borderToggle = document.getElementById('editToggleBorder');
         const boldToggle = document.getElementById('editToggleBold');
+        const defaults =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
         const style = {
-          headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
-          altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
-          altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
-          border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
-          bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+          headerColor: headerColorInput ? headerColorInput.value : defaults.headerColor,
+          altColor1: alt1Input ? alt1Input.value : defaults.altColor1,
+          altColor2: alt2Input ? alt2Input.value : defaults.altColor2,
+          border: borderToggle ? !!borderToggle.checked : defaults.border,
+          bold: boldToggle ? !!boldToggle.checked : defaults.bold
         };
 
         const uniqueName = await ensureUniqueTableNameOrAlert(validation.values.name, {
@@ -1685,12 +1735,22 @@ async function handleEditSaveAction(options) {
         const alt2Input = document.getElementById('editColorAlt2');
         const borderToggle = document.getElementById('editToggleBorder');
         const boldToggle = document.getElementById('editToggleBold');
+        const defaults =
+          typeof getTableStyleDefaults === 'function'
+            ? getTableStyleDefaults()
+            : {
+                headerColor: DEFAULT_STYLE.headerColor,
+                altColor1: DEFAULT_STYLE.altColor1,
+                altColor2: DEFAULT_STYLE.altColor2,
+                border: DEFAULT_STYLE.border,
+                bold: DEFAULT_STYLE.bold
+              };
         const style = {
-          headerColor: headerColorInput ? headerColorInput.value : DEFAULT_STYLE.headerColor,
-          altColor1: alt1Input ? alt1Input.value : DEFAULT_STYLE.altColor1,
-          altColor2: alt2Input ? alt2Input.value : DEFAULT_STYLE.altColor2,
-          border: borderToggle ? !!borderToggle.checked : DEFAULT_STYLE.border,
-          bold: boldToggle ? !!boldToggle.checked : DEFAULT_STYLE.bold
+          headerColor: headerColorInput ? headerColorInput.value : defaults.headerColor,
+          altColor1: alt1Input ? alt1Input.value : defaults.altColor1,
+          altColor2: alt2Input ? alt2Input.value : defaults.altColor2,
+          border: borderToggle ? !!borderToggle.checked : defaults.border,
+          bold: boldToggle ? !!boldToggle.checked : defaults.bold
         };
 
         const updateFormulaReferences = shouldUpdateEditFormulaReferences();

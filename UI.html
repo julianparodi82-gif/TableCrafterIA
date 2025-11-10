@@ -362,6 +362,25 @@
         left: 50%;
         transform: translateX(-50%);
       }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]::after {
+        top: 50%;
+        bottom: auto;
+        left: auto;
+        right: calc(100% + 12px);
+        transform: translate(4px, -50%);
+      }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]::before {
+        top: 50%;
+        bottom: auto;
+        left: auto;
+        right: calc(100% + 4px);
+        transform: translateY(-50%);
+        border-color: transparent transparent transparent var(--tc-tooltip-bg);
+      }
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]:hover::after,
+      .tc-tooltip-target.tc-tooltip-target--left[data-tooltip]:hover::before {
+        transform: translate(0, -50%);
+      }
       .ai-report-order-label.tc-tooltip-target[data-tooltip]::after {
         bottom: auto;
         top: calc(100% + 8px);
@@ -594,6 +613,16 @@
       .section:last-child {
         border-bottom: none;
         margin-bottom: 0;
+      }
+      body.theme-wordcrafter .section.word-title-section {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 14px;
+      }
+      body.theme-wordcrafter #wordTitleSectionBlock {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 14px;
       }
       .tc-card {
         background: var(--tc-surface);
@@ -881,8 +910,12 @@
         transform: scale(0.95);
       }
       .edit-saved-empty {
-        padding: 16px 12px;
-        color: #000000;
+        margin: 8px 12px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        border: 1px dashed var(--tc-border-strong);
+        background: var(--tc-surface-alt);
+        color: var(--tc-muted);
         font-size: 14px;
         text-align: center;
       }
@@ -928,6 +961,63 @@
       .ai-action-section {
         margin-top: 16px;
         display: none;
+      }
+      .table-ai-section {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(46, 163, 125, 0.18);
+        background: linear-gradient(135deg, rgba(46, 163, 125, 0.12), rgba(223, 246, 235, 0.38));
+        box-shadow: 0 14px 32px rgba(46, 163, 125, 0.18);
+      }
+      .ai-sync-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+      .ai-sync-card {
+        flex: 1 1 220px;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(46, 163, 125, 0.24);
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 10px 24px rgba(46, 163, 125, 0.12);
+      }
+      .ai-sync-card h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1F7D5A;
+      }
+      .ai-sync-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 13px;
+        color: #065F46;
+      }
+      .ai-sync-option input[type='checkbox'] {
+        margin-top: 2px;
+      }
+      .ai-sync-helper {
+        margin: 0;
+        font-size: 12px;
+        color: rgba(12, 64, 43, 0.76);
+      }
+      .ai-sync-summary {
+        border-radius: 10px;
+        border: 1px solid rgba(46, 163, 125, 0.24);
+        background: rgba(46, 163, 125, 0.12);
+        padding: 10px 12px;
+        color: #0F5132;
+        font-size: 13px;
+        line-height: 1.5;
       }
       .ai-report-options {
         display: flex;
@@ -3822,6 +3912,65 @@
           max-height: 60vh;
         }
       }
+      .table-format-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        margin-bottom: 4px;
+      }
+      .table-format-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--tc-muted);
+        letter-spacing: 0;
+      }
+      .table-format-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .table-format-action {
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 6px;
+        padding: 6px 10px;
+        min-height: 32px;
+        min-width: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--tc-primary-dark, #0F172A);
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      }
+      .table-format-action:hover,
+      .table-format-action:focus {
+        background: rgba(15, 23, 42, 0.08);
+        border-color: rgba(15, 23, 42, 0.18);
+        outline: none;
+      }
+      .table-format-action:focus-visible {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+      }
+      .table-format-action-icon {
+        font-size: 16px;
+        line-height: 1;
+      }
+      .table-format-action--success {
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(22, 163, 74, 0.45);
+        color: #047857;
+      }
+      .table-format-action--restore {
+        background: rgba(59, 130, 246, 0.18);
+        border-color: rgba(37, 99, 235, 0.45);
+        color: #1D4ED8;
+      }
+      body.theme-wordcrafter .table-format-toolbar {
+        display: none;
+      }
       .toggle-group {
         display: flex;
         align-items: center;
@@ -4240,7 +4389,7 @@
         display: none;
       }
       .word-body-context-card {
-        margin-top: 16px;
+        margin-top: 12px;
         border-radius: 18px;
         background: linear-gradient(135deg, rgba(42, 176, 255, 0.16), rgba(2, 132, 199, 0.12));
         border: 1px solid rgba(28, 141, 212, 0.32);
@@ -4249,7 +4398,7 @@
         box-shadow: 0 24px 48px rgba(30, 136, 191, 0.18);
       }
       .word-personalization-card {
-        margin-top: 16px;
+        margin-top: 12px;
         border-radius: 18px;
         background: linear-gradient(135deg, rgba(42, 176, 255, 0.12), rgba(2, 132, 199, 0.08));
         border: 1px solid rgba(28, 141, 212, 0.28);
@@ -4288,20 +4437,8 @@
         min-width: 180px;
         flex: 1 1 auto;
       }
-      .word-create-divider {
-        display: none;
-        width: 100%;
-        height: 1px;
-        margin: 32px 0;
-        background: linear-gradient(
-          90deg,
-          rgba(15, 23, 42, 0),
-          rgba(15, 23, 42, 0.12),
-          rgba(15, 23, 42, 0)
-        );
-      }
       .word-structure-card {
-        margin-top: 16px;
+        margin-top: 12px;
         border-radius: 18px;
         background: linear-gradient(135deg, rgba(42, 176, 255, 0.14), rgba(2, 132, 199, 0.1));
         border: 1px solid rgba(28, 141, 212, 0.28);
@@ -4637,6 +4774,40 @@
         color: #9D174D;
         font-size: 13px;
         line-height: 1.45;
+      }
+      .word-refresh-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .word-refresh-fieldset {
+        border: 1px solid rgba(42, 176, 255, 0.24);
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.92);
+      }
+      .word-refresh-legend {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1C8DD4;
+        margin-bottom: 4px;
+      }
+      .word-refresh-helper {
+        margin: 0;
+        font-size: 12px;
+        color: #0F172A;
+      }
+      .word-refresh-summary {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(42, 176, 255, 0.12);
+        color: #0B3D62;
+        font-size: 13px;
+        line-height: 1.5;
+        border: 1px solid rgba(28, 141, 212, 0.24);
       }
       .word-ai-toggle {
         display: inline-flex;
@@ -5088,8 +5259,8 @@
         </div>
       </div>
 
-      <div id="createTab" class="tab-content" data-themes="table word">
-        <div class="section">
+        <div id="createTab" class="tab-content" data-themes="table word">
+        <div class="section word-title-section">
           <div id="wordRangeToggleRow" class="word-range-toggle" style="display:none;">
             <label
               for="wordUseRangeToggle"
@@ -5139,7 +5310,7 @@
             </label>
           </div>
         </div>
-        <div class="section">
+        <div class="section" id="wordTitleSectionBlock">
           <label
             for="tableName"
             id="tableNameLabel"
@@ -5264,11 +5435,6 @@
             <label for="tableDesc">Descripción de la tabla</label>
             <textarea id="tableDesc" placeholder="Descripción de la tabla..."></textarea>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordStructureCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordStructureCard" class="word-structure-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5439,11 +5605,6 @@
               </div>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordContextCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordContextCard" class="word-body-context-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5507,11 +5668,6 @@
               </p>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordPersonalizationCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordPersonalizationCard" class="word-personalization-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5711,11 +5867,6 @@
               Ajusta estos campos para que la IA combine el estilo adecuado con tus indicaciones clave.
             </p>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordWebSourcesCard"
-            aria-hidden="true"
-          ></div>
           <div id="wordWebSourcesCard" class="word-web-card" style="display:none;">
             <div class="word-context-header">
               <div class="word-context-heading">
@@ -5803,11 +5954,6 @@
               </div>
             </div>
           </div>
-          <div
-            class="word-create-divider"
-            data-word-divider-for="wordBodyOptions"
-            aria-hidden="true"
-          ></div>
           <div id="wordBodyOptions" class="word-text-options" style="display:none;">
             <div class="word-text-toggle-group">
               <div class="word-context-section-head">
@@ -5930,6 +6076,31 @@
           <div id="tableHeaderOptions" data-themes="table">
             <label>Encabezados (puede editar y reordenar)</label>
             <ul id="headersList" class="header-list"></ul>
+            <div class="table-format-toolbar">
+              <span class="table-format-title">Formato de Tabla</span>
+              <div class="table-format-actions">
+                <button
+                  type="button"
+                  id="tableFormatRememberBtn"
+                  class="table-format-action tc-tooltip-target tc-tooltip-target--left"
+                  aria-label="Usar el formato actual como predeterminado"
+                  data-tooltip="Establecer como formato predeterminado"
+                >
+                  <span class="table-format-action-icon" aria-hidden="true">★</span>
+                  <span class="tc-visually-hidden">Guardar formato predeterminado</span>
+                </button>
+                <button
+                  type="button"
+                  id="tableFormatResetBtn"
+                  class="table-format-action tc-tooltip-target tc-tooltip-target--left"
+                  aria-label="Restablecer el formato principal"
+                  data-tooltip="Restablecer valores principales"
+                >
+                  <span class="table-format-action-icon" aria-hidden="true">↺</span>
+                  <span class="tc-visually-hidden">Restaurar formato principal</span>
+                </button>
+              </div>
+            </div>
             <div class="toggle-group">
               <label for="colorHeader">Color encabezado</label>
               <input type="color" id="colorHeader" />
@@ -6226,13 +6397,47 @@
             <button id="askBtn" class="btn-secondary" style="margin-top:8px;" disabled>Preguntar</button>
             <div id="apiWarning" class="small-text" style="margin-top:8px;"></div>
             <label for="answerBox" style="margin-top:12px;">Respuesta de la IA</label>
-            <textarea
-              id="answerBox"
-              class="ai-answer-output"
-              placeholder="Aquí verás la respuesta de la IA"
-              readonly
-            ></textarea>
+          <textarea
+            id="answerBox"
+            class="ai-answer-output"
+            placeholder="Aquí verás la respuesta de la IA"
+            readonly
+          ></textarea>
+        </div>
+        <div id="aiDataSyncSection" class="ai-action-section table-ai-section" style="display:none;">
+          <h3 class="ai-action-title">Sincronizar tablas con datos vigentes</h3>
+          <p class="ai-action-description">
+            Actualiza las tablas seleccionadas con cifras recientes mientras conservas los formatos y reglas definidos en TableCrafter.
+          </p>
+          <div class="ai-sync-grid">
+            <div class="ai-sync-card">
+              <h4>Componentes a sincronizar</h4>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncValues" checked /> Valores y texto</label>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncFormulas" checked /> Fórmulas y referencias</label>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncFormats" /> Formato y estilos</label>
+            </div>
+            <div class="ai-sync-card">
+              <h4>Preferencias avanzadas</h4>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncAppendRows" /> Agregar filas nuevas al final</label>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncRespectFilters" checked /> Respetar filtros activos</label>
+              <label class="ai-sync-option"><input type="checkbox" id="aiSyncKeepNotes" /> Conservar notas y comentarios</label>
+            </div>
           </div>
+          <div>
+            <label for="aiSyncNotes">Instrucciones para la actualización</label>
+            <textarea
+              id="aiSyncNotes"
+              rows="3"
+              placeholder="Ej. Reemplazar cifras del Q2 con la hoja 'Resumen 2025' y mantener totales anuales"
+            ></textarea>
+            <p class="ai-sync-helper">
+              Describe el origen de los datos recientes, rangos a sustituir o consideraciones que la IA deba respetar al sincronizar.
+            </p>
+          </div>
+          <div class="ai-sync-summary" id="aiDataSyncSummary">
+            La IA actualizará valores y fórmulas conservando formatos y filtros activos.
+          </div>
+        </div>
           <div id="aiWordLengthSection" class="ai-action-section word-ai-section" style="display:none;">
             <h3 class="ai-action-title">Cambiar longitud del texto</h3>
             <p class="ai-action-description">
@@ -6348,6 +6553,40 @@
             </div>
             <div class="word-ai-summary" id="wordSummaryPreview">
               El resumen incluirá viñetas con ideas clave en un formato equilibrado.
+            </div>
+          </div>
+          <div id="aiWordRefreshSection" class="ai-action-section word-ai-section" style="display:none;">
+            <h3 class="ai-action-title">Actualizar texto con datos recientes</h3>
+            <p class="ai-action-description">
+              Incorpora novedades cuantitativas o cualitativas en el texto manteniendo el estilo configurado en WordCrafter.
+            </p>
+            <div class="word-refresh-grid">
+              <fieldset class="word-refresh-fieldset">
+                <legend class="word-refresh-legend">Secciones a actualizar</legend>
+                <label class="word-ai-option"><input type="checkbox" id="wordRefreshIntro" checked /> Introducción</label>
+                <label class="word-ai-option"><input type="checkbox" id="wordRefreshBody" checked /> Desarrollo o cuerpo principal</label>
+                <label class="word-ai-option"><input type="checkbox" id="wordRefreshConclusion" /> Conclusión</label>
+              </fieldset>
+              <div class="word-ai-column">
+                <label for="wordRefreshData">Datos recientes a incorporar</label>
+                <textarea
+                  id="wordRefreshData"
+                  rows="4"
+                  placeholder="Ej. Ventas Q3 +18%, nuevos lanzamientos y aprendizajes clave del equipo comercial"
+                ></textarea>
+                <p class="word-refresh-helper">
+                  Resume cifras, mensajes o hitos que deban reemplazar al contenido existente para mantenerlo vigente.
+                </p>
+              </div>
+            </div>
+            <label class="word-ai-toggle">
+              <input type="checkbox" id="wordRefreshKeepTone" checked /> Mantener tono y formato originales
+            </label>
+            <label class="word-ai-toggle">
+              <input type="checkbox" id="wordRefreshHighlightChanges" /> Resaltar cambios en la propuesta final
+            </label>
+            <div class="word-refresh-summary" id="wordRefreshSummary">
+              La IA actualizará introducción y desarrollo conservando el tono original.
             </div>
           </div>
           <div id="aiReportSection" class="ai-action-section">
