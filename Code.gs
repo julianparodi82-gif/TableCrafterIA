@@ -2866,8 +2866,8 @@ function getFavoriteActionDetails(favoriteId) {
   if (type === 'wordFavorite') {
     return buildWordFavoriteResponse(entry);
   }
-  if (type === 'tableFavorite') {
-    return buildTableFavoriteResponse(entry);
+  if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+    return buildTableFavoriteResponse({ data: entry.data, type: type });
   }
   return { error: 'Favorito no encontrado.' };
 }
@@ -2906,6 +2906,9 @@ function getSavedActionDetails(actionId) {
   }
   if (type === 'wordFavorite') {
     return getWordFavoriteDetails(id);
+  }
+  if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+    return getFavoriteActionDetails(id);
   }
   return { error: 'Acción no soportada.' };
 }

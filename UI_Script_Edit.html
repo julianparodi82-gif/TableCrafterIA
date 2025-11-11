@@ -1421,7 +1421,7 @@ async function openActionForEditing(action) {
             return;
           }
           await window.WordFavoriteManager.openFavorite(action.id, { focusTitle: false });
-        } else if (action.type === 'tableFavorite') {
+        } else if (action.type === 'tableFavorite' || action.type === 'tableEditFavorite') {
           const hasManager =
             window.TableFavoriteManager && typeof window.TableFavoriteManager.openFavorite === 'function';
           const hasDirectOpener = typeof openTableFavoriteForEditing === 'function';
