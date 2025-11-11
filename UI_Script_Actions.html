@@ -1089,16 +1089,6 @@ function normalizeFavoriteActionEntry(action) {
     normalized.fullRangeA1 = action.fullRangeA1 ? String(action.fullRangeA1) : '';
     normalized.cols = action.cols === null || action.cols === undefined ? '' : String(action.cols);
     normalized.rows = action.rows === null || action.rows === undefined ? '' : String(action.rows);
-  } else if (type === 'wordFavorite') {
-    if (action.config && typeof action.config === 'object') {
-      try {
-        normalized.config = JSON.parse(JSON.stringify(action.config));
-      } catch (err) {
-        normalized.config = action.config;
-      }
-    } else {
-      normalized.config = null;
-    }
   } else if (type === 'tableFavorite' || type === 'tableEditFavorite') {
     if (action.config && typeof action.config === 'object') {
       try {
@@ -1109,35 +1099,59 @@ function normalizeFavoriteActionEntry(action) {
     } else {
       normalized.config = null;
     }
+    if (action.range && typeof action.range === 'object') {
+      try {
+        normalized.range = JSON.parse(JSON.stringify(action.range));
+      } catch (err2) {
+        normalized.range = Object.assign({}, action.range);
+      }
+    } else if (normalized.config && normalized.config.range && typeof normalized.config.range === 'object') {
+      try {
+        normalized.range = JSON.parse(JSON.stringify(normalized.config.range));
+      } catch (err3) {
+        normalized.range = normalized.config.range;
+      }
+    } else {
+      normalized.range = null;
+    }
+    if (Array.isArray(action.headers)) {
+      normalized.headers = action.headers.slice();
+    } else if (normalized.config && Array.isArray(normalized.config.headers)) {
+      normalized.headers = normalized.config.headers.slice();
+    } else {
+      normalized.headers = [];
+    }
     if (action.style && typeof action.style === 'object') {
       try {
         normalized.style = JSON.parse(JSON.stringify(action.style));
-      } catch (err2) {
-        normalized.style = action.style;
+      } catch (err4) {
+        normalized.style = Object.assign({}, action.style);
+      }
+    } else if (normalized.config && normalized.config.style && typeof normalized.config.style === 'object') {
+      try {
+        normalized.style = JSON.parse(JSON.stringify(normalized.config.style));
+      } catch (err5) {
+        normalized.style = normalized.config.style;
       }
     } else {
       normalized.style = null;
     }
-    if (Array.isArray(action.headers)) {
+    const originValue = action.origin || (normalized.config && normalized.config.origin) || '';
+    normalized.origin = originValue ? String(originValue) : '';
+    const kindValue = action.favoriteKind || action.recordType || (normalized.config && normalized.config.kind) || type;
+    const resolvedKind = kindValue ? String(kindValue) : type;
+    normalized.favoriteKind = resolvedKind;
+    normalized.recordType = resolvedKind;
+  } else if (type === 'wordFavorite') {
+    if (action.config && typeof action.config === 'object') {
       try {
-        normalized.headers = JSON.parse(JSON.stringify(action.headers));
-      } catch (err3) {
-        normalized.headers = action.headers.slice();
+        normalized.config = JSON.parse(JSON.stringify(action.config));
+      } catch (err) {
+        normalized.config = action.config;
       }
     } else {
-      normalized.headers = [];
+      normalized.config = null;
     }
-    normalized.rangeA1 = action.rangeA1 ? String(action.rangeA1) : '';
-    normalized.fullRangeA1 = action.fullRangeA1 ? String(action.fullRangeA1) : '';
-    normalized.sheetName = action.sheetName ? String(action.sheetName) : '';
-    normalized.cols = action.cols === null || action.cols === undefined ? '' : String(action.cols);
-    normalized.rows = action.rows === null || action.rows === undefined ? '' : String(action.rows);
-    if (!Object.prototype.hasOwnProperty.call(normalized, 'config') || !normalized.config) {
-      normalized.config = {};
-    }
-    normalized.updateFormulaReferences = Object.prototype.hasOwnProperty.call(action, 'updateFormulaReferences')
-      ? !!action.updateFormulaReferences
-      : true;
   }
   return normalized;
 }
@@ -1676,15 +1690,29 @@ function buildTableFavoriteSummary(action) {
     return '';
   }
   const parts = [];
-  const rangePieces = [];
-  const sheetName = action.sheetName ? String(action.sheetName) : '';
-  const fullRange = action.fullRangeA1
+  const favoriteRange =
+    (action.range && typeof action.range === 'object'
+      ? action.range
+      : action.config && action.config.range && typeof action.config.range === 'object'
+      ? action.config.range
+      : null) || null;
+  const sheetName = favoriteRange && favoriteRange.sheetName
+    ? String(favoriteRange.sheetName)
+    : action.sheetName
+    ? String(action.sheetName)
+    : '';
+  const fullRange = favoriteRange && favoriteRange.fullA1
+    ? String(favoriteRange.fullA1)
+    : favoriteRange && favoriteRange.value
+    ? String(favoriteRange.value)
+    : action.fullRangeA1
     ? String(action.fullRangeA1)
     : sheetName && action.rangeA1
     ? sheetName + '!' + String(action.rangeA1)
     : action.rangeA1
     ? String(action.rangeA1)
     : '';
+  const rangePieces = [];
   if (sheetName) {
     rangePieces.push('Hoja: ' + sheetName);
   }
@@ -1694,11 +1722,31 @@ function buildTableFavoriteSummary(action) {
   if (rangePieces.length) {
     parts.push(rangePieces.join(' • '));
   }
-  const cols = parseInt(action.cols, 10);
-  const rows = parseInt(action.rows, 10);
-  if (!isNaN(cols) && cols > 0 && !isNaN(rows) && rows > 0) {
+  function resolveDimensionValue() {
+    const candidates = Array.prototype.slice.call(arguments);
+    for (let i = 0; i < candidates.length; i++) {
+      const value = candidates[i];
+      if (value === null || value === undefined || value === '') {
+        continue;
+      }
+      const number = typeof value === 'number' ? value : parseInt(value, 10);
+      if (!isNaN(number) && number > 0) {
+        return number;
+      }
+    }
+    return 0;
+  }
+  const cols = resolveDimensionValue(
+    favoriteRange && Object.prototype.hasOwnProperty.call(favoriteRange, 'cols') ? favoriteRange.cols : null,
+    action.cols
+  );
+  const rows = resolveDimensionValue(
+    favoriteRange && Object.prototype.hasOwnProperty.call(favoriteRange, 'rows') ? favoriteRange.rows : null,
+    action.rows
+  );
+  if (cols > 0 && rows > 0) {
     parts.push('Dimensiones: ' + cols + '×' + rows);
-  } else if (!isNaN(cols) && cols > 0) {
+  } else if (cols > 0) {
     parts.push('Columnas: ' + cols);
   }
   let headersCount = 0;
@@ -1710,11 +1758,12 @@ function buildTableFavoriteSummary(action) {
   if (headersCount > 0) {
     parts.push('Encabezados: ' + headersCount);
   }
-  const style = action.style && typeof action.style === 'object'
-    ? action.style
-    : action.config && action.config.style && typeof action.config.style === 'object'
-    ? action.config.style
-    : null;
+  const style =
+    (action.style && typeof action.style === 'object'
+      ? action.style
+      : action.config && action.config.style && typeof action.config.style === 'object'
+      ? action.config.style
+      : null) || null;
   if (style) {
     const styleParts = [];
     if (Object.prototype.hasOwnProperty.call(style, 'border')) {
@@ -1725,6 +1774,19 @@ function buildTableFavoriteSummary(action) {
     }
     if (styleParts.length) {
       parts.push(styleParts.join(' • '));
+    }
+  }
+  const origin = action.origin || (action.config && action.config.origin) || '';
+  if (origin) {
+    let originLabel = '';
+    const normalizedOrigin = String(origin).toLowerCase();
+    if (normalizedOrigin.indexOf('edit') !== -1) {
+      originLabel = 'Origen: Editar tabla';
+    } else if (normalizedOrigin.indexOf('create') !== -1 || normalizedOrigin.indexOf('tabla') !== -1) {
+      originLabel = 'Origen: Crear tabla';
+    }
+    if (originLabel) {
+      parts.push(originLabel);
     }
   }
   return parts.join('\n');

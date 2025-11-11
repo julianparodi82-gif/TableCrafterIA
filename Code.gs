@@ -1916,6 +1916,14 @@ function listSavedActions(options) {
         actions.push(favorite);
         continue;
       }
+      if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+        var tableFavorite = buildTableFavoriteResponse({ data: row, type: type });
+        if (!tableFavorite || tableFavorite.error) {
+          continue;
+        }
+        actions.push(tableFavorite);
+        continue;
+      }
       if (type === 'wordFavorite') {
         var wordFavorite = buildWordFavoriteResponse({ data: row });
         if (!wordFavorite || wordFavorite.error) {
