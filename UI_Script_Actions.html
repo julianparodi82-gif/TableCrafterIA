@@ -1232,12 +1232,6 @@ async function supplementWordFavorites(list) {
 
 async function supplementTableFavorites(list) {
   const normalizedList = Array.isArray(list) ? list.slice() : [];
-  const hasTableFavorites = normalizedList.some(function(entry) {
-    return entry && (entry.type === 'tableFavorite' || entry.type === 'tableEditFavorite');
-  });
-  if (hasTableFavorites) {
-    return normalizedList;
-  }
   let tableResults;
   try {
     tableResults = await callServerFunction('listTableFavorites');
@@ -1249,20 +1243,31 @@ async function supplementTableFavorites(list) {
   if (!normalizedTableFavorites.length) {
     return normalizedList;
   }
-  const seenIds = Object.create(null);
-  normalizedList.forEach(function(entry) {
-    if (entry && entry.id) {
-      seenIds[entry.id] = true;
+  const mergedList = normalizedList.slice();
+  const indexById = Object.create(null);
+  for (let i = 0; i < mergedList.length; i++) {
+    const entry = mergedList[i];
+    if (!entry || !entry.id) {
+      continue;
     }
-  });
+    const key = String(entry.id);
+    if (!Object.prototype.hasOwnProperty.call(indexById, key)) {
+      indexById[key] = i;
+    }
+  }
   normalizedTableFavorites.forEach(function(entry) {
-    if (!entry || !entry.id || seenIds[entry.id]) {
+    if (!entry || !entry.id) {
       return;
     }
-    normalizedList.push(entry);
-    seenIds[entry.id] = true;
+    const key = String(entry.id);
+    if (Object.prototype.hasOwnProperty.call(indexById, key)) {
+      mergedList[indexById[key]] = entry;
+      return;
+    }
+    indexById[key] = mergedList.length;
+    mergedList.push(entry);
   });
-  return normalizedList;
+  return mergedList;
 }
 
 async function mergeSupplementalFavorites(list) {
