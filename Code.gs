@@ -738,9 +738,11 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'favoritotabla' ||
     normalizedPrefix === 'tablafavorita' ||
     normalizedPrefix === 'creartablatc' ||
+    normalizedPrefix === 'accionestc' ||
     normalizedFull.indexOf('tablefavorite') !== -1 ||
     normalizedFull.indexOf('favoritotabla') !== -1 ||
-    normalizedFull.indexOf('creartablatc') !== -1
+    normalizedFull.indexOf('creartablatc') !== -1 ||
+    normalizedFull.indexOf('accionestc') !== -1
   ) {
     return 'tableFavorite';
   }
@@ -798,24 +800,56 @@ function hasWordFavoriteConfigSignals(payload, depth) {
       lowerKey.indexOf('wordfavorite') !== -1 ||
       lowerKey.indexOf('wordai') !== -1 ||
       lowerKey.indexOf('texto') !== -1 ||
-      lowerKey.indexOf('textfavorite') !== -1 ||
-      lowerKey.indexOf('panelia') !== -1
+      lowerKey.indexOf('textfavorite') !== -1
     ) {
       return true;
+    }
+    if (lowerKey.indexOf('panelia') !== -1) {
+      if (
+        lowerKey.indexOf('table') === -1 &&
+        lowerKey.indexOf('tabla') === -1 &&
+        lowerKey.indexOf('tablacrafter') === -1 &&
+        lowerKey.indexOf('tc') === -1
+      ) {
+        return true;
+      }
     }
   }
   var context = payload.context;
   if (context) {
     if (typeof context === 'string' && context.trim()) {
-      return true;
-    }
-    if (typeof context === 'object') {
+      var normalizedContext = context.toLowerCase();
       if (
-        (context.instructions && String(context.instructions).trim()) ||
-        (context.focus && String(context.focus).trim()) ||
-        (context.summary && String(context.summary).trim())
+        normalizedContext.indexOf('word') !== -1 ||
+        normalizedContext.indexOf('texto') !== -1 ||
+        normalizedContext.indexOf('wordcrafter') !== -1 ||
+        normalizedContext.indexOf('wc') !== -1 ||
+        normalizedContext.indexOf('panelia') !== -1
       ) {
         return true;
+      }
+    }
+    if (typeof context === 'object') {
+      var contextKeys = ['instructions', 'focus', 'summary'];
+      for (var c = 0; c < contextKeys.length; c++) {
+        var contextKey = contextKeys[c];
+        if (!Object.prototype.hasOwnProperty.call(context, contextKey)) {
+          continue;
+        }
+        var contextValue = context[contextKey];
+        if (typeof contextValue !== 'string') {
+          continue;
+        }
+        var loweredContextValue = contextValue.toLowerCase();
+        if (
+          loweredContextValue.indexOf('word') !== -1 ||
+          loweredContextValue.indexOf('texto') !== -1 ||
+          loweredContextValue.indexOf('wordcrafter') !== -1 ||
+          loweredContextValue.indexOf('wc') !== -1 ||
+          loweredContextValue.indexOf('panelia') !== -1
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -933,22 +967,26 @@ function resolveMetaRecordType(row) {
   }
   if (parsedOrigin !== null && parsedOrigin !== undefined) {
     var originText = String(parsedOrigin).toLowerCase();
+    var hasTableSignal =
+      originText.indexOf('table') !== -1 ||
+      originText.indexOf('tabla') !== -1 ||
+      originText.indexOf('tablacrafter') !== -1 ||
+      originText.indexOf('tc') !== -1;
+    var hasEditSignal = originText.indexOf('edit') !== -1 || originText.indexOf('editar') !== -1;
+    var hasCreateSignal = originText.indexOf('create') !== -1 || originText.indexOf('crear') !== -1;
+    if (hasEditSignal || (hasTableSignal && originText.indexOf('edit') !== -1)) {
+      return 'tableEditFavorite';
+    }
+    if (hasTableSignal || hasCreateSignal) {
+      return 'tableFavorite';
+    }
     if (
       originText.indexOf('word') !== -1 ||
       originText.indexOf('texto') !== -1 ||
       originText.indexOf('wordcrafter') !== -1 ||
-      originText.indexOf('panelia') !== -1
+      (originText.indexOf('panelia') !== -1 && !hasTableSignal && !hasEditSignal && !hasCreateSignal)
     ) {
       return 'wordFavorite';
-    }
-    if (originText.indexOf('edit') !== -1 || originText.indexOf('editar') !== -1) {
-      return 'tableEditFavorite';
-    }
-    if (originText.indexOf('table') !== -1 || originText.indexOf('tabla') !== -1) {
-      return 'tableFavorite';
-    }
-    if (originText.indexOf('create') !== -1 || originText.indexOf('crear') !== -1) {
-      return 'tableFavorite';
     }
   }
   var configCandidate = parsedConfig;
@@ -1916,6 +1954,14 @@ function listSavedActions(options) {
         actions.push(favorite);
         continue;
       }
+      if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+        var tableFavorite = buildTableFavoriteResponse({ data: row, type: type });
+        if (!tableFavorite || tableFavorite.error) {
+          continue;
+        }
+        actions.push(tableFavorite);
+        continue;
+      }
       if (type === 'wordFavorite') {
         var wordFavorite = buildWordFavoriteResponse({ data: row });
         if (!wordFavorite || wordFavorite.error) {
@@ -2259,7 +2305,6 @@ function buildTableFavoriteResponse(entry) {
     referenceId: id
   });
   config.metadata = finalizedMetadata;
-  var id = normalizeMetaId(data[META_INDEX.id]);
   var name = data[META_INDEX.name] || config.name || '';
   var description = data[META_INDEX.description] || config.description || '';
   if (!config.name) {
@@ -2271,7 +2316,7 @@ function buildTableFavoriteResponse(entry) {
   var recordType = normalizedKind || 'tableFavorite';
   return {
     id: id,
-    type: 'tableFavorite',
+    type: recordType,
     recordType: recordType,
     favoriteKind: recordType,
     origin: config.origin,
@@ -2858,8 +2903,8 @@ function getFavoriteActionDetails(favoriteId) {
   if (type === 'wordFavorite') {
     return buildWordFavoriteResponse(entry);
   }
-  if (type === 'tableFavorite') {
-    return buildTableFavoriteResponse(entry);
+  if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+    return buildTableFavoriteResponse({ data: entry.data, type: type });
   }
   return { error: 'Favorito no encontrado.' };
 }
@@ -2898,6 +2943,9 @@ function getSavedActionDetails(actionId) {
   }
   if (type === 'wordFavorite') {
     return getWordFavoriteDetails(id);
+  }
+  if (type === 'tableFavorite' || type === 'tableEditFavorite') {
+    return getFavoriteActionDetails(id);
   }
   return { error: 'Acción no soportada.' };
 }
