@@ -1160,41 +1160,6 @@ function normalizeFavoriteActionList(list) {
     });
 }
 
-function filterLegacyFavoriteEntries(list) {
-  if (!Array.isArray(list)) {
-    return [];
-  }
-  return list.filter(function(entry) {
-    if (!entry) {
-      return false;
-    }
-    const resolvedType = resolveFavoriteTypeFromEntry(entry);
-    if (
-      resolvedType === 'reportFavorite' ||
-      resolvedType === 'wordFavorite' ||
-      resolvedType === 'tableFavorite' ||
-      resolvedType === 'tableEditFavorite'
-    ) {
-      return true;
-    }
-    const hasFeatures = Array.isArray(entry.features) && entry.features.length > 0;
-    const hasDetails = Array.isArray(entry.featureDetails) && entry.featureDetails.length > 0;
-    const hasChannels = Array.isArray(entry.channels) && entry.channels.length > 0;
-    const hasReportHints =
-      hasFeatures ||
-      hasDetails ||
-      hasChannels ||
-      !!(entry && (entry.format || entry.fileName || entry.fileExtension));
-    if (hasReportHints) {
-      return true;
-    }
-    if (entry && entry.customization && typeof entry.customization === 'object') {
-      return Object.keys(entry.customization).length > 0;
-    }
-    return false;
-  });
-}
-
 async function supplementWordFavorites(list) {
   const normalizedList = Array.isArray(list) ? list.slice() : [];
   const hasWordFavorites = normalizedList.some(function(entry) {
@@ -1277,54 +1242,51 @@ async function mergeSupplementalFavorites(list) {
 
 async function fetchFavoriteActionList(options) {
   const opts = options || {};
-  let primaryResult;
+  let primaryResult = [];
   let primaryError = null;
-  if (!opts.preferLegacy) {
-    try {
-      primaryResult = await callServerFunction('listFavoriteActions');
-      const normalizedPrimary = normalizeFavoriteActionList(primaryResult);
-      if (normalizedPrimary.length > 0 || opts.skipLegacyFallback) {
-        return mergeSupplementalFavorites(normalizedPrimary);
-      }
-      if (opts.allowLegacyFallback === false) {
-        return mergeSupplementalFavorites(normalizedPrimary);
-      }
-    } catch (err) {
-      primaryError = err;
-      if (opts.skipLegacyFallback || opts.allowLegacyFallback === false) {
-        throw err;
-      }
+  try {
+    primaryResult = await callServerFunction('listSavedActions', { scope: 'all' });
+  } catch (err) {
+    primaryError = err;
+  }
+  let normalizedPrimary = [];
+  if (Array.isArray(primaryResult)) {
+    normalizedPrimary = normalizeFavoriteActionList(primaryResult);
+    if (normalizedPrimary.length > 0) {
+      return mergeSupplementalFavorites(normalizedPrimary);
     }
   }
-  if (opts.allowLegacyFallback === false) {
-    if (Array.isArray(primaryResult)) {
-      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
-    }
+  if (opts.allowLegacyFallback === false && opts.preferLegacy !== true) {
     if (primaryError) {
       throw primaryError;
     }
-    return mergeSupplementalFavorites([]);
+    return mergeSupplementalFavorites(normalizedPrimary);
   }
-  try {
-    const legacyResult = await callServerFunction('listSavedActions', { scope: 'all' });
-    const favoritesOnly = filterLegacyFavoriteEntries(legacyResult);
-    const normalizedLegacy = normalizeFavoriteActionList(favoritesOnly);
+  let legacyResult = [];
+  let legacyError = null;
+  if (!opts.skipLegacyFallback) {
+    try {
+      legacyResult = await callServerFunction('listFavoriteActions');
+    } catch (err2) {
+      legacyError = err2;
+    }
+  }
+  if (Array.isArray(legacyResult) && legacyResult.length) {
+    const normalizedLegacy = normalizeFavoriteActionList(legacyResult);
     if (normalizedLegacy.length > 0) {
       return mergeSupplementalFavorites(normalizedLegacy);
     }
-    if (Array.isArray(primaryResult)) {
-      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
-    }
-    return mergeSupplementalFavorites(normalizedLegacy);
-  } catch (legacyError) {
-    if (Array.isArray(primaryResult)) {
-      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
-    }
-    if (primaryError) {
-      throw legacyError;
-    }
+  }
+  if (primaryError && legacyError) {
     throw legacyError;
   }
+  if (primaryError && !legacyResult.length) {
+    throw primaryError;
+  }
+  if (legacyError && normalizedPrimary.length === 0) {
+    throw legacyError;
+  }
+  return mergeSupplementalFavorites(normalizedPrimary.length ? normalizedPrimary : normalizeFavoriteActionList(legacyResult));
 }
 
 function renderSavedActionsList(actions, selectedId, options) {
@@ -1335,6 +1297,9 @@ function renderSavedActionsList(actions, selectedId, options) {
   const opts = options || {};
   const list = Array.isArray(actions) ? actions : [];
   const theme = getActiveThemeForActions();
+  const ariaLabel =
+    theme === 'word' ? 'Acciones guardadas de Wordcrafter' : 'Acciones guardadas de TableCrafter';
+  listElement.setAttribute('aria-label', ariaLabel);
   let filteredList = filterSavedActionsForTheme(list, theme);
   listElement.innerHTML = '';
   listElement.setAttribute('aria-multiselectable', 'false');
@@ -2130,9 +2095,20 @@ async function loadSavedActionDetails(actionId) {
     return;
   }
   setSavedActionsSelection(actionId, { collapse: false });
+  const cachedEntry = findSavedActionById(actionId);
+  const cachedType = cachedEntry ? normalizeFavoriteTypeCandidate(cachedEntry.type) : '';
+  const resolvedType = cachedEntry ? resolveFavoriteTypeFromEntry(cachedEntry) : '';
+  const targetType = cachedType || resolvedType;
   let response;
   try {
-    response = await callServerFunction('getFavoriteActionDetails', actionId);
+    if (targetType === 'table') {
+      response = await callServerFunction('getSavedActionDetails', actionId);
+    } else {
+      response = await callServerFunction('getFavoriteActionDetails', actionId);
+      if (!response || response.error) {
+        response = await callServerFunction('getSavedActionDetails', actionId);
+      }
+    }
   } catch (err) {
     await showMessageModal(
       'No se pudo cargar la acción seleccionada: ' + (err && err.message ? err.message : err),
