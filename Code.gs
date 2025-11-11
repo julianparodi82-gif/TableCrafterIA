@@ -738,9 +738,11 @@ function inferMetaRecordTypeFromId(value) {
     normalizedPrefix === 'favoritotabla' ||
     normalizedPrefix === 'tablafavorita' ||
     normalizedPrefix === 'creartablatc' ||
+    normalizedPrefix === 'accionestc' ||
     normalizedFull.indexOf('tablefavorite') !== -1 ||
     normalizedFull.indexOf('favoritotabla') !== -1 ||
-    normalizedFull.indexOf('creartablatc') !== -1
+    normalizedFull.indexOf('creartablatc') !== -1 ||
+    normalizedFull.indexOf('accionestc') !== -1
   ) {
     return 'tableFavorite';
   }
