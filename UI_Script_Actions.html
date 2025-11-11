@@ -10,6 +10,49 @@ const ACTION_CHANNEL_LABELS = Object.freeze({
 const ACTION_EDITOR_DEFAULT_SUBTITLE =
   'Ajustá las características guardadas y actualizá la acción guardada directamente desde este panel.';
 const WORD_ACTION_ID_KEYWORDS = Object.freeze(['creartextowc', 'editartextowc', 'accioneswc']);
+const ACTION_TYPE_KEYWORDS = Object.freeze({
+  tableEditFavorite: [
+    'tableeditfavorite',
+    'tableedit',
+    'tablaeditar',
+    'favoritoeditar',
+    'tablaeditarfavorita',
+    'editartablatc',
+    'ajustartabla'
+  ],
+  tableFavorite: [
+    'tablefavorite',
+    'favoritotabla',
+    'tablafavorita',
+    'creartablatc',
+    'creartabla',
+    'formatoentabla',
+    'tablacrafter'
+  ],
+  table: ['table', 'tabla', 'tablaguardada', 'tablaregistrada', 'tableaction'],
+  reportFavorite: ['reportfavorite', 'reporte', 'reportefavorito', 'report', 'iareport', 'accionesia'],
+  wordFavorite: [
+    'wordfavorite',
+    'word',
+    'texto',
+    'textfavorite',
+    'textofavorito',
+    'favoritotexto',
+    'textoguardado',
+    'creartextowc',
+    'editartextowc',
+    'accioneswc',
+    'wordcrafter',
+    'wcaction'
+  ]
+});
+const ACTION_TYPE_PRIORITY = Object.freeze([
+  'tableEditFavorite',
+  'tableFavorite',
+  'table',
+  'reportFavorite',
+  'wordFavorite'
+]);
 
 let savedActionsCache = [];
 let savedActionsLoaded = false;
@@ -65,12 +108,12 @@ function isWordcrafterActionFavorite(action, resolvedTypeHint) {
   if (!action) {
     return false;
   }
-  const directType = normalizeFavoriteTypeCandidate(action.type);
-  if (directType === 'wordFavorite') {
-    return true;
-  }
   const resolvedType = resolvedTypeHint || resolveFavoriteTypeFromEntry(action);
   if (resolvedType === 'wordFavorite') {
+    return true;
+  }
+  const directType = normalizeFavoriteTypeCandidate(action.type);
+  if (directType === 'wordFavorite') {
     return true;
   }
   const metadata = action.metadata && typeof action.metadata === 'object' ? action.metadata : null;
@@ -91,10 +134,13 @@ function isWordcrafterActionFavorite(action, resolvedTypeHint) {
       return true;
     }
   }
-  const idText = action.id ? String(action.id).toLowerCase() : '';
-  if (!idText) {
-    return false;
+  if (inferFavoriteTypeFromId(action.id) === 'wordFavorite') {
+    return true;
   }
+  if (looksLikeWordAction(action)) {
+    return true;
+  }
+  const idText = action.id ? String(action.id).toLowerCase() : '';
   for (let i = 0; i < WORD_ACTION_ID_KEYWORDS.length; i++) {
     const keyword = WORD_ACTION_ID_KEYWORDS[i];
     if (keyword && idText.indexOf(keyword) !== -1) {
@@ -249,76 +295,6 @@ function buildSavedActionListDescription(action) {
   return summary;
 }
 
-function inferFavoriteTypeFromId(id) {
-  if (!id) {
-    return '';
-  }
-  const text = String(id).trim();
-  if (!text) {
-    return '';
-  }
-  const delimiterIndex = text.indexOf(':');
-  const prefix = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
-  const normalizedPrefix = prefix.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const normalizedFull = text.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  if (
-    normalizedPrefix === 'reportfavorite' ||
-    normalizedPrefix === 'reporte' ||
-    normalizedPrefix === 'favorite' ||
-    normalizedPrefix === 'favorito' ||
-    normalizedPrefix === 'report' ||
-    normalizedFull.indexOf('reportfavorite') !== -1 ||
-    normalizedFull.indexOf('reporte') !== -1
-  ) {
-    return 'reportFavorite';
-  }
-  if (
-    normalizedPrefix === 'wordfavorite' ||
-    normalizedPrefix === 'word' ||
-    normalizedPrefix === 'texto' ||
-    normalizedPrefix === 'textfavorite' ||
-    normalizedPrefix === 'textofavorito' ||
-    normalizedPrefix === 'favoritotexto' ||
-    normalizedPrefix === 'textoguardado' ||
-    normalizedPrefix === 'creartextowc' ||
-    normalizedPrefix === 'editartextowc' ||
-    normalizedPrefix === 'accioneswc' ||
-    normalizedFull.indexOf('textoguardado') !== -1 ||
-    normalizedFull.indexOf('creartextowc') !== -1 ||
-    normalizedFull.indexOf('editartextowc') !== -1 ||
-    normalizedFull.indexOf('accioneswc') !== -1
-  ) {
-    return 'wordFavorite';
-  }
-  if (
-    normalizedPrefix === 'tablefavorite' ||
-    normalizedPrefix === 'favoritotabla' ||
-    normalizedPrefix === 'tablafavorita' ||
-    normalizedPrefix === 'creartablatc' ||
-    normalizedFull.indexOf('tablefavorite') !== -1 ||
-    normalizedFull.indexOf('favoritotabla') !== -1 ||
-    normalizedFull.indexOf('creartablatc') !== -1
-  ) {
-    return 'tableFavorite';
-  }
-  if (
-    normalizedPrefix === 'tableeditfavorite' ||
-    normalizedPrefix === 'tableedit' ||
-    normalizedPrefix === 'favoritoeditar' ||
-    normalizedPrefix === 'tablaeditarfavorita' ||
-    normalizedPrefix === 'editartablatc' ||
-    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
-    normalizedFull.indexOf('tablaeditar') !== -1 ||
-    normalizedFull.indexOf('editartablatc') !== -1
-  ) {
-    return 'tableEditFavorite';
-  }
-  if (normalizedPrefix === 'table' || normalizedFull.indexOf('tablaguardada') !== -1) {
-    return 'table';
-  }
-  return '';
-}
-
 function normalizeFavoriteTypeCandidate(value) {
   if (value === null || value === undefined) {
     return '';
@@ -331,411 +307,303 @@ function normalizeFavoriteTypeCandidate(value) {
   const base = delimiterIndex === -1 ? text : text.substring(0, delimiterIndex);
   const normalized = base.toLowerCase().replace(/[^a-z0-9]+/g, '');
   const normalizedFull = text.toLowerCase().replace(/[^a-z0-9]+/g, '');
-  if (
-    normalized === 'reportfavorite' ||
-    normalized === 'reporte' ||
-    normalized === 'reportefavorito' ||
-    normalized === 'favorite' ||
-    normalized === 'favorito' ||
-    normalized === 'report' ||
-    normalizedFull.indexOf('reportfavorite') !== -1 ||
-    normalizedFull.indexOf('reporte') !== -1
-  ) {
-    return 'reportFavorite';
+  if (!normalized && !normalizedFull) {
+    return '';
+  }
+  for (let i = 0; i < ACTION_TYPE_PRIORITY.length; i++) {
+    const type = ACTION_TYPE_PRIORITY[i];
+    const patterns = ACTION_TYPE_KEYWORDS[type] || [];
+    for (let j = 0; j < patterns.length; j++) {
+      const keyword = patterns[j];
+      if (keyword && (normalized.indexOf(keyword) !== -1 || normalizedFull.indexOf(keyword) !== -1)) {
+        return type;
+      }
+    }
   }
   if (
-    normalized === 'wordfavorite' ||
-    normalized === 'word' ||
-    normalized === 'texto' ||
-    normalized === 'textfavorite' ||
-    normalized === 'textofavorito' ||
-    normalized === 'favoritotexto' ||
-    normalized === 'textoguardado' ||
-    normalized === 'creartextowc' ||
-    normalized === 'editartextowc' ||
-    normalized === 'accioneswc' ||
-    normalizedFull.indexOf('textoguardado') !== -1 ||
-    normalizedFull.indexOf('creartextowc') !== -1 ||
-    normalizedFull.indexOf('editartextowc') !== -1 ||
-    normalizedFull.indexOf('accioneswc') !== -1
+    (normalized && (normalized.indexOf('favorito') !== -1 || normalized.indexOf('favorite') !== -1)) ||
+    (normalizedFull && (normalizedFull.indexOf('favorito') !== -1 || normalizedFull.indexOf('favorite') !== -1))
   ) {
-    return 'wordFavorite';
-  }
-  if (
-    normalized === 'tablefavorite' ||
-    normalized === 'favoritotabla' ||
-    normalized === 'tablafavorita' ||
-    normalized === 'creartablatc' ||
-    normalizedFull.indexOf('tablefavorite') !== -1 ||
-    normalizedFull.indexOf('favoritotabla') !== -1 ||
-    normalizedFull.indexOf('creartablatc') !== -1
-  ) {
-    return 'tableFavorite';
-  }
-  if (
-    normalized === 'tableeditfavorite' ||
-    normalized === 'tableedit' ||
-    normalized === 'favoritoeditar' ||
-    normalized === 'tablaeditarfavorita' ||
-    normalized === 'tablaeditar' ||
-    normalized === 'editartablatc' ||
-    normalizedFull.indexOf('tableeditfavorite') !== -1 ||
-    normalizedFull.indexOf('tablaeditar') !== -1 ||
-    normalizedFull.indexOf('editartablatc') !== -1
-  ) {
-    return 'tableEditFavorite';
-  }
-  if (normalized === 'table' || normalized === 'tabla' || normalizedFull.indexOf('tablaguardada') !== -1) {
-    return 'table';
+    return 'favorite';
   }
   return '';
 }
 
-function hasWordFavoriteConfigSignals(payload, depth) {
-  if (!payload || typeof payload !== 'object') {
-    return false;
+function inferFavoriteTypeFromId(id) {
+  if (!id) {
+    return '';
   }
-  const level = typeof depth === 'number' && depth >= 0 ? depth : 0;
-  if (level > 4) {
-    return false;
+  return normalizeFavoriteTypeCandidate(id);
+}
+
+function parseActionConfig(candidate) {
+  if (!candidate) {
+    return null;
   }
-  if (Array.isArray(payload)) {
-    for (let a = 0; a < payload.length; a++) {
-      if (hasWordFavoriteConfigSignals(payload[a], level + 1)) {
-        return true;
-      }
-    }
+  if (typeof candidate === 'object' && !Array.isArray(candidate)) {
+    return candidate;
   }
-  let keys = [];
+  if (typeof candidate !== 'string') {
+    return null;
+  }
+  const text = candidate.trim();
+  if (!text || (text.charAt(0) !== '{' && text.charAt(0) !== '[')) {
+    return null;
+  }
   try {
-    keys = Object.keys(payload);
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
   } catch (err) {
-    keys = [];
+    return null;
   }
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    if (!key) {
-      continue;
-    }
-    const lowerKey = String(key).toLowerCase();
-    if (
-      lowerKey.indexOf('wordcrafter') !== -1 ||
-      lowerKey.indexOf('wordfavorite') !== -1 ||
-      lowerKey.indexOf('wordai') !== -1 ||
-      lowerKey.indexOf('texto') !== -1 ||
-      lowerKey.indexOf('textfavorite') !== -1 ||
-      lowerKey.indexOf('panelia') !== -1
-    ) {
-      return true;
-    }
+}
+
+function collectActionTypeHints(entry) {
+  const hints = new Set();
+  if (!entry || typeof entry !== 'object') {
+    return hints;
   }
-  const context = payload.context;
-  if (context) {
-    if (typeof context === 'string' && context.trim()) {
-      return true;
+  const push = function(value) {
+    const normalized = normalizeFavoriteTypeCandidate(value);
+    if (normalized && normalized !== 'favorite') {
+      hints.add(normalized);
     }
-    if (typeof context === 'object') {
-      if (
-        (context.instructions && String(context.instructions).trim()) ||
-        (context.focus && String(context.focus).trim()) ||
-        (context.summary && String(context.summary).trim())
-      ) {
-        return true;
+  };
+  const directKeys = ['type', 'recordType', 'favoriteKind', 'kind', 'category', 'action', 'sourceType', 'origin'];
+  directKeys.forEach(function(key) {
+    if (Object.prototype.hasOwnProperty.call(entry, key)) {
+      push(entry[key]);
+    }
+  });
+  push(entry.id);
+  const metadata = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : null;
+  if (metadata) {
+    const metadataKeys = ['type', 'action', 'favoriteKind', 'recordType', 'context', 'origin', 'sourceType', 'tabId'];
+    metadataKeys.forEach(function(key) {
+      if (Object.prototype.hasOwnProperty.call(metadata, key)) {
+        push(metadata[key]);
       }
-    }
+    });
   }
-  const structure = payload.structure;
-  if (structure && typeof structure === 'object') {
-    const intro = structure.intro;
-    const conclusion = structure.conclusion;
-    if (
-      (intro && typeof intro === 'object' && (intro.enabled || (intro.focus && String(intro.focus).trim()))) ||
-      (conclusion && typeof conclusion === 'object' && (conclusion.enabled || (conclusion.focus && String(conclusion.focus).trim())))
-    ) {
-      return true;
+  const configCandidates = [entry.config, entry.reportConfig, entry.settings];
+  configCandidates.forEach(function(candidate) {
+    const parsed = parseActionConfig(candidate);
+    if (!parsed) {
+      return;
     }
-    if (Array.isArray(structure.sections) && structure.sections.length > 0) {
-      return true;
-    }
-  }
-  const personalization = payload.personalization;
-  if (personalization && typeof personalization === 'object') {
-    const personaKeys = ['length', 'language', 'tone', 'profile'];
-    for (let j = 0; j < personaKeys.length; j++) {
-      const personaKey = personaKeys[j];
-      if (
-        Object.prototype.hasOwnProperty.call(personalization, personaKey) &&
-        personalization[personaKey] !== '' &&
-        personalization[personaKey] !== null &&
-        personalization[personaKey] !== undefined
-      ) {
-        return true;
+    const configKeys = ['type', 'kind', 'favoriteKind', 'recordType', 'origin', 'action', 'sourceType', 'context', 'tabId'];
+    configKeys.forEach(function(key) {
+      if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+        push(parsed[key]);
       }
+    });
+    if (parsed.metadata && typeof parsed.metadata === 'object') {
+      const metaKeys = ['type', 'action', 'favoriteKind', 'recordType', 'context', 'origin', 'sourceType', 'tabId'];
+      metaKeys.forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(parsed.metadata, key)) {
+          push(parsed.metadata[key]);
+        }
+      });
     }
+  });
+  return hints;
+}
+
+function looksLikeTableFavoriteAction(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return false;
   }
-  const web = payload.web;
-  if (web && typeof web === 'object') {
-    if (
-      Object.prototype.hasOwnProperty.call(web, 'externalEnabled') ||
-      Object.prototype.hasOwnProperty.call(web, 'savedEnabled') ||
-      Object.prototype.hasOwnProperty.call(web, 'sources') ||
-      Object.prototype.hasOwnProperty.call(web, 'savedTexts') ||
-      Object.prototype.hasOwnProperty.call(web, 'savedTables')
-    ) {
+  if (entry.favoriteKind && normalizeFavoriteTypeCandidate(entry.favoriteKind) === 'tableFavorite') {
+    return true;
+  }
+  if (entry.recordType && normalizeFavoriteTypeCandidate(entry.recordType) === 'tableFavorite') {
+    return true;
+  }
+  if (entry.origin && normalizeFavoriteTypeCandidate(entry.origin) === 'tableFavorite') {
+    return true;
+  }
+  if (entry.type && normalizeFavoriteTypeCandidate(entry.type) === 'tableFavorite') {
+    return true;
+  }
+  if (entry.headers && Array.isArray(entry.headers) && entry.headers.length) {
+    return true;
+  }
+  if (entry.style && typeof entry.style === 'object') {
+    return true;
+  }
+  const range = entry.range && typeof entry.range === 'object' ? entry.range : null;
+  if (range && (range.a1Notation || range.fullA1 || range.sheetName)) {
+    return true;
+  }
+  const config = parseActionConfig(entry.config);
+  if (config) {
+    if (config.range || config.headers || config.style) {
       return true;
     }
-  }
-  if (payload.placement && typeof payload.placement === 'object') {
-    return true;
-  }
-  if (
-    Object.prototype.hasOwnProperty.call(payload, 'splitSentences') ||
-    Object.prototype.hasOwnProperty.call(payload, 'splitTextIntoCells')
-  ) {
-    return true;
-  }
-  if (payload.theme && String(payload.theme).toLowerCase().indexOf('word') !== -1) {
-    return true;
-  }
-  if (payload.mode && String(payload.mode).toLowerCase().indexOf('word') !== -1) {
-    return true;
-  }
-  const nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
-  for (let k = 0; k < nestedKeys.length; k++) {
-    const nestedKey = nestedKeys[k];
-    if (!Object.prototype.hasOwnProperty.call(payload, nestedKey)) {
-      continue;
-    }
-    const nestedValue = payload[nestedKey];
-    if (!nestedValue || nestedValue === payload) {
-      continue;
-    }
-    if (hasWordFavoriteConfigSignals(nestedValue, level + 1)) {
+    if (config.origin && normalizeFavoriteTypeCandidate(config.origin) === 'tableFavorite') {
       return true;
     }
   }
   return false;
 }
 
-function inferFavoriteOriginType(origin) {
-  if (origin === null || origin === undefined) {
-    return '';
-  }
-  const text = String(origin).toLowerCase();
-  if (!text) {
-    return '';
-  }
-  if (
-    text.indexOf('word') !== -1 ||
-    text.indexOf('texto') !== -1 ||
-    text.indexOf('wordcrafter') !== -1 ||
-    text.indexOf('panelia') !== -1
-  ) {
-    return 'wordFavorite';
-  }
-  if (text.indexOf('edit') !== -1 || text.indexOf('editar') !== -1) {
-    return 'tableEditFavorite';
-  }
-  if (
-    text.indexOf('table') !== -1 ||
-    text.indexOf('tabla') !== -1 ||
-    text.indexOf('create') !== -1 ||
-    text.indexOf('crear') !== -1
-  ) {
-    return 'tableFavorite';
-  }
-  return '';
-}
-
-function inferFavoriteTypeFromConfigPayload(payload, depth) {
-  if (payload === null || payload === undefined) {
-    return '';
-  }
-  const level = typeof depth === 'number' && depth >= 0 ? depth : 0;
-  if (level > 4) {
-    return '';
-  }
-  if (typeof payload === 'string') {
-    const text = payload.trim();
-    if (!text) {
-      return '';
-    }
-    try {
-      const parsed = JSON.parse(text);
-      return inferFavoriteTypeFromConfigPayload(parsed, level + 1);
-    } catch (err) {
-      return normalizeFavoriteTypeCandidate(text);
-    }
-  }
-  if (Array.isArray(payload)) {
-    for (let i = 0; i < payload.length; i++) {
-      const nested = inferFavoriteTypeFromConfigPayload(payload[i], level + 1);
-      if (nested) {
-        return nested;
-      }
-    }
-    return '';
-  }
-  if (typeof payload !== 'object') {
-    return '';
-  }
-  let tableCandidate = '';
-  const directKeys = ['favoriteKind', 'recordType', 'kind', 'type'];
-  for (let i = 0; i < directKeys.length; i++) {
-    const key = directKeys[i];
-    if (!Object.prototype.hasOwnProperty.call(payload, key)) {
-      continue;
-    }
-    const candidate = normalizeFavoriteTypeCandidate(payload[key]);
-    if (candidate && candidate !== 'table') {
-      return candidate;
-    }
-    if (candidate === 'table') {
-      tableCandidate = 'table';
-    }
-  }
-  const originCandidate = inferFavoriteOriginType(payload.origin);
-  if (originCandidate) {
-    return originCandidate;
-  }
-  if (hasWordFavoriteConfigSignals(payload)) {
-    return 'wordFavorite';
-  }
-  const nestedKeys = ['config', 'settings', 'details', 'meta', 'data', 'value', 'options', 'favorite', 'payload'];
-  for (let j = 0; j < nestedKeys.length; j++) {
-    const nestedKey = nestedKeys[j];
-    if (!Object.prototype.hasOwnProperty.call(payload, nestedKey)) {
-      continue;
-    }
-    const nestedValue = payload[nestedKey];
-    if (nestedValue === payload) {
-      continue;
-    }
-    const nestedResult = inferFavoriteTypeFromConfigPayload(nestedValue, level + 1);
-    if (nestedResult) {
-      if (nestedResult === 'table' && tableCandidate) {
-        return tableCandidate;
-      }
-      return nestedResult;
-    }
-  }
-  if (tableCandidate) {
-    return tableCandidate;
-  }
-  return '';
-}
-
-function inferFavoriteTypeFromEntryConfig(entry) {
+function looksLikeTableAction(entry) {
   if (!entry || typeof entry !== 'object') {
-    return '';
+    return false;
   }
-  const directKeys = ['favoriteKind', 'recordType', 'kind', 'type'];
-  let tableCandidate = '';
-  for (let i = 0; i < directKeys.length; i++) {
-    const key = directKeys[i];
-    if (!Object.prototype.hasOwnProperty.call(entry, key)) {
-      continue;
+  if (entry.sheetName || entry.rangeA1 || entry.fullRangeA1) {
+    return true;
+  }
+  if (entry.rows || entry.cols) {
+    return true;
+  }
+  if (entry.range && typeof entry.range === 'object') {
+    return true;
+  }
+  if (entry.headers && Array.isArray(entry.headers) && entry.headers.length) {
+    return true;
+  }
+  const config = parseActionConfig(entry.config);
+  if (config) {
+    if (config.range || config.headers || config.style) {
+      return true;
     }
-    const candidate = normalizeFavoriteTypeCandidate(entry[key]);
-    if (candidate && candidate !== 'table') {
-      return candidate;
+  }
+  const origin = entry.origin ? String(entry.origin).toLowerCase() : '';
+  if (origin && (origin.indexOf('tabla') !== -1 || origin.indexOf('table') !== -1)) {
+    return true;
+  }
+  return false;
+}
+
+function looksLikeReportFavoriteAction(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return false;
+  }
+  if (Array.isArray(entry.features) && entry.features.length) {
+    return true;
+  }
+  if (Array.isArray(entry.featureDetails) && entry.featureDetails.length) {
+    return true;
+  }
+  if (Array.isArray(entry.channels) && entry.channels.length) {
+    return true;
+  }
+  if (entry.format) {
+    return true;
+  }
+  const config = parseActionConfig(entry.config);
+  if (config) {
+    if ((Array.isArray(config.features) && config.features.length) || (Array.isArray(config.featureDetails) && config.featureDetails.length)) {
+      return true;
     }
-    if (candidate === 'table') {
-      tableCandidate = 'table';
+    if (Array.isArray(config.channels) && config.channels.length) {
+      return true;
+    }
+    if (config.format) {
+      return true;
     }
   }
-  const originCandidate = inferFavoriteOriginType(entry.origin);
-  if (originCandidate) {
-    return originCandidate;
+  const metadata = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : null;
+  if (metadata) {
+    const metaType = normalizeFavoriteTypeCandidate(metadata.sourceType || metadata.type || metadata.action);
+    if (metaType === 'reportFavorite') {
+      return true;
+    }
+    const context = metadata.context ? String(metadata.context).toLowerCase() : '';
+    if (context && (context.indexOf('panelia') !== -1 || context.indexOf('ai') !== -1)) {
+      return true;
+    }
   }
-  if (hasWordFavoriteConfigSignals(entry)) {
-    return 'wordFavorite';
+  return false;
+}
+
+function looksLikeWordAction(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return false;
   }
-  const sources = [];
-  if (entry.config !== null && entry.config !== undefined) {
-    sources.push(entry.config);
-  }
-  if (entry.reportConfig !== null && entry.reportConfig !== undefined) {
-    sources.push(entry.reportConfig);
-  }
-  if (entry.settings !== null && entry.settings !== undefined) {
-    sources.push(entry.settings);
-  }
-  if (entry.meta !== null && entry.meta !== undefined) {
-    sources.push(entry.meta);
-  }
-  if (entry.details !== null && entry.details !== undefined) {
-    sources.push(entry.details);
-  }
-  if (entry.data !== null && entry.data !== undefined) {
-    sources.push(entry.data);
-  }
-  if (entry.value !== null && entry.value !== undefined) {
-    sources.push(entry.value);
-  }
-  for (let j = 0; j < sources.length; j++) {
-    let source = sources[j];
-    if (typeof source === 'string') {
-      const text = source.trim();
-      if (!text) {
-        source = null;
-      } else {
-        try {
-          source = JSON.parse(text);
-        } catch (err) {
-          source = null;
+  const metadata = entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : null;
+  if (metadata) {
+    const metadataFields = [metadata.context, metadata.origin, metadata.tabId, metadata.sourceType, metadata.type, metadata.action];
+    for (let i = 0; i < metadataFields.length; i++) {
+      const value = metadataFields[i];
+      if (!value) {
+        continue;
+      }
+      const normalized = normalizeFavoriteTypeCandidate(value);
+      if (normalized === 'wordFavorite') {
+        return true;
+      }
+      if (typeof value === 'string') {
+        const lower = value.toLowerCase();
+        if (lower.indexOf('word') !== -1 || lower.indexOf('texto') !== -1 || lower.indexOf('wordcrafter') !== -1) {
+          return true;
         }
       }
     }
-    if (!source) {
-      continue;
+  }
+  const config = parseActionConfig(entry.config) || parseActionConfig(entry.settings);
+  if (config) {
+    if (config.personalization || config.structure || config.web) {
+      return true;
     }
-    const nested = inferFavoriteTypeFromConfigPayload(source, 0);
-    if (nested) {
-      if (nested === 'table' && tableCandidate) {
-        return tableCandidate;
+    if (config.context && typeof config.context === 'object') {
+      const context = config.context;
+      if ((context.instructions && String(context.instructions).trim()) || (context.focus && String(context.focus).trim())) {
+        return true;
       }
-      return nested;
+    }
+    const configMetadata = config.metadata && typeof config.metadata === 'object' ? config.metadata : null;
+    if (configMetadata) {
+      const metadataFields = [configMetadata.context, configMetadata.origin, configMetadata.type, configMetadata.action, configMetadata.sourceType];
+      for (let i = 0; i < metadataFields.length; i++) {
+        const value = metadataFields[i];
+        if (!value) {
+          continue;
+        }
+        const normalized = normalizeFavoriteTypeCandidate(value);
+        if (normalized === 'wordFavorite') {
+          return true;
+        }
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase();
+          if (lower.indexOf('word') !== -1 || lower.indexOf('texto') !== -1 || lower.indexOf('wordcrafter') !== -1) {
+            return true;
+          }
+        }
+      }
     }
   }
-  if (tableCandidate) {
-    return tableCandidate;
+  if (inferFavoriteTypeFromId(entry.id) === 'wordFavorite') {
+    return true;
   }
-  return '';
+  return false;
 }
 
 function resolveFavoriteTypeFromEntry(entry) {
   if (!entry) {
     return '';
   }
-  const directType = normalizeFavoriteTypeCandidate(entry.type);
-  const configType = inferFavoriteTypeFromEntryConfig(entry);
-  const idType = entry.id ? inferFavoriteTypeFromId(entry.id) : '';
-  if (directType && directType !== 'table') {
-    return directType;
-  }
-  if (configType && configType !== 'table') {
-    return configType;
-  }
-  if (idType && idType !== 'table') {
-    return idType;
-  }
-  if (directType === 'table') {
-    if (configType) {
-      return configType;
+  const hints = collectActionTypeHints(entry);
+  for (let i = 0; i < ACTION_TYPE_PRIORITY.length; i++) {
+    const type = ACTION_TYPE_PRIORITY[i];
+    if (hints.has(type)) {
+      return type;
     }
-    if (idType) {
-      return idType;
-    }
+  }
+  if (looksLikeTableFavoriteAction(entry)) {
+    return 'tableFavorite';
+  }
+  if (looksLikeTableAction(entry)) {
     return 'table';
   }
-  if (configType === 'table') {
-    return 'table';
+  if (looksLikeReportFavoriteAction(entry)) {
+    return 'reportFavorite';
   }
-  if (idType === 'table') {
-    return 'table';
+  if (looksLikeWordAction(entry)) {
+    return 'wordFavorite';
   }
-  return directType || configType || idType || '';
+  return '';
 }
 
 function getCurrentSavedActionId() {
@@ -1035,7 +903,7 @@ function normalizeFavoriteActionEntry(action) {
     return null;
   }
   const resolvedType = resolveFavoriteTypeFromEntry(action);
-  let type = resolvedType || 'reportFavorite';
+  let type = resolvedType || 'favorite';
   if (type === 'table') {
     const inferredType = inferFavoriteTypeFromId(id);
     if (inferredType && inferredType !== 'table') {
