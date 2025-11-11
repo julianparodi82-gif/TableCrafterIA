@@ -1230,6 +1230,46 @@ async function supplementWordFavorites(list) {
   return normalizedList;
 }
 
+async function supplementTableFavorites(list) {
+  const normalizedList = Array.isArray(list) ? list.slice() : [];
+  const hasTableFavorites = normalizedList.some(function(entry) {
+    return entry && (entry.type === 'tableFavorite' || entry.type === 'tableEditFavorite');
+  });
+  if (hasTableFavorites) {
+    return normalizedList;
+  }
+  let tableResults;
+  try {
+    tableResults = await callServerFunction('listTableFavorites');
+  } catch (err) {
+    console.log('No se pudieron obtener las acciones de tablas guardadas adicionales.', err);
+    return normalizedList;
+  }
+  const normalizedTableFavorites = normalizeFavoriteActionList(tableResults);
+  if (!normalizedTableFavorites.length) {
+    return normalizedList;
+  }
+  const seenIds = Object.create(null);
+  normalizedList.forEach(function(entry) {
+    if (entry && entry.id) {
+      seenIds[entry.id] = true;
+    }
+  });
+  normalizedTableFavorites.forEach(function(entry) {
+    if (!entry || !entry.id || seenIds[entry.id]) {
+      return;
+    }
+    normalizedList.push(entry);
+    seenIds[entry.id] = true;
+  });
+  return normalizedList;
+}
+
+async function mergeSupplementalFavorites(list) {
+  const withWord = await supplementWordFavorites(list);
+  return supplementTableFavorites(withWord);
+}
+
 async function fetchFavoriteActionList(options) {
   const opts = options || {};
   let primaryResult;
@@ -1239,10 +1279,10 @@ async function fetchFavoriteActionList(options) {
       primaryResult = await callServerFunction('listFavoriteActions');
       const normalizedPrimary = normalizeFavoriteActionList(primaryResult);
       if (normalizedPrimary.length > 0 || opts.skipLegacyFallback) {
-        return supplementWordFavorites(normalizedPrimary);
+        return mergeSupplementalFavorites(normalizedPrimary);
       }
       if (opts.allowLegacyFallback === false) {
-        return supplementWordFavorites(normalizedPrimary);
+        return mergeSupplementalFavorites(normalizedPrimary);
       }
     } catch (err) {
       primaryError = err;
@@ -1253,27 +1293,27 @@ async function fetchFavoriteActionList(options) {
   }
   if (opts.allowLegacyFallback === false) {
     if (Array.isArray(primaryResult)) {
-      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
+      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
     }
     if (primaryError) {
       throw primaryError;
     }
-    return supplementWordFavorites([]);
+    return mergeSupplementalFavorites([]);
   }
   try {
     const legacyResult = await callServerFunction('listSavedActions', { scope: 'all' });
     const favoritesOnly = filterLegacyFavoriteEntries(legacyResult);
     const normalizedLegacy = normalizeFavoriteActionList(favoritesOnly);
     if (normalizedLegacy.length > 0) {
-      return supplementWordFavorites(normalizedLegacy);
+      return mergeSupplementalFavorites(normalizedLegacy);
     }
     if (Array.isArray(primaryResult)) {
-      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
+      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
     }
-    return supplementWordFavorites(normalizedLegacy);
+    return mergeSupplementalFavorites(normalizedLegacy);
   } catch (legacyError) {
     if (Array.isArray(primaryResult)) {
-      return supplementWordFavorites(normalizeFavoriteActionList(primaryResult));
+      return mergeSupplementalFavorites(normalizeFavoriteActionList(primaryResult));
     }
     if (primaryError) {
       throw legacyError;
